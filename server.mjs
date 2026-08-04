@@ -906,3 +906,4 @@ app.get('/api/realtime/stocks', async (req, res) => {
 
 app.get('/api-test', (req, res) => { res.sendFile('/data/data/com.termux/files/home/my-ai/test_phase1.html'); });
 app.listen(process.env.PORT || 8080, () => console.log("Guideon actif !"));
+
