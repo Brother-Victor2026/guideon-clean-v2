@@ -180,6 +180,8 @@ async function callStabilityAI(rawPrompt) {
 app.post('/api/chat', async (req, res) => {
   try {
     const { message, history, token, model, temperature, session_id, userTime } = req.body;
+  console.log('📥 token exists:', !!token);
+  console.log('📥 token length:', token ? token.length : 'null');
     let userId = 'default';
     let dbHistory = [];
     let userInstructions = '';
