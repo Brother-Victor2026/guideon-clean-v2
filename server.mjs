@@ -28,11 +28,29 @@ function makeToken(id, email) {
 }
 function checkToken(t) {
   try {
+    console.log('🔐 checkToken() called with token length:', t.length);
     const [p, s] = t.split('.');
-    if (crypto.createHmac('sha256', SECRET).update(p).digest('hex') !== s) return null;
+    console.log('🔐 Payload length:', p.length, 'Signature length:', s.length);
+    
+    const expected = crypto.createHmac('sha256', SECRET).update(p).digest('hex');
+    console.log('🔐 Expected sig:', expected.substring(0, 20) + '...');
+    console.log('🔐 Received sig:', s.substring(0, 20) + '...');
+    console.log('🔐 Match:', expected === s ? 'YES' : 'NO');
+    
+    if (expected !== s) {
+      console.error('❌ Signature mismatch!');
+      return null;
+    }
+    
     const d = JSON.parse(Buffer.from(p, 'base64').toString());
+    console.log('🔐 Decoded:', JSON.stringify(d));
+    console.log('🔐 Now:', Date.now(), 'Exp:', d.exp, 'Valid:', d.exp > Date.now());
+    
     return d.exp > Date.now() ? d : null;
-  } catch { return null; }
+  } catch(e) { 
+    console.error('❌ checkToken error:', e.message);
+    return null; 
+  }
 }
 
 function getQuotaResetTime(displayTimeZone = 'Africa/Porto-Novo') {
