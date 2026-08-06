@@ -28,29 +28,11 @@ function makeToken(id, email) {
 }
 function checkToken(t) {
   try {
-    console.log('🔐 checkToken() called with token length:', t.length);
     const [p, s] = t.split('.');
-    console.log('🔐 Payload length:', p.length, 'Signature length:', s.length);
-    
-    const expected = crypto.createHmac('sha256', SECRET).update(p).digest('hex');
-    console.log('🔐 Expected sig:', expected.substring(0, 20) + '...');
-    console.log('🔐 Received sig:', s.substring(0, 20) + '...');
-    console.log('🔐 Match:', expected === s ? 'YES' : 'NO');
-    
-    if (expected !== s) {
-      console.error('❌ Signature mismatch!');
-      return null;
-    }
-    
+    if (crypto.createHmac('sha256', SECRET).update(p).digest('hex') !== s) return null;
     const d = JSON.parse(Buffer.from(p, 'base64').toString());
-    console.log('🔐 Decoded:', JSON.stringify(d));
-    console.log('🔐 Now:', Date.now(), 'Exp:', d.exp, 'Valid:', d.exp > Date.now());
-    
     return d.exp > Date.now() ? d : null;
-  } catch(e) { 
-    console.error('❌ checkToken error:', e.message);
-    return null; 
-  }
+  } catch { return null; }
 }
 
 function getQuotaResetTime(displayTimeZone = 'Africa/Porto-Novo') {
@@ -198,9 +180,7 @@ async function callStabilityAI(rawPrompt) {
 app.post('/api/chat', async (req, res) => {
   try {
     const { message, history, token, model, temperature, session_id, userTime } = req.body;
-  console.log('📥 token exists:', !!token);
-  console.log('📥 token length:', token ? token.length : 'null');
-    let userId = 'default';
+  console.log('📥 token exists:', !!token);let userId = 'default';
     let dbHistory = [];
     let userInstructions = '';
     let user = null;
