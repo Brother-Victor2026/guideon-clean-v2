@@ -1,0 +1,42 @@
+◇ injected env (7) from .env // tip: ⌘ suppress logs { quiet: true }
+Guideon actif !
+🔑 Token: eyJpZCI6MTUsImVtYWlsIjoidmljdG9yYm9zc291NTlAZ21haWwuY29tIiwiZXhwIjoxNzg2MTk5NDY1NDcxfQ==.5e7917d0423929cab9f622fa2e5c74d125abdf370fcac599ef7eb956777c884d
+👤 User: { id: 15, email: 'victorbossou59@gmail.com', exp: 1786199465471 }
+🔑 Token: eyJpZCI6MTUsImVtYWlsIjoidmljdG9yYm9zc291NTlAZ21haWwuY29tIiwiZXhwIjoxNzg2MTk5NDY1NDcxfQ==.5e7917d0423929cab9f622fa2e5c74d125abdf370fcac599ef7eb956777c884d
+👤 User: { id: 15, email: 'victorbossou59@gmail.com', exp: 1786199465471 }
+🔑 Token: eyJpZCI6MTUsImVtYWlsIjoidmljdG9yYm9zc291NTlAZ21haWwuY29tIiwiZXhwIjoxNzg2MTk5NDY1NDcxfQ==.5e7917d0423929cab9f622fa2e5c74d125abdf370fcac599ef7eb956777c884d
+👤 User: { id: 15, email: 'victorbossou59@gmail.com', exp: 1786199465471 }
+🔑 Token: eyJpZCI6MTUsImVtYWlsIjoidmljdG9yYm9zc291NTlAZ21haWwuY29tIiwiZXhwIjoxNzg2MTk5NDY1NDcxfQ==.5e7917d0423929cab9f622fa2e5c74d125abdf370fcac599ef7eb956777c884d
+👤 User: { id: 15, email: 'victorbossou59@gmail.com', exp: 1786199465471 }
+🔑 Token: eyJpZCI6MTUsImVtYWlsIjoidmljdG9yYm9zc291NTlAZ21haWwuY29tIiwiZXhwIjoxNzg2MTk5NDY1NDcxfQ==.5e7917d0423929cab9f622fa2e5c74d125abdf370fcac599ef7eb956777c884d
+👤 User: { id: 15, email: 'victorbossou59@gmail.com', exp: 1786199465471 }
+🔑 Token: eyJpZCI6MTUsImVtYWlsIjoidmljdG9yYm9zc291NTlAZ21haWwuY29tIiwiZXhwIjoxNzg2MTk5NDY1NDcxfQ==.5e7917d0423929cab9f622fa2e5c74d125abdf370fcac599ef7eb956777c884d
+👤 User: { id: 15, email: 'victorbossou59@gmail.com', exp: 1786199465471 }
+🔑 Token: eyJpZCI6MTUsImVtYWlsIjoidmljdG9yYm9zc291NTlAZ21haWwuY29tIiwiZXhwIjoxNzg2MTk5NDY1NDcxfQ==.5e7917d0423929cab9f622fa2e5c74d125abdf370fcac599ef7eb956777c884d
+👤 User: { id: 15, email: 'victorbossou59@gmail.com', exp: 1786199465471 }
+🔑 Token: eyJpZCI6MTUsImVtYWlsIjoidmljdG9yYm9zc291NTlAZ21haWwuY29tIiwiZXhwIjoxNzg2MTk5NDY1NDcxfQ==.5e7917d0423929cab9f622fa2e5c74d125abdf370fcac599ef7eb956777c884d
+👤 User: { id: 15, email: 'victorbossou59@gmail.com', exp: 1786199465471 }
+🔑 Token: eyJpZCI6MTUsImVtYWlsIjoidmljdG9yYm9zc291NTlAZ21haWwuY29tIiwiZXhwIjoxNzg2MTk5NDY1NDcxfQ==.5e7917d0423929cab9f622fa2e5c74d125abdf370fcac599ef7eb956777c884d
+👤 User: { id: 15, email: 'victorbossou59@gmail.com', exp: 1786199465471 }
+🔑 Token: eyJpZCI6MTUsImVtYWlsIjoidmljdG9yYm9zc291NTlAZ21haWwuY29tIiwiZXhwIjoxNzg2MTk5NDY1NDcxfQ==.5e7917d0423929cab9f622fa2e5c74d125abdf370fcac599ef7eb956777c884d
+👤 User: { id: 15, email: 'victorbossou59@gmail.com', exp: 1786199465471 }
+📞 POST /api/sessions reçu
+🔑 Token: eyJpZCI6MTUsImVtYWlsIjoidmljdG9yYm9zc291NTlAZ21haWwuY29tIiwiZXhwIjoxNzg2MTk5NDY1NDcxfQ==.5e7917d0423929cab9f622fa2e5c74d125abdf370fcac599ef7eb956777c884d
+👤 User: { id: 15, email: 'victorbossou59@gmail.com', exp: 1786199465471 }
+📊 Session créée: [
+  {
+    id: 1785614497591,
+    user_id: '15',
+    title: 'Nouvelle conversation',
+    created_at: '2026-08-01T20:01:39.124642+00:00',
+    pinned: false
+  }
+]
+🔑 Token: eyJpZCI6MTUsImVtYWlsIjoidmljdG9yYm9zc291NTlAZ21haWwuY29tIiwiZXhwIjoxNzg2MTk5NDY1NDcxfQ==.5e7917d0423929cab9f622fa2e5c74d125abdf370fcac599ef7eb956777c884d
+👤 User: { id: 15, email: 'victorbossou59@gmail.com', exp: 1786199465471 }
+🔑 Token: eyJpZCI6MTUsImVtYWlsIjoidmljdG9yYm9zc291NTlAZ21haWwuY29tIiwiZXhwIjoxNzg2MTk5NDY1NDcxfQ==.5e7917d0423929cab9f622fa2e5c74d125abdf370fcac599ef7eb956777c884d
+👤 User: { id: 15, email: 'victorbossou59@gmail.com', exp: 1786199465471 }
+🔑 Token: eyJpZCI6MTUsImVtYWlsIjoidmljdG9yYm9zc291NTlAZ21haWwuY29tIiwiZXhwIjoxNzg2MTk5NDY1NDcxfQ==.5e7917d0423929cab9f622fa2e5c74d125abdf370fcac599ef7eb956777c884d
+👤 User: { id: 15, email: 'victorbossou59@gmail.com', exp: 1786199465471 }
+🔑 Token: eyJpZCI6MTUsImVtYWlsIjoidmljdG9yYm9zc291NTlAZ21haWwuY29tIiwiZXhwIjoxNzg2MTk5NDY1NDcxfQ==.5e7917d0423929cab9f622fa2e5c74d125abdf370fcac599ef7eb956777c884d
+👤 User: { id: 15, email: 'victorbossou59@gmail.com', exp: 1786199465471 }
