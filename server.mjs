@@ -591,6 +591,40 @@ app.put('/api/profile', async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+
+app.put('/api/user/password', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    if (!token) return res.status(401).json({ error: 'Token manquant' });
+    
+    const user = checkToken(token);
+    if (!user) return res.status(401).json({ error: 'Token invalide' });
+    
+    const { password } = req.body;
+    if (!password || password.length < 6) {
+      return res.status(400).json({ error: 'Mot de passe trop court' });
+    }
+    
+    // Hasher le mot de passe
+    const hashedPwd = hashPwd(password);
+    
+    // Mettre à jour dans Supabase
+    const response = await fetch(`${DB}/users?id=eq.${user.id}`, {
+      method: 'PATCH',
+      headers: { ...SB, 'Prefer': 'return=minimal' },
+      body: JSON.stringify({ password: hashedPwd })
+    });
+    
+    if (response.ok) {
+      return res.json({ success: true });
+    } else {
+      return res.status(500).json({ error: 'Erreur mise à jour' });
+    }
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
 app.post('/api/instructions', async (req, res) => {
   try {
     const token = req.headers.authorization?.replace('Bearer ', '');
