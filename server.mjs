@@ -8,6 +8,7 @@ import { fileURLToPath } from 'url';
 import crypto from 'crypto';
 import { Resend } from 'resend';
 import multer from 'multer';
+import PDFDocument from 'pdfkit';
 
 const app = express();
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -17,6 +18,7 @@ const SUPABASE_KEY = process.env.SUPABASE_KEY;
 const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
 const SECRET = process.env.JWT_SECRET || 'guideon2026';
+const VERSION = '2.0.5';
 
 const DB = SUPABASE_URL ? `${SUPABASE_URL}/rest/v1` : null;
 const SB = { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json' };
@@ -840,6 +842,7 @@ app.get('/reset-password', (req, res) => {
     }
     </script>
 
+<script src="/features.js"></script>
 </html>`;
   res.send(html);
 });
@@ -939,5 +942,68 @@ app.get('/api/realtime/stocks', async (req, res) => {
 });
 
 app.get('/api-test', (req, res) => { res.sendFile('/data/data/com.termux/files/home/my-ai/test_phase1.html'); });
+
+// Endpoint version
+app.get('/api/version', (req, res) => {
+  res.json({ 
+    current: VERSION,
+    latest: VERSION,
+    changelog: [
+      "✨ Endpoint /api/sessions/logout-others",
+      "🎨 Interface d'inscription améliorée",
+      "🔐 Nouvelles options de confidentialité",
+      "📊 Statistiques détaillées"
+    ],
+        releaseDate: new Date().toLocaleDateString("fr-FR", { year: "numeric", month: "long", day: "numeric" }),
+    updateAvailable: false
+  });
+});
+
+// Endpoint privacy report
+app.get('/api/privacy-report', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) return res.status(401).json({ error: 'Token manquant' });
+    
+    const user = checkToken(token);
+    if (!user) return res.status(401).json({ error: 'Token invalide' });
+
+    const userRes = await fetch(`${DB}/users?id=eq.${user.id}`, { headers: SB });
+    const userData = await userRes.json();
+    
+    const convRes = await fetch(`${DB}/conversations?user_id=eq.${user.id}`, { headers: SB });
+    const conversations = await convRes.json();
+    
+    const doc = new PDFDocument();
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', 'attachment; filename=rapport_confidentialite.pdf');
+    
+    doc.pipe(res);
+    
+    doc.fontSize(20).text('Rapport de Confidentialité - Guidéon', { align: 'center' });
+    doc.fontSize(14).text('📋 Informations Utilisateur', { underline: true });
+    doc.fontSize(11).text(`Email: ${userData[0]?.email || 'N/A'}`);
+    doc.text(`Nom: ${userData[0]?.name || 'N/A'}`);
+    doc.text(`Inscription: ${new Date(userData[0]?.created_at).toLocaleDateString('fr-FR')}`);
+    doc.text('');
+    
+    doc.fontSize(14).text('💬 Statistiques', { underline: true });
+    doc.fontSize(11).text(`Total conversations: ${conversations.length}`);
+    doc.text('');
+    
+    doc.fontSize(14).text('🔒 Engagement de Confidentialité', { underline: true });
+    doc.fontSize(11).text('✓ Aucune donnée personnelle vendue à des tiers');
+    doc.text('✓ Chiffrement end-to-end disponible');
+    doc.text('✓ Droits RGPD & CCPA garantis');
+    doc.text('✓ Données supprimées après 90 jours d\'inactivité');
+    doc.text('');
+    
+    doc.fontSize(10).text('Généré le: ' + new Date().toLocaleString('fr-FR'));
+    doc.end();
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 app.listen(process.env.PORT || 8080, () => console.log("Guideon actif !"));
 
