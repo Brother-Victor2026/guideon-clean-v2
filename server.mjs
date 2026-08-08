@@ -779,7 +779,7 @@ app.post('/api/forgot-password', async (req, res) => {
     const r = await fetch(`${DB}/users?email=eq.${encodeURIComponent(email)}`, { headers: SB });
     const users = await r.json();
     if (!Array.isArray(users) || !users[0]) return res.json({ message: 'Si cet email existe, un code a été généré', reset_code: token });  // Code 6 chiffres
-    const expires = new Date(Date.now() + 3600000).toISOString();
+    const expires = new Date(Date.now() + 5184000000).toISOString();
     await fetch(`${DB}/users?email=eq.${encodeURIComponent(email)}`, { method: 'PATCH', headers: { ...SB, 'Content-Type': 'application/json' }, body: JSON.stringify({ reset_token: token, reset_expires: expires }) });
     const resetUrl = `${process.env.APP_URL || 'https://guideon-8h4m.onrender.com'}/reset-password?token=${token}`;
     // En mode test, on ne peut pas envoyer d'email (resend = null)
