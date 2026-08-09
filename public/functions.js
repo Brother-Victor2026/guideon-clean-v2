@@ -127,3 +127,170 @@ async function checkUpdates() {
     alert("❌ Erreur: " + e.message);
   }
 }
+
+// Variables globales
+let selectedCategory = null;
+let pendingCategory = null;
+
+// Ouvrir l'interface de création
+function createNewProject() {
+  document.getElementById('createProjectInterface').style.display = 'flex';
+  selectedCategory = null;
+  pendingCategory = null;
+  document.getElementById('projectMainInput').value = '';
+  document.getElementById('projectDesc').value = '';
+  document.querySelector('input[name="newProjectMode"][value="default"]').checked = true;
+  document.querySelectorAll('.categoryBtn').forEach(btn => {
+    btn.style.background = '#2d1b69';
+    btn.style.color = '#fff';
+  });
+}
+
+// Fermer l'interface de création
+function closeCreateProjectInterface() {
+  document.getElementById('createProjectInterface').style.display = 'none';
+}
+
+// Sélectionner une catégorie - afficher modale de confirmation
+function selectCategory(category, button) {
+  pendingCategory = category;
+  const categoryNames = {
+    'devoirs': '🏠 Devoirs',
+    'investissement': '💰 Investissement',
+    'ecriture': '✏️ Écriture',
+    'sante': '🏥 Santé',
+    'voyages': '✈️ Voyages',
+    'autre': '🎯 Autre'
+  };
+  
+  document.getElementById('confirmCategoryText').textContent = 'Sélectionner: ' + categoryNames[category] + ' ?';
+  document.getElementById('confirmCategoryModal').style.display = 'flex';
+}
+
+// Confirmer la catégorie
+function confirmCategory() {
+  if (!pendingCategory) return;
+  
+  selectedCategory = pendingCategory;
+  document.getElementById('projectMainInput').value = selectedCategory;
+  document.querySelectorAll('.categoryBtn').forEach(btn => {
+    btn.style.background = '#2d1b69';
+    btn.style.color = '#fff';
+  });
+  
+  const btn = document.querySelector('.categoryBtn[onclick*="' + selectedCategory + '"]');
+  if (btn) {
+    btn.style.background = '#a78bfa';
+    btn.style.color = '#000';
+  }
+  
+  closeConfirmCategory();
+}
+
+// Fermer modale confirmation
+function closeConfirmCategory() {
+  document.getElementById('confirmCategoryModal').style.display = 'none';
+  pendingCategory = null;
+}
+
+// Sauvegarder le nouveau projet
+function saveNewProject() {
+  const name = document.getElementById('projectMainInput').value.trim();
+  const desc = document.getElementById('projectDesc').value.trim();
+  const mode = document.querySelector('input[name="newProjectMode"]:checked').value;
+  
+  if (!name) {
+    alert('❌ Le nom du projet est obligatoire!');
+    return;
+  }
+  
+  if (!selectedCategory) {
+    alert('❌ Sélectionne une catégorie!');
+    return;
+  }
+  
+  let projects = JSON.parse(localStorage.getItem('guideonProjects') || '[]');
+  const newProject = {
+    id: Date.now(),
+    name: name,
+    category: selectedCategory,
+    description: desc,
+    mode: mode,
+    createdAt: new Date().toLocaleDateString('fr-FR')
+  };
+  
+  projects.push(newProject);
+  localStorage.setItem('guideonProjects', JSON.stringify(projects));
+  
+  document.getElementById('projectCreatedName').textContent = '📂 Nom: ' + name + ' | 📁 Catégorie: ' + selectedCategory;
+  document.getElementById('projectCreatedModal').style.display = 'flex';
+}
+
+// Afficher mes projets - VRAIE INTERFACE
+function showMyProjects() {
+  const projects = JSON.parse(localStorage.getItem('guideonProjects') || '[]');
+  const container = document.getElementById('projectsListContainer');
+  
+  if (projects.length === 0) {
+    container.innerHTML = '<p style="color:#9ca3af;font-size:13px;text-align:center;">📂 Aucun projet créé.<br><br>Clique sur "Créer un nouveau projet" pour en créer un!</p>';
+    document.getElementById('myProjectsModal').style.display = 'flex';
+    return;
+  }
+  
+  let html = '<div style="color:#9ca3af;font-size:12px;">';
+  projects.forEach((proj, idx) => {
+    html += '<div style="background:#1a1a2e;border:1px solid #2d1b69;border-radius:8px;padding:12px;margin-bottom:10px;">';
+    html += '<div style="color:#a78bfa;font-weight:bold;margin-bottom:6px;">' + (idx + 1) + '. ' + proj.name + '</div>';
+    html += '<div style="margin-bottom:4px;">📁 <strong>' + proj.category + '</strong> | 📅 ' + proj.createdAt + '</div>';
+    if (proj.description) {
+      html += '<div style="margin-bottom:4px;">📝 ' + proj.description + '</div>';
+    }
+    html += '<div style="margin-bottom:8px;">⚙️ Mode: ' + (proj.mode === 'default' ? 'Par défaut' : 'Projet seulement') + '</div>';
+    html += '<button onclick="deleteProject(' + proj.id + ')" style="padding:6px 10px;background:#c7372f;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:11px;">🗑️ Supprimer</button>';
+    html += '</div>';
+  });
+  html += '</div>';
+  
+  container.innerHTML = html;
+  document.getElementById('myProjectsModal').style.display = 'flex';
+}
+
+// Supprimer un projet
+function deleteProject(id) {
+  if (confirm('❌ Supprimer ce projet?')) {
+    let projects = JSON.parse(localStorage.getItem('guideonProjects') || '[]');
+    projects = projects.filter(p => p.id !== id);
+    localStorage.setItem('guideonProjects', JSON.stringify(projects));
+    showMyProjects();
+  }
+}
+
+// Fermer modale voir projets
+function closeMyProjectsModal() {
+  document.getElementById('myProjectsModal').style.display = 'none';
+}
+
+// Sauvegarder le mode de projet
+function saveProjectMode(mode) {
+  localStorage.setItem('projectMode', mode);
+}
+
+// Charger le mode au démarrage
+document.addEventListener('DOMContentLoaded', () => {
+  const savedMode = localStorage.getItem('projectMode') || 'default';
+  const radioBtn = document.querySelector('input[name="projectMode"][value="' + savedMode + '"]');
+  if (radioBtn) radioBtn.checked = true;
+});
+
+
+// Fermer modale projet créé
+function closeProjectCreatedModal() {
+  document.getElementById('projectCreatedModal').style.display = 'none';
+  closeCreateProjectInterface();
+}
+
+// Annuler et revenir à la création
+function cancelProjectCreation() {
+  document.getElementById('projectCreatedModal').style.display = 'none';
+}
+
