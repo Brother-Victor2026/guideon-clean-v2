@@ -3,6 +3,7 @@ dotenv.config();
 
 import express from 'express';
 import path from 'path';
+import fs from 'fs';
 import { createClient } from '@supabase/supabase-js';
 import { fileURLToPath } from 'url';
 import crypto from 'crypto';
@@ -18,7 +19,8 @@ const SUPABASE_KEY = process.env.SUPABASE_KEY;
 const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
 const SECRET = process.env.JWT_SECRET || 'guideon2026';
-const VERSION = '2.0.5';
+const pkg = JSON.parse(fs.readFileSync(__dirname + '/package.json', 'utf-8'));
+const VERSION = pkg.version;
 
 const DB = SUPABASE_URL ? `${SUPABASE_URL}/rest/v1` : null;
 const SB = { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json' };

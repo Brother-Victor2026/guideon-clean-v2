@@ -94,7 +94,7 @@ async function checkUpdates() {
     
     let html = `<h4 style="color:#a78bfa;">📦 Mises à jour</h4>`;
     
-    if (data.update_available) {
+    if (data.updateAvailable) {
       html += `
         <div style="background:#0f0f1a;border:1px solid #7c3aed;border-radius:8px;padding:12px;margin-bottom:16px;">
           <p style="color:#a78bfa;font-size:13px;font-weight:bold;margin:0 0 6px 0;">✨ Version ${data.latest} - ${data.releaseDate || 'Date non disponible'}</p>
