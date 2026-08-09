@@ -27,7 +27,7 @@ const SB = { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 
 
 function hashPwd(p) { return crypto.createHash('sha256').update(p + SECRET).digest('hex'); }
 function makeToken(id, email) {
-  const p = Buffer.from(JSON.stringify({ id, email, exp: Date.now() + 7*24*60*60*1000 })).toString('base64');
+  const p = Buffer.from(JSON.stringify({ id, email, exp: Date.now() + 60*24*60*60*1000 })).toString('base64');
   return p + '.' + crypto.createHmac('sha256', SECRET).update(p).digest('hex');
 }
 function checkToken(t) {
