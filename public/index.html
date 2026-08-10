@@ -926,7 +926,7 @@ async function newSession(){
         const response = await fetch('/api/sessions', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({token: localStorage.getItem('gtoken')})});
         const data = await response.json();
         if(data.success && data.session) {
-            localStorage.setItem('gsession', data.session.id);
+            localStorage.setItem('session', data.session.id);
             location.reload();
             
         }
@@ -937,7 +937,7 @@ async function newSession(){
 }
 
 async function switchSession(id){
-  curSession=id;localStorage.setItem('gsession',id);
+  curSession=id;localStorage.setItem('session',id);
   const chat=document.getElementById('chat');
   if(chat)chat.innerHTML='';
   try{history=[];}catch(e){}
@@ -993,7 +993,7 @@ async function deleteSession(id){
   if(!confirm('Supprimer cette conversation ?'))return;
   const tok=localStorage.getItem('gtoken');
   await fetch('/api/sessions/'+id,{method:'DELETE',headers:{'Authorization':'Bearer '+tok}});
-  if(curSession===id){curSession=null;localStorage.removeItem('gsession');const chat=document.getElementById('chat');if(chat)chat.innerHTML='';try{history=[];}catch(e){}}
+  if(curSession===id){curSession=null;localStorage.removeItem('session');const chat=document.getElementById('chat');if(chat)chat.innerHTML='';try{history=[];}catch(e){}}
   loadSessions();
 }
 
@@ -1009,12 +1009,12 @@ async function doAuth(){
     document.getElementById('am').style.display='none';
     const lm=document.getElementById('lm');if(lm)lm.classList.remove('show');
     showBar(localStorage.getItem('gname'));
-    const saved=localStorage.getItem('gsession');
+    const saved=localStorage.getItem('session');
     if(saved){curSession=parseInt(saved);await switchSession(curSession);}else await newSession();
   }catch(err){er.textContent='Erreur de connexion';er.style.display='block';btn.textContent='Se connecter';btn.disabled=false;}
 }
 
-function logout(){if(!confirm('Se déconnecter ?'))return;localStorage.removeItem('gtoken');localStorage.removeItem('gname');localStorage.removeItem('gsession');location.reload();}
+function logout(){if(!confirm('Se déconnecter ?'))return;localStorage.removeItem('gtoken');localStorage.removeItem('gname');localStorage.removeItem('session');location.reload();}
 
 function applyTheme(theme){
   localStorage.setItem('gtheme', theme);
@@ -1124,7 +1124,7 @@ if(!tok){
 }else{
   showBar(localStorage.getItem('gname'));
   const lm=document.getElementById('lm');if(lm)lm.classList.remove('show');
-  const saved=localStorage.getItem('gsession');
+  const saved=localStorage.getItem('session');
   if(saved){curSession=parseInt(saved);switchSession(curSession);}
   else newSession();
 }
@@ -1238,7 +1238,7 @@ window.fetch=async function(u,o={}){
         const tok2=localStorage.getItem('gtoken');
         const sr=await _of('/api/sessions',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:tokenLS,title:'Nouvelle conversation'})});
         const ss=await sr.json();
-        if(ss&&ss.id){curSession=ss.id;localStorage.setItem('gsession',ss.id);}
+        if(ss&&ss.id){curSession=ss.id;localStorage.setItem('session',ss.id);}
       }
       b.session_id=curSession;
       const imgWords=['génère une image','crée une image','génère moi','dessine','montre une image','donne moi une image','fais moi une image','je veux une image','montre moi une image','affiche une image','generate an image','create an image','draw me'];
@@ -1476,8 +1476,7 @@ function loadStats(){
     <h2 style="color:#65a30d;margin:0 0 15px 0;font-size:16px;">✅ Projet créé avec succès!</h2>
     <p id="projectCreatedName" style="color:#9ca3af;margin:0 0 20px 0;font-size:13px;"></p>
     <div style="display:flex;gap:10px;">
-      <button onclick="closeProjectCreatedModal()" style="flex:1;padding:10px;background:#a78bfa;color:#000;border:none;border-radius:8px;font-weight:bold;cursor:pointer;">✅ OK</button>
-      <button onclick="cancelProjectCreation()" style="flex:1;padding:10px;background:#2d1b69;color:#fff;border:1px solid #a78bfa;border-radius:8px;cursor:pointer;">❌ Annuler</button>
+      <button onclick="closeProjectCreatedModal()" style="width:100%;padding:10px;background:#a78bfa;color:#000;border:none;border-radius:8px;font-weight:bold;cursor:pointer;">✅ OK</button>
     </div>
   </div>
 </div>
@@ -1570,88 +1569,16 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 </script>
 <!-- MODALE INTERACTIVE CRÉER UN PROJET (STYLE CHATGPT) -->
-<div id="createProjectInterface" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:10000;justify-content:center;align-items:center;">
-  <div style="background:#0f0f1a;border:1px solid #2d1b69;border-radius:16px;padding:24px;width:90%;max-width:500px;max-height:85vh;overflow-y:auto;">
-    
-    <!-- HEADER -->
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
-      <h1 style="color:#a78bfa;margin:0;font-size:20px;">Nouveau projet</h1>
-      <button onclick="closeCreateProjectInterface()" style="background:none;border:none;color:#9ca3af;font-size:24px;cursor:pointer;">✕</button>
-    </div>
-    
-    <!-- INPUT PRINCIPAL -->
-    <input id="projectMainInput" type="text" placeholder="par exemple, planification d'un anniversaire" style="width:100%;padding:12px;background:#1a1a2e;border:1px solid #2d1b69;border-radius:8px;color:#fff;font-size:14px;box-sizing:border-box;margin-bottom:20px;">
-    
-    <!-- CATÉGORIES -->
-    <p style="color:#a78bfa;font-weight:bold;margin:0 0 12px 0;font-size:12px;">Sélectionne une catégorie:</p>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:20px;">
-      <button class="categoryBtn" onclick="selectCategory('devoirs', this)" style="padding:10px;background:#2d1b69;color:#fff;border:1px solid #a78bfa;border-radius:8px;cursor:pointer;font-size:12px;transition:all 0.3s;">🏠 Devoirs</button>
-      <button class="categoryBtn" onclick="selectCategory('investissement', this)" style="padding:10px;background:#2d1b69;color:#fff;border:1px solid #a78bfa;border-radius:8px;cursor:pointer;font-size:12px;transition:all 0.3s;">💰 Investissement</button>
-      <button class="categoryBtn" onclick="selectCategory('ecriture', this)" style="padding:10px;background:#2d1b69;color:#fff;border:1px solid #a78bfa;border-radius:8px;cursor:pointer;font-size:12px;transition:all 0.3s;">✏️ Écriture</button>
-      <button class="categoryBtn" onclick="selectCategory('sante', this)" style="padding:10px;background:#2d1b69;color:#fff;border:1px solid #a78bfa;border-radius:8px;cursor:pointer;font-size:12px;transition:all 0.3s;">🏥 Santé</button>
-      <button class="categoryBtn" onclick="selectCategory('voyages', this)" style="padding:10px;background:#2d1b69;color:#fff;border:1px solid #a78bfa;border-radius:8px;cursor:pointer;font-size:12px;transition:all 0.3s;">✈️ Voyages</button>
-      <button class="categoryBtn" onclick="selectCategory('autre', this)" style="padding:10px;background:#2d1b69;color:#fff;border:1px solid #a78bfa;border-radius:8px;cursor:pointer;font-size:12px;transition:all 0.3s;">🎯 Autre</button>
-    </div>
-    
-    <!-- TEXTAREA DESCRIPTION -->
-    <p style="color:#a78bfa;font-weight:bold;margin:0 0 8px 0;font-size:12px;">Description du projet (optionnel):</p>
-    <textarea id="projectDesc" placeholder="Ajoute plus de détails sur ton projet..." style="width:100%;padding:12px;background:#1a1a2e;border:1px solid #2d1b69;border-radius:8px;color:#fff;font-size:12px;box-sizing:border-box;margin-bottom:20px;height:120px;resize:none;"></textarea>
-    
-    <!-- OPTIONS SUPPLÉMENTAIRES -->
-    <p style="color:#a78bfa;font-weight:bold;margin:0 0 12px 0;font-size:12px;">Options supplémentaires:</p>
-    <label style="display:flex;align-items:center;gap:8px;margin-bottom:10px;color:#9ca3af;font-size:12px;cursor:pointer;">
-      <input type="radio" name="newProjectMode" value="default" id="newModeDef" checked style="cursor:pointer;">
-      <span><strong>Par défaut</strong> - Accès aux éléments d'autres chats</span>
-    </label>
-    <label style="display:flex;align-items:center;gap:8px;margin-bottom:20px;color:#9ca3af;font-size:12px;cursor:pointer;">
-      <input type="radio" name="newProjectMode" value="only" id="newModeOnly" style="cursor:pointer;">
-      <span><strong>Projet seulement</strong> - Éléments visibles seulement ici</span>
-    </label>
-    
-    <!-- BOUTONS ACTION -->
-    <div style="display:flex;gap:10px;">
-      <button onclick="saveNewProject()" style="flex:1;padding:12px;background:#a78bfa;color:#000;border:none;border-radius:8px;font-weight:bold;cursor:pointer;font-size:14px;">✅ Créer un projet</button>
-      <button onclick="closeCreateProjectInterface()" style="flex:1;padding:12px;background:#2d1b69;color:#fff;border:1px solid #a78bfa;border-radius:8px;cursor:pointer;font-size:14px;">❌ Annuler</button>
-    </div>
-  </div>
-</div>
-
-
-<!-- MODALE 1: CONFIRMATION CATÉGORIE -->
-<div id="confirmCategoryModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:10001;justify-content:center;align-items:center;">
-  <div style="background:#0f0f1a;border:1px solid #2d1b69;border-radius:12px;padding:20px;width:85%;max-width:350px;">
-    <h2 style="color:#a78bfa;margin:0 0 15px 0;font-size:16px;">Confirmer la catégorie?</h2>
-    <p id="confirmCategoryText" style="color:#9ca3af;margin:0 0 20px 0;font-size:13px;"></p>
-    <div style="display:flex;gap:10px;">
-      <button onclick="confirmCategory()" style="flex:1;padding:10px;background:#a78bfa;color:#000;border:none;border-radius:8px;font-weight:bold;cursor:pointer;">✅ OK</button>
-      <button onclick="closeConfirmCategory()" style="flex:1;padding:10px;background:#2d1b69;color:#fff;border:1px solid #a78bfa;border-radius:8px;cursor:pointer;">❌ Annuler</button>
-    </div>
-  </div>
-</div>
-
-<!-- MODALE 2: VOIR MES PROJETS -->
-<div id="myProjectsModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:10000;justify-content:center;align-items:center;">
-  <div style="background:#0f0f1a;border:1px solid #2d1b69;border-radius:12px;padding:20px;width:90%;max-width:450px;max-height:80vh;overflow-y:auto;">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;">
-      <h2 style="color:#a78bfa;margin:0;font-size:16px;">📂 Mes Projets</h2>
-      <button onclick="closeMyProjectsModal()" style="background:none;border:none;color:#9ca3af;font-size:20px;cursor:pointer;">✕</button>
-    </div>
-    
-    <div id="projectsListContainer" style="margin-bottom:15px;"></div>
-    
-    <button onclick="closeMyProjectsModal()" style="width:100%;padding:10px;background:#2d1b69;color:#fff;border:1px solid #a78bfa;border-radius:8px;cursor:pointer;font-size:13px;">❌ Fermer</button>
-  </div>
 </div>
 
 
 <!-- MODALE 3: PROJET CRÉÉ AVEC SUCCÈS -->
-<div id="projectCreatedModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:10002;justify-content:center;align-items:center;">
+<div  style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:10002;justify-content:center;align-items:center;">
   <div style="background:#0f0f1a;border:1px solid #2d1b69;border-radius:12px;padding:20px;width:85%;max-width:350px;">
     <h2 style="color:#65a30d;margin:0 0 15px 0;font-size:16px;">✅ Projet créé avec succès!</h2>
     <p id="projectCreatedName" style="color:#9ca3af;margin:0 0 20px 0;font-size:13px;"></p>
     <div style="display:flex;gap:10px;">
-      <button onclick="closeProjectCreatedModal()" style="flex:1;padding:10px;background:#a78bfa;color:#000;border:none;border-radius:8px;font-weight:bold;cursor:pointer;">✅ OK</button>
-      <button onclick="cancelProjectCreation()" style="flex:1;padding:10px;background:#2d1b69;color:#fff;border:1px solid #a78bfa;border-radius:8px;cursor:pointer;">❌ Annuler</button>
+      <button onclick="closeProjectCreatedModal()" style="width:100%;padding:10px;background:#a78bfa;color:#000;border:none;border-radius:8px;font-weight:bold;cursor:pointer;">✅ OK</button>
     </div>
   </div>
 </div>
