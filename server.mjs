@@ -182,7 +182,6 @@ async function callStabilityAI(rawPrompt) {
 }
 
 app.post('/api/chat', async (req, res) => {
-  console.log("⚡⚡⚡ /api/chat APPELÉ PAR NAVIGATEUR");
   try {
     const { message, history, token, model, temperature, session_id, userTime } = req.body;
   console.log('📥 token exists:', !!token);let userId = 'default';
@@ -1008,103 +1007,6 @@ app.get('/api/privacy-report', async (req, res) => {
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
-});
-
-app.get('/', (req, res) => {
-  res.send(`<!DOCTYPE html>
-<html lang="fr">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Guidéon</title>
-  <style>
-    *{margin:0;padding:0;box-sizing:border-box}
-    body{font-family:'Segoe UI';background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);height:100vh;display:flex;flex-direction:column}
-    .chat{flex:1;display:flex;flex-direction:column;max-width:900px;width:100%;margin:0 auto}
-    .header{padding:20px;background:linear-gradient(135deg,#533483 0%,#16213e 100%);color:#a78bfa;font-size:24px;font-weight:700}
-    .messages{flex:1;overflow-y:auto;padding:20px}
-    .msg{margin:10px 0;padding:10px 15px;border-radius:8px;max-width:70%}
-    .user{background:#a78bfa;color:#fff;margin-left:auto}
-    .bot{background:#374151;color:#d1d5db}
-    .input-box{padding:20px;display:flex;gap:10px}
-    input{flex:1;padding:10px;background:#1f2937;border:1px solid #374151;border-radius:8px;color:#f3f4f6}
-    input:focus{outline:0;border-color:#a78bfa}
-    button{padding:10px 20px;background:#a78bfa;color:#fff;border:0;border-radius:8px;cursor:pointer;font-weight:600}
-    button:hover{background:#7c3aed}
-    .loading{color:#a78bfa;font-style:italic}
-  </style>
-</head>
-<body>
-  <div class="chat">
-    <div class="header">🧠 Guidéon Chat</div>
-    <div class="messages" id="msgs"></div>
-    <div class="input-box">
-      <input type="text" id="input" placeholder="Ton message...">
-      <button onclick="alert('Bouton cliqué!'); send();">Envoyer</button>
-    </div>
-  </div>
-  <script>
-    const token = localStorage.getItem('token');
-    const msgs = document.getElementById('msgs');
-    const input = document.getElementById('input');
-    if (!token) window.location.href = '/reset-password';
-    async function send() {
-      const msg = input.value.trim();
-      if (!msg) return;
-      console.log('SEND APPELÉE AVEC:', msg);
-      const userDiv = document.createElement('div');
-      userDiv.className = 'msg user';
-      userDiv.textContent = msg;
-      msgs.appendChild(userDiv);
-      input.value = '';
-      const loadDiv = document.createElement('div');
-      loadDiv.className = 'msg bot loading';
-      loadDiv.textContent = 'En cours...';
-      msgs.appendChild(loadDiv);
-      try {
-        console.log('AVANT FETCH');
-        const res = await fetch('/api/chat', {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({message: msg, token: token, model: 'groq', temperature: 0.7, session_id: localStorage.getItem('session_id'), userTime: new Date().toLocaleString('fr-FR')})
-        });
-        console.log('APRÈS FETCH, status:', res.status);
-        if (!res.ok) {
-          loadDiv.textContent = 'Erreur: ' + res.status;
-          return;
-        }
-        loadDiv.remove();
-        const botDiv = document.createElement('div');
-        botDiv.className = 'msg bot';
-        msgs.appendChild(botDiv);
-        const reader = res.body.getReader();
-        const decoder = new TextDecoder();
-        let text = '';
-        while(true) {
-          const {done, value} = await reader.read();
-          if (done) break;
-          const chunk = decoder.decode(value);
-          const lines = chunk.split('\n');
-          for (const line of lines) {
-            if (line.startsWith('data: ')) {
-              try {
-                const data = JSON.parse(line.slice(6));
-                if (data.content) {
-                  text += data.content;
-                  botDiv.textContent = text;
-                }
-              } catch(e) {}
-            }
-          }
-        }
-      } catch(e) {
-        loadDiv.textContent = 'Erreur: ' + e.message;
-      }
-    }
-    input.addEventListener('keypress', (e) => {if (e.key === 'Enter') send();});
-  </script>
-</body>
-</html>`);
 });
 
 app.listen(process.env.PORT || 8080, () => console.log("Guideon actif !"));
