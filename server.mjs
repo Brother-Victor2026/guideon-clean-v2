@@ -210,7 +210,7 @@ app.post('/api/chat', async (req, res) => {
     // Détection et recherche en arrière-plan
     if (isSearchQuery(message)) {
       try {
-        const searchRes = await fetch('http://localhost:8080/api/search', {
+        const searchRes = await fetch('/api/search', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ query: message })
