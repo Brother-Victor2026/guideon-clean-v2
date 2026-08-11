@@ -227,7 +227,7 @@ app.post('/api/chat', async (req, res) => {
             bing: msgLower.includes('image') ? true : false
           };
         }
-      } catch(e) { console.error('Search query error:', e.message); }
+      } catch(e) { console.error('❌ Search query error:', e.message, e.stack); }
     }
     const timeWords = ['heure','time','date','quelle heure','what time'];
     const asksTime = timeWords.some(w => message.toLowerCase().includes(w));
