@@ -38,6 +38,10 @@ function checkToken(t) {
     return d.exp > Date.now() ? d : null;
   } catch { return null; }
 }
+function isSearchQuery(message) {
+  const searchWords = ['qui est', 'cherche', 'recherche', "c'est quoi", 'qui a', 'quel est', 'donne-moi', 'explique', 'raconte', 'comment', 'pourquoi'];
+  return searchWords.some(w => message.toLowerCase().includes(w));
+}
 
 function getQuotaResetTime(displayTimeZone = 'Africa/Porto-Novo') {
   const now = new Date();
@@ -188,6 +192,7 @@ app.post('/api/chat', async (req, res) => {
     let dbHistory = [];
     let userInstructions = '';
     let user = null;
+    let searchSources = null;
     if (token && DB) {
       user = checkToken(token);
       if (user) {
@@ -201,6 +206,23 @@ app.post('/api/chat', async (req, res) => {
         if (Array.isArray(hData)) dbHistory = hData;
         if (Array.isArray(uData) && uData[0]) userInstructions = uData[0].instructions || '';
       }
+    }
+    // Détection et recherche en arrière-plan
+    if (isSearchQuery(message)) {
+      try {
+        const searchRes = await fetch('http://localhost:8080/api/search', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query: message })
+        });
+        const searchData = await searchRes.json();
+        if (searchData.result) {
+          searchSources = {
+            duckduckgo: true,
+            wikipedia: searchData.result.toLowerCase().includes('wikipedia') ? true : false
+          };
+        }
+      } catch(e) { console.error('Search query error:', e.message); }
     }
     const timeWords = ['heure','time','date','quelle heure','what time'];
     const asksTime = timeWords.some(w => message.toLowerCase().includes(w));
@@ -361,6 +383,22 @@ app.post('/api/chat', async (req, res) => {
           const title = titleData.choices?.[0]?.message?.content?.trim() || 'Nouvelle conversation';
           await fetch(`${DB}/sessions?id=eq.${session_id}`, { method: 'PATCH', headers: { ...SB, 'Prefer': 'return=minimal' }, body: JSON.stringify({ title }) });
         }
+      }
+    }
+
+    // Ajouter les sources si présentes
+    if (searchSources) {
+      const sourceEmojis = {
+        duckduckgo: '🔍 DuckDuckGo',
+        wikipedia: '📚 Wikipedia'
+      };
+      const activeSources = Object.keys(searchSources)
+        .filter(s => searchSources[s])
+        .map(s => sourceEmojis[s])
+        .join(' | ');
+      
+      if (activeSources) {
+        res.write(`data: ${JSON.stringify({ content: '\n\n**Sources:** ' + activeSources })}\n\n`);
       }
     }
     res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
