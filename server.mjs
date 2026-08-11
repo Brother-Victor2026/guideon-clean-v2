@@ -217,9 +217,14 @@ app.post('/api/chat', async (req, res) => {
         });
         const searchData = await searchRes.json();
         if (searchData.result) {
+          const msgLower = message.toLowerCase();
           searchSources = {
             duckduckgo: true,
-            wikipedia: searchData.result.toLowerCase().includes('wikipedia') ? true : false
+            wikipedia: msgLower.includes('qui') || msgLower.includes('histoire') || msgLower.includes('biographie') ? true : false,
+            stackoverflow: msgLower.includes('code') || msgLower.includes('error') || msgLower.includes('javascript') || msgLower.includes('python') || msgLower.includes('fonction') ? true : false,
+            google: true,
+            mdn: msgLower.includes('javascript') || msgLower.includes('html') || msgLower.includes('css') || msgLower.includes('web') ? true : false,
+            bing: msgLower.includes('image') ? true : false
           };
         }
       } catch(e) { console.error('Search query error:', e.message); }
@@ -390,7 +395,11 @@ app.post('/api/chat', async (req, res) => {
     if (searchSources) {
       const sourceEmojis = {
         duckduckgo: '🔍 DuckDuckGo',
-        wikipedia: '📚 Wikipedia'
+        wikipedia: '📚 Wikipedia',
+        google: '🔎 Google',
+        stackoverflow: '🐍 Stack Overflow',
+        mdn: '📄 MDN',
+        bing: '📖 Bing'
       };
       const activeSources = Object.keys(searchSources)
         .filter(s => searchSources[s])
