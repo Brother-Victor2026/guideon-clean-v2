@@ -210,7 +210,7 @@ app.post('/api/chat', async (req, res) => {
     // Détection et recherche en arrière-plan
     if (isSearchQuery(message)) {
       try {
-        const searchRes = await fetch('/api/search', {
+        const searchRes = await fetch('https://guideon-8h4m.onrender.com/api/search', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ query: message })
@@ -492,7 +492,7 @@ app.post('/api/image', async (req, res) => {
   } catch(e) { console.error('ERREUR /api/image:', e.message); res.status(500).json({ error: e.message }); }
 });
 
-app.post('/api/search', async (req, res) => {
+app.post('https://guideon-8h4m.onrender.com/api/search', async (req, res) => {
   try {
     const { query } = req.body;
     const r = await fetch(`https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json`);
