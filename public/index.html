@@ -109,28 +109,27 @@ function loadStats(){
 
 const API_URL = window.location.origin;
 document.addEventListener('DOMContentLoaded', () => {
-document.getElementById('pdfUploadInput').addEventListener('change', async (e) => {
-  alert('PDF file selected: ' + (e.target.files[0]?.name || 'unknown'));
-  const file = e.target.files[0];
-  if (!file) return;
-  const formData = new FormData();
-  formData.append('pdf', file);
-  try {
-    const response = await fetch('/api/upload', {method: 'POST', body: formData});
-    const data = await response.json();
-    if (data.success) {
-            alert(`PDF uploadé: ${data.url}`);
-      document.getElementById('ui').value = `Fichier PDF: ${data.fileName}\nURL: ${data.url}`;
-    } else {
-      alert(`Erreur: ${data.error}`);
+    console.log('✅ DOMContentLoaded déclenché');
+  document.getElementById('pdfUploadInput').addEventListener('change', async (e) => {
+    alert('PDF file selected: ' + (e.target.files[0]?.name || 'unknown'));
+    const file = e.target.files[0];
+    if (!file) return;
+    const formData = new FormData();
+    formData.append('pdf', file);
+    try {
+      const response = await fetch('/api/upload', {method: 'POST', body: formData});
+      const data = await response.json();
+      if (data.success) {
+        alert(`PDF uploadé: ${data.url}`);
+        document.getElementById('ui').value = `Fichier PDF: ${data.fileName}\nURL: ${data.url}`;
+      } else {
+        alert(`Erreur: ${data.error}`);
+      }
+    } catch(err) {
+      alert(`Upload échoué: ${err.message}`);
     }
-  } catch(err) {
-    alert(`Upload échoué: ${err.message}`);
-  }
+  });
 });
-});
-
-
 function loadRealtime(){
   const el = document.getElementById('realtimeData');
   el.innerHTML = 'Chargement...';
@@ -177,6 +176,7 @@ function loadStats(){
 }
 
 
+});
 </script>
 <script src="functions.js"></script>
 <script>
@@ -1483,7 +1483,6 @@ function loadStats(){
 
 
 </body>
-<script src="functions.js"></script>
 <script>
 // Fonctions pour les nouveaux onglets
   const el = document.getElementById('realtimeData');
@@ -1540,6 +1539,7 @@ function switchToRegistration(){
   alert("✅ Formulaire d'enregistrement prêt");
 }
 </script>
+<script src="functions.js"></script>
 <!-- Modal Privacy Report -->
 <div id="privacyModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9999;align-items:flex-start;justify-content:center;overflow-y:auto;padding-top:20px;">
   <div style="background:#1a1a2e;padding:24px;border-radius:16px;width:88%;max-width:600px;border:1px solid #2d1b69;margin-bottom:20px;">
