@@ -409,7 +409,34 @@ function loadStats(){
 <button class="pb" onclick="up('/resume ')">📝 Resumer</button>
 <button class="pb" onclick="up('/image ')">🎨 Image</button>
 <button class="pb" onclick="up('!web ')">🌐 Web</button>
-<button class="pp" onclick="document.getElementById('pdfUploadInput').click();">📄 PDF</button><input type="file" id="pdfUploadInput" accept=".pdf" style="display:none;">
+<button class="pp" onclick="document.getElementById('pdfUploadInput').click();">📄 PDF</button><input type="file" id="pdfUploadInput" accept=".pdf" multiple style="display:none;">
+<script>
+(function() {
+  const pdfInput = document.getElementById('pdfUploadInput');
+  if (pdfInput) {
+    pdfInput.addEventListener('change', async (e) => {
+      const files = e.target.files;
+      if (files.length === 0) return;
+      
+      // Créer un dialog avec OK et Annuler
+      const fileNames = Array.from(files).map(f => f.name).join(', ');
+      const confirmed = confirm('Ajouter ' + files.length + ' fichier(s)?\n\n' + fileNames);
+      
+      if (confirmed) {
+        const fileList = Array.from(files).map(f => `[PDF] ${f.name}`).join('\n');
+        const textarea = document.getElementById('ui');
+        if (textarea) {
+          textarea.value += '\n' + fileList;
+          alert('✅ ' + files.length + ' fichier(s) ajouté(s)');
+        }
+      }
+      
+      // Réinitialiser l'input
+      e.target.value = '';
+    });
+  }
+})();
+</script>
 <button class="pb" onclick="cc()">🗑️ Effacer</button>
 </div>
 <div id="chat">
@@ -1482,6 +1509,39 @@ function loadStats(){
 </div>
 
 
+<script>
+(function() {
+  const chatDiv = document.getElementById('chat');
+  if (!chatDiv) return;
+  
+  let touchStartY = 0;
+  let touchEndY = 0;
+  
+  chatDiv.addEventListener('touchstart', (e) => {
+    touchStartY = e.changedTouches[0].screenY;
+  }, false);
+  
+  chatDiv.addEventListener('touchend', (e) => {
+    touchEndY = e.changedTouches[0].screenY;
+    handleSwipe();
+  }, false);
+  
+  function handleSwipe() {
+    const diff = touchStartY - touchEndY;
+    const threshold = 50;
+    
+    if (Math.abs(diff) > threshold) {
+      if (diff > 0) {
+        // Swipe vers le haut = scroll vers le bas
+        chatDiv.scrollTop += 100;
+      } else {
+        // Swipe vers le bas = scroll vers le haut
+        chatDiv.scrollTop -= 100;
+      }
+    }
+  }
+})();
+</script>
 </body>
 <script>
 // Fonctions pour les nouveaux onglets
@@ -1584,5 +1644,38 @@ document.addEventListener('DOMContentLoaded', () => {
 </div>
 
 
+<script>
+(function() {
+  const chatDiv = document.getElementById('chat');
+  if (!chatDiv) return;
+  
+  let touchStartY = 0;
+  let touchEndY = 0;
+  
+  chatDiv.addEventListener('touchstart', (e) => {
+    touchStartY = e.changedTouches[0].screenY;
+  }, false);
+  
+  chatDiv.addEventListener('touchend', (e) => {
+    touchEndY = e.changedTouches[0].screenY;
+    handleSwipe();
+  }, false);
+  
+  function handleSwipe() {
+    const diff = touchStartY - touchEndY;
+    const threshold = 50;
+    
+    if (Math.abs(diff) > threshold) {
+      if (diff > 0) {
+        // Swipe vers le haut = scroll vers le bas
+        chatDiv.scrollTop += 100;
+      } else {
+        // Swipe vers le bas = scroll vers le haut
+        chatDiv.scrollTop -= 100;
+      }
+    }
+  }
+})();
+</script>
 </body>
 </html>
