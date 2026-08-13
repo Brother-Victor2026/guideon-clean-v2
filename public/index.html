@@ -423,11 +423,14 @@ function loadStats(){
       const confirmed = confirm('Ajouter ' + files.length + ' fichier(s)?\n\n' + fileNames);
       
       if (confirmed) {
-        const fileList = Array.from(files).map(f => `[PDF] ${f.name}`).join('\n');
         const textarea = document.getElementById('ui');
-        if (textarea) {
-          textarea.value += '\n' + fileList;
-          alert('✅ ' + files.length + ' fichier(s) ajouté(s)');
+        for (const file of files) {
+          const formData = new FormData();
+          formData.append('pdf', file);
+          fetch('/api/analyze-pdf', {method: 'POST', body: formData})
+            .then(r => r.json())
+            .then(data => { if (textarea) textarea.value += '\n📄 ' + data.fileName + '\n\n' + data.analysis; alert('✅ Analysé'); })
+            .catch(err => alert('❌ ' + err.message));
         }
       }
       
