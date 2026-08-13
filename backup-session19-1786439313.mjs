@@ -10,7 +10,6 @@ import crypto from 'crypto';
 import { Resend } from 'resend';
 import multer from 'multer';
 import PDFDocument from 'pdfkit';
-import pdfParse from 'pdf-parse';
 
 const app = express();
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -38,10 +37,6 @@ function checkToken(t) {
     const d = JSON.parse(Buffer.from(p, 'base64').toString());
     return d.exp > Date.now() ? d : null;
   } catch { return null; }
-}
-function isSearchQuery(message) {
-  const searchWords = ['qui est', 'cherche', 'recherche', "c'est quoi", 'qui a', 'quel est', 'donne-moi', 'explique', 'raconte', 'comment', 'pourquoi'];
-  return searchWords.some(w => message.toLowerCase().includes(w));
 }
 
 function getQuotaResetTime(displayTimeZone = 'Africa/Porto-Novo') {
@@ -193,7 +188,6 @@ app.post('/api/chat', async (req, res) => {
     let dbHistory = [];
     let userInstructions = '';
     let user = null;
-    let searchSources = null;
     if (token && DB) {
       user = checkToken(token);
       if (user) {
@@ -207,28 +201,6 @@ app.post('/api/chat', async (req, res) => {
         if (Array.isArray(hData)) dbHistory = hData;
         if (Array.isArray(uData) && uData[0]) userInstructions = uData[0].instructions || '';
       }
-    }
-    // Détection et recherche en arrière-plan
-    if (isSearchQuery(message)) {
-      try {
-        const searchRes = await fetch('https://guideon-8h4m.onrender.com/api/search', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ query: message })
-        });
-        const searchData = await searchRes.json();
-        if (searchData.result) {
-          const msgLower = message.toLowerCase();
-          searchSources = {
-            duckduckgo: true,
-            wikipedia: msgLower.includes('qui') || msgLower.includes('histoire') || msgLower.includes('biographie') ? true : false,
-            stackoverflow: msgLower.includes('code') || msgLower.includes('error') || msgLower.includes('javascript') || msgLower.includes('python') || msgLower.includes('fonction') ? true : false,
-            google: true,
-            mdn: msgLower.includes('javascript') || msgLower.includes('html') || msgLower.includes('css') || msgLower.includes('web') ? true : false,
-            bing: msgLower.includes('image') ? true : false
-          };
-        }
-      } catch(e) { console.error('❌ Search query error:', e.message, e.stack); }
     }
     const timeWords = ['heure','time','date','quelle heure','what time'];
     const asksTime = timeWords.some(w => message.toLowerCase().includes(w));
@@ -389,26 +361,6 @@ app.post('/api/chat', async (req, res) => {
           const title = titleData.choices?.[0]?.message?.content?.trim() || 'Nouvelle conversation';
           await fetch(`${DB}/sessions?id=eq.${session_id}`, { method: 'PATCH', headers: { ...SB, 'Prefer': 'return=minimal' }, body: JSON.stringify({ title }) });
         }
-      }
-    }
-
-    // Ajouter les sources si présentes
-    if (searchSources) {
-      const sourceEmojis = {
-        duckduckgo: '🔍 DuckDuckGo',
-        wikipedia: '📚 Wikipedia',
-        google: '🔎 Google',
-        stackoverflow: '🐍 Stack Overflow',
-        mdn: '📄 MDN',
-        bing: '📖 Bing'
-      };
-      const activeSources = Object.keys(searchSources)
-        .filter(s => searchSources[s])
-        .map(s => sourceEmojis[s])
-        .join(' | ');
-      
-      if (activeSources) {
-        res.write(`data: ${JSON.stringify({ content: '\n\n**Sources:** ' + activeSources })}\n\n`);
       }
     }
     res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
@@ -1054,75 +1006,6 @@ app.get('/api/privacy-report', async (req, res) => {
     doc.end();
   } catch (e) {
     res.status(500).json({ error: e.message });
-  }
-});
-
-// Endpoint analyse PDF avec GROQ - Session 21
-app.post('/api/analyze-pdf', multer({storage: multer.memoryStorage(), limits: {fileSize: 50*1024*1024}}).single('pdf'), async (req, res) => {
-  try {
-    if (!req.file) return res.status(400).json({error: 'Aucun fichier PDF'});
-    if (req.file.mimetype !== 'application/pdf') return res.status(400).json({error: 'Doit être un PDF'});
-
-    console.log(`[PDF] Analyse: ${req.file.originalname} (${req.file.size} bytes)`);
-
-    let pdfText = '';
-    try {
-      const data = await pdfParse(req.file.buffer);
-      pdfText = data.text;
-    } catch(e) {
-      console.error(`[PDF] Erreur parsing: ${e.message}`);
-      return res.status(400).json({error: 'Erreur parsing PDF: ' + e.message});
-    }
-
-    if (!pdfText || pdfText.trim().length === 0) {
-      return res.status(400).json({error: 'PDF vide ou non lisible'});
-    }
-
-    const textToAnalyze = pdfText.substring(0, 10000);
-    console.log(`[PDF] Texte extrait: ${textToAnalyze.length} chars`);
-
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 5000);
-
-    const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${API_KEY}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
-        messages: [{
-          role: 'user',
-          content: `Résume en 3 points ce PDF:\n${textToAnalyze}`
-        }],
-        max_tokens: 512
-      }),
-      signal: controller.signal
-    });
-
-    clearTimeout(timeout);
-
-    if (!groqRes.ok) {
-      const errData = await groqRes.json();
-      console.error(`[PDF] Erreur GROQ: ${groqRes.status}`, errData);
-      return res.status(500).json({error: `Erreur GROQ: ${errData.error?.message || 'Inconnu'}`});
-    }
-
-    const groqData = await groqRes.json();
-    const analysis = groqData.choices?.[0]?.message?.content || 'Analyse non disponible';
-
-    console.log(`[PDF] Succès: ${req.file.originalname}`);
-
-    res.json({
-      success: true,
-      fileName: req.file.originalname,
-      analysis: analysis,
-      textLength: pdfText.length
-    });
-  } catch(e) {
-    console.error('[PDF] Erreur:', e.message);
-    res.status(500).json({error: 'Erreur analyse: ' + e.message});
   }
 });
 

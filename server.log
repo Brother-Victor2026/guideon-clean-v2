@@ -1,14 +1,6 @@
-◇ injected env (7) from .env // tip: ⌁ auth for agents [www.vestauth.com]
+◇ injected env (7) from .env // tip: ⌘ override existing { override: true }
 Guideon actif !
-🔑 Token: eyJpZCI6MTYsImVtYWlsIjoiYm9zc291dmljdG9yODBAZ21haWwuY29tIiwiZXhwIjoxNzg1Njk2Mzk3NjU5fQ==.6b79d6739054a00a94e069b31051816beadf7c680ea021990fd0dfe67a705ea2
-👤 User: { id: 16, email: 'bossouvictor80@gmail.com', exp: 1785696397659 }
-🔑 Token: eyJpZCI6MTYsImVtYWlsIjoiYm9zc291dmljdG9yODBAZ21haWwuY29tIiwiZXhwIjoxNzg1Njk2Mzk3NjU5fQ==.6b79d6739054a00a94e069b31051816beadf7c680ea021990fd0dfe67a705ea2
-👤 User: { id: 16, email: 'bossouvictor80@gmail.com', exp: 1785696397659 }
-🔑 Token: eyJpZCI6MTYsImVtYWlsIjoiYm9zc291dmljdG9yODBAZ21haWwuY29tIiwiZXhwIjoxNzg1Njk2Mzk3NjU5fQ==.6b79d6739054a00a94e069b31051816beadf7c680ea021990fd0dfe67a705ea2
-👤 User: { id: 16, email: 'bossouvictor80@gmail.com', exp: 1785696397659 }
-🔑 Token: eyJpZCI6MTYsImVtYWlsIjoiYm9zc291dmljdG9yODBAZ21haWwuY29tIiwiZXhwIjoxNzg1Njk2Mzk3NjU5fQ==.6b79d6739054a00a94e069b31051816beadf7c680ea021990fd0dfe67a705ea2
-👤 User: { id: 16, email: 'bossouvictor80@gmail.com', exp: 1785696397659 }
-🔑 Token: eyJpZCI6MTYsImVtYWlsIjoiYm9zc291dmljdG9yODBAZ21haWwuY29tIiwiZXhwIjoxNzg1Njk2Mzk3NjU5fQ==.6b79d6739054a00a94e069b31051816beadf7c680ea021990fd0dfe67a705ea2
-👤 User: { id: 16, email: 'bossouvictor80@gmail.com', exp: 1785696397659 }
-🔑 Token: eyJpZCI6MTYsImVtYWlsIjoiYm9zc291dmljdG9yODBAZ21haWwuY29tIiwiZXhwIjoxNzg1Njk2Mzk3NjU5fQ==.6b79d6739054a00a94e069b31051816beadf7c680ea021990fd0dfe67a705ea2
-👤 User: { id: 16, email: 'bossouvictor80@gmail.com', exp: 1785696397659 }
+🔑 Token: eyJpZCI6MTQsImVtYWlsIjoidmJvc3NvdTI3MEBnbWFpbC5jb20iLCJleHAiOjE3OTE3MDQxMTU3MDR9.6d8151bd9fe3655742a3c853ecce4b8f297f1f0e9b2beeaa303c1fbc17e514d3
+👤 User: { id: 14, email: 'vbossou270@gmail.com', exp: 1791704115704 }
+🔑 Token: eyJpZCI6MTQsImVtYWlsIjoidmJvc3NvdTI3MEBnbWFpbC5jb20iLCJleHAiOjE3OTE3MDQxMTU3MDR9.6d8151bd9fe3655742a3c853ecce4b8f297f1f0e9b2beeaa303c1fbc17e514d3
+👤 User: { id: 14, email: 'vbossou270@gmail.com', exp: 1791704115704 }

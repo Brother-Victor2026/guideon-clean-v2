@@ -1,0 +1,26 @@
+<!-- SECTION PROJETS MENU LATÉRAL -->
+<div style="margin-bottom:16px;padding:12px;border-top:1px solid #2d1b69;">
+  <h3 style="color:#a78bfa;margin:0 0 10px 0;font-size:14px;">📂 Projets</h3>
+  <button class="pb" onclick="createNewProject()" style="margin-bottom:6px;width:100%;padding:8px;font-size:12px;">➕ Créer un nouveau projet</button>
+  <button class="pb" onclick="showMyProjects()" style="width:100%;padding:8px;font-size:12px;">📋 Voir mes projets</button>
+</div>
+
+<!-- DESCRIPTION GUIDÉON + OPTIONS -->
+<div style="margin-bottom:16px;padding:12px;background:#0f0f1a;border-radius:8px;border-left:3px solid #a78bfa;font-size:11px;">
+  <p style="color:#a78bfa;font-weight:bold;margin:0 0 6px 0;">🧠 Guidéon</p>
+  <p style="color:#9ca3af;margin:0 0 8px 0;">Ton assistant IA personnel intelligent, sage et bienveillant.</p>
+  <p style="color:#9ca3af;margin:0 0 8px 0;">Les projets fournissent à Guidéon un contexte partagé pour les chats et fichiers.</p>
+  
+  <p style="color:#a78bfa;font-weight:bold;margin:8px 0 6px 0;font-size:11px;">Options:</p>
+  
+  <label style="display:flex;align-items:flex-start;gap:6px;margin-bottom:8px;color:#9ca3af;cursor:pointer;">
+    <input type="radio" name="projectMode" value="default" id="modeDefault" checked onchange="saveProjectMode('default')" style="margin-top:2px;cursor:pointer;">
+    <span><strong>Par défaut</strong><br>Accès aux éléments d'autres chats.</span>
+  </label>
+  
+  <label style="display:flex;align-items:flex-start;gap:6px;color:#9ca3af;cursor:pointer;">
+    <input type="radio" name="projectMode" value="only" id="modeOnly" onchange="saveProjectMode('only')" style="margin-top:2px;cursor:pointer;">
+    <span><strong>Projet seulement</strong><br>Accès aux propres éléments seulement.</span>
+  </label>
+</div>
+

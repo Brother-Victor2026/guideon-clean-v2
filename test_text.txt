@@ -1,0 +1,3 @@
+Ceci est un document de test pour l'analyse PDF.
+Il contient plusieurs paragraphes.
+Le système doit extraire le texte et l'envoyer à GROQ pour analyse.
