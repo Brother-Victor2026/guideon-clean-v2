@@ -531,14 +531,6 @@ app.post('/api/search', async (req, res) => {
   }
 });;
 
-app.post('/api/analyze', async (req, res) => {
-  try {
-    const { imageUrl, question } = req.body;
-    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", { method: "POST", headers: { "Authorization": `Bearer ${API_KEY}`, "Content-Type": "application/json" }, body: JSON.stringify({ model: "openai/gpt-oss-20b", messages: [{ role: "user", content: [{ type: "image_url", image_url: { url: imageUrl } }, { type: "text", text: question || "Décris cette image en détail." }] }], max_tokens: 1000, reasoning_effort: "low" }) });
-    const data = await response.json();
-    res.json({ reply: data.choices?.[0]?.message?.content || "Impossible d'analyser." });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
 
 app.get('/api/sessions', async (req, res) => {
   try {
@@ -1187,7 +1179,6 @@ app.post('/api/analyze', async (req, res) => {
     console.log('🖼️ Analyse image');
     
     // Appeler Groq avec vision si dispo, sinon répondre génériquement
-    const rH1 = chatHistory.slice(-5) || [];
     const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -1195,7 +1186,7 @@ app.post('/api/analyze', async (req, res) => {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: 'mixtral-8x7b-32768',
+        model: 'llama-3.1-8b-instant',
         messages: [
           {role: 'user', content: prompt + '\n\n[Image: ' + (imageUrl || 'fichier uploadé') + ']'}
         ],
