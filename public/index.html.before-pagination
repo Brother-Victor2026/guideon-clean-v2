@@ -875,7 +875,7 @@ async function switchSession(id){
   try{
     const r=await fetch('/api/history/'+id,{headers:{'Authorization':'Bearer '+tok}});
     const data=await r.json();
-    if(Array.isArray(data)&&data.length>0){data.slice(-50).forEach(m=>am(m.role==='assistant'?'guideon':m.role,m.content,m.image_url,m.created_at));chatHistory=data.filter(m=>m.role==='user'||m.role==='assistant').map(m=>({role:m.role,content:m.content||''}));document.querySelectorAll('.bub').forEach(b=>addCopyButtons(b));applyTheme(localStorage.getItem("gtheme"));}
+    if(Array.isArray(data)&&data.length>0){data.forEach(m=>am(m.role==='assistant'?'guideon':m.role,m.content,m.image_url,m.created_at));chatHistory=data.filter(m=>m.role==='user'||m.role==='assistant').map(m=>({role:m.role,content:m.content||''}));document.querySelectorAll('.bub').forEach(b=>addCopyButtons(b));applyTheme(localStorage.getItem("gtheme"));}
     else{
       const hr=new Date().getHours();
       const moment=hr<12?'matin':hr<18?'après-midi':'soir';
