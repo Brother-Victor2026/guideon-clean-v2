@@ -1368,30 +1368,6 @@ function initColorPicker(){
 window.addEventListener('DOMContentLoaded',initColorPicker);
 </script>
 
-
-<script>
-function refreshTokenAuto(){
-  const token = localStorage.getItem('gtoken');
-  if(!token) return;
-  
-  fetch('/api/refresh-token', {
-    method: 'POST',
-    headers: { 'Authorization': 'Bearer ' + token }
-  }).then(r => r.json()).then(d => {
-    if(d.success && d.token) {
-      localStorage.setItem('gtoken', d.token);
-      console.log('✅ Token rafraîchi automatiquement');
-    }
-  }).catch(e => console.error('Erreur refresh:', e));
-}
-
-// Rafraîchir le token toutes les 50 minutes (avant l'expiration)
-window.addEventListener('load', () => {
-  setInterval(refreshTokenAuto, 15*60*1000);
-  refreshTokenAuto(); // Première fois immédiatement
-});
-</script>
-
 </body>
 <script>
 // Fonctions pour les nouveaux onglets
@@ -1508,30 +1484,6 @@ function initColorPicker(){
   }
 }
 window.addEventListener('DOMContentLoaded',initColorPicker);
-</script>
-
-
-<script>
-function refreshTokenAuto(){
-  const token = localStorage.getItem('gtoken');
-  if(!token) return;
-  
-  fetch('/api/refresh-token', {
-    method: 'POST',
-    headers: { 'Authorization': 'Bearer ' + token }
-  }).then(r => r.json()).then(d => {
-    if(d.success && d.token) {
-      localStorage.setItem('gtoken', d.token);
-      console.log('✅ Token rafraîchi automatiquement');
-    }
-  }).catch(e => console.error('Erreur refresh:', e));
-}
-
-// Rafraîchir le token toutes les 50 minutes (avant l'expiration)
-window.addEventListener('load', () => {
-  setInterval(refreshTokenAuto, 15*60*1000);
-  refreshTokenAuto(); // Première fois immédiatement
-});
 </script>
 
 </body>

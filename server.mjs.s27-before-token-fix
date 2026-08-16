@@ -1206,22 +1206,5 @@ app.post('/api/analyze', async (req, res) => {
   }
 });
 
-
-app.post('/api/refresh-token', (req, res) => {
-  try {
-    const token = req.headers.authorization?.split(' ')[1];
-    if (!token) return res.status(401).json({ error: 'Token requis' });
-    
-    const user = checkToken(token);
-    if (!user) return res.status(401).json({ error: 'Token invalide' });
-    
-    const newToken = Buffer.from(JSON.stringify({ id: user.id, email: user.email, exp: Date.now() + 60*24*60*60*1000 })).toString('base64');
-    
-    res.json({ token: newToken, success: true });
-  } catch(e) {
-    res.status(500).json({ error: e.message });
-  }
-});
-
 app.listen(process.env.PORT || 8080, () => console.log("Guideon actif !"));
 
