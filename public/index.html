@@ -543,6 +543,21 @@ function updateRegenerateButton() {
 function sty(){const chat=document.getElementById('chat');const d=document.createElement('div');d.className='msg g';d.id='ty';d.innerHTML='<div class="av g">🧠</div><div class="ty"><span></span><span></span><span></span></div>';chat.appendChild(d);chat.scrollTop=chat.scrollHeight;}
 function rty(){const t=document.getElementById('ty');if(t)t.remove();}
 function useSug(t){const ui=document.getElementById('ui');ui.value=t.replace(/&#39;/g,"'");ui.focus();ui.style.height='auto';ui.style.height=Math.min(ui.scrollHeight,120)+'px';}
+
+function displayChatHistory(){
+  if(chatHistory && chatHistory.length > 0) {
+    chatHistory.forEach(msg => {
+      am(msg.role === 'user' ? 'user' : 'guideon', msg.content, msg.image_url, msg.created_at);
+    });
+  } else {
+    addSug();
+  }
+}
+
+window.addEventListener('load', () => {
+  setTimeout(() => { displayChatHistory(); }, 500);
+});
+
 function addSug(){const chat=document.getElementById('chat');const d=document.createElement('div');d.className='sug';d.innerHTML='<button onclick="useSug(this.dataset.t)" data-t="Crée une image d&#39;un paysage de montagne au coucher du soleil">🎨 Crée une image d&#39;un paysage de montagne au coucher du soleil</button><button onclick="useSug(this.dataset.t)" data-t="Résume ce texte que je vais te coller">📝 Résume ce texte que je vais te coller</button><button onclick="useSug(this.dataset.t)" data-t="Donne-moi des conseils pour mieux gérer mon temps">🎓 Donne-moi des conseils pour mieux gérer mon temps</button><button onclick="useSug(this.dataset.t)" data-t="Aide-moi à élaborer un plan pour organiser mon projet">💡 Aide-moi à élaborer un plan pour organiser mon projet</button><button onclick="useSug(this.dataset.t)" data-t="Aide-moi à rédiger un email professionnel">✍️ Aide-moi à rédiger un email professionnel</button><button onclick="useSug(this.dataset.t)" data-t="Aide-moi à analyser ces données">📊 Aide-moi à analyser ces données</button><button onclick="useSug(this.dataset.t)" data-t="Propose-moi des idées créatives pour ce week-end">🔮 Propose-moi des idées créatives pour ce week-end</button><button onclick="useSug(this.dataset.t)" data-t="Surprends-moi avec une anecdote intéressante">🎁 Surprends-moi avec une anecdote intéressante</button><button onclick="useSug(this.dataset.t)" data-t="Analyse cette image que je vais t&#39;envoyer">👁️ Analyse cette image que je vais t&#39;envoyer</button>';chat.appendChild(d);}
 async function sm(){if(ve)return;ve=true;
 const i=document.getElementById('ui');const msg=i.value.trim();if(!msg)return;i.value='';i.style.height='auto';am('user',msg);sty();
@@ -1368,30 +1383,6 @@ function initColorPicker(){
 window.addEventListener('DOMContentLoaded',initColorPicker);
 </script>
 
-
-<script>
-function refreshTokenAuto(){
-  const token = localStorage.getItem('gtoken');
-  if(!token) return;
-  
-  fetch('/api/refresh-token', {
-    method: 'POST',
-    headers: { 'Authorization': 'Bearer ' + token }
-  }).then(r => r.json()).then(d => {
-    if(d.success && d.token) {
-      localStorage.setItem('gtoken', d.token);
-      console.log('✅ Token rafraîchi automatiquement');
-    }
-  }).catch(e => console.error('Erreur refresh:', e));
-}
-
-// Rafraîchir le token toutes les 50 minutes (avant l'expiration)
-window.addEventListener('load', () => {
-  setInterval(refreshTokenAuto, 15*60*1000);
-  refreshTokenAuto(); // Première fois immédiatement
-});
-</script>
-
 </body>
 <script>
 // Fonctions pour les nouveaux onglets
@@ -1508,30 +1499,6 @@ function initColorPicker(){
   }
 }
 window.addEventListener('DOMContentLoaded',initColorPicker);
-</script>
-
-
-<script>
-function refreshTokenAuto(){
-  const token = localStorage.getItem('gtoken');
-  if(!token) return;
-  
-  fetch('/api/refresh-token', {
-    method: 'POST',
-    headers: { 'Authorization': 'Bearer ' + token }
-  }).then(r => r.json()).then(d => {
-    if(d.success && d.token) {
-      localStorage.setItem('gtoken', d.token);
-      console.log('✅ Token rafraîchi automatiquement');
-    }
-  }).catch(e => console.error('Erreur refresh:', e));
-}
-
-// Rafraîchir le token toutes les 50 minutes (avant l'expiration)
-window.addEventListener('load', () => {
-  setInterval(refreshTokenAuto, 15*60*1000);
-  refreshTokenAuto(); // Première fois immédiatement
-});
 </script>
 
 </body>
