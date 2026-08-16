@@ -4,33 +4,6 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>Guideon</title>
 <style>
-body { font-size: 16px; line-height: 1.8; }
-.bub { font-size: 16px; line-height: 1.8; }
-
-body { font-size: 14px; line-height: 1.7; }
-.bub { font-size: 14px; line-height: 1.7; }
-
-body { font-size: 15px; line-height: 1.8; letter-spacing: 0.5px; font-weight: 400; }
-.bub { font-size: 15px; line-height: 1.8; letter-spacing: 0.3px; }
-h1, h2, h3 { font-size: 18px; font-weight: 600; }
-button { font-size: 14px; font-weight: 600; }
-
-.mc { padding: 8px 12px; margin: 4px 0; }
-.bub { padding: 8px 12px; }
-.msg { margin: 4px 0; }
-.ba { gap: 4px; }
-
-body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif; line-height: 1.6; }
-.bub { line-height: 1.7; }
-button { font-weight: 500; }
-
-* { transition: all 0.3s ease; }
-button { transition: background 0.2s ease, transform 0.1s ease; }
-button:hover { transform: scale(1.05); }
-button:active { transform: scale(0.95); }
-.msg { animation: slideIn 0.3s ease; }
-@keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:sans-serif;background:#0a0a0f;color:#e0e0e0;height:100vh;display:flex;flex-direction:column}
 header{background:linear-gradient(135deg,#1a0533,#0d1f4d);padding:14px 16px;display:flex;align-items:center;gap:10px}
@@ -99,7 +72,7 @@ function loadProfile(){
   fetch('/api/profile', {headers: {'Authorization': 'Bearer '+tok}})
     .then(r=>r.json())
     .then(d => {
-      document.getElementById('profileData').innerHTML = '👥 ' + d.profile.name + '<br>✉️ ' + d.profile.email;
+      document.getElementById('profileData').innerHTML = '👤 ' + d.profile.name + '<br>✉️ ' + d.profile.email;
       document.getElementById('pn').value = d.profile.name || '';
       document.getElementById('toneInput').value = d.profile.tone || '';
       document.getElementById('styleInput').value = d.profile.style || '';
@@ -163,7 +136,7 @@ function loadProfile(){
   fetch('/api/profile', {headers: {'Authorization': 'Bearer '+tok}})
     .then(r=>r.json())
     .then(d => {
-      document.getElementById('profileData').innerHTML = '👥 ' + d.profile.name + '<br>✉️ ' + d.profile.email;
+      document.getElementById('profileData').innerHTML = '👤 ' + d.profile.name + '<br>✉️ ' + d.profile.email;
       document.getElementById('pn').value = d.profile.name || '';
       document.getElementById('toneInput').value = d.profile.tone || '';
       document.getElementById('styleInput').value = d.profile.style || '';
@@ -288,7 +261,7 @@ function loadProfile(){
   fetch('/api/profile', {headers: {'Authorization': 'Bearer '+tok}})
     .then(r=>r.json())
     .then(d => {
-      document.getElementById('profileData').innerHTML = '👥 ' + d.profile.name + '<br>✉️ ' + d.profile.email;
+      document.getElementById('profileData').innerHTML = '👤 ' + d.profile.name + '<br>✉️ ' + d.profile.email;
       document.getElementById('pn').value = d.profile.name || '';
       document.getElementById('toneInput').value = d.profile.tone || '';
       document.getElementById('styleInput').value = d.profile.style || '';
@@ -344,7 +317,7 @@ function loadProfile(){
   fetch('/api/profile', {headers: {'Authorization': 'Bearer '+tok}})
     .then(r=>r.json())
     .then(d => {
-      document.getElementById('profileData').innerHTML = '👥 ' + d.profile.name + '<br>✉️ ' + d.profile.email;
+      document.getElementById('profileData').innerHTML = '👤 ' + d.profile.name + '<br>✉️ ' + d.profile.email;
       document.getElementById('pn').value = d.profile.name || '';
       document.getElementById('toneInput').value = d.profile.tone || '';
       document.getElementById('styleInput').value = d.profile.style || '';
@@ -493,7 +466,7 @@ function copyMsg(event) {
     setTimeout(() => { btn.textContent = '📋 Copier'; }, 2000);
   }).catch(err => console.error('❌ Copy failed:', err));
 }
-function am(role,content,img=null,ts=null){const chat=document.getElementById('chat');const wl=chat.querySelector('.wl');if(wl)wl.remove();const d=document.createElement('div');d.className='msg '+(role==='guideon'?'g':'user');const av=role==='guideon'?'🧠':'👥';const ac=role==='guideon'?'g':'u';const t=role==='guideon'?marked.parse(content||''):(content||'').replace(/\n/g,'<br>');const ih=img?'<br><img src="'+img+'" loading="lazy" style="max-width:220px;border-radius:12px;margin-top:8px">':'';const ah=role==='guideon'?'<div class="ba"><button class="cb" onclick="(()=>{const ta=document.createElement(\'textarea\');ta.value=this.closest(\'.mc\').querySelector(\'.bub\').innerText;ta.style.position=\'fixed\';ta.style.top=\'-9999px\';document.body.appendChild(ta);ta.focus();ta.select();try{document.execCommand(\'copy\');}catch(e){};document.body.removeChild(ta);cBtn.textContent=\'✅\';setTimeout(()=>{cBtn.textContent=\'📋 Copier\';},2000);})()">Copier</button><button class="cb" onclick="fb(this,1)">✅</button><button class="cb" onclick="fb(this,-1)">❌</button><button class="cb" onclick="speak(this)">🔊</button><button class="cb" onclick="shareMsg(this)">Partager</button></div>':'';d.innerHTML='<div class="av '+ac+'">'+av+'</div><div class="mc"><div class="bub">'+t+ih+'</div>'+ah+'<div class="mt">'+gt(ts)+'</div></div>';if(content===''){const b=d.querySelector('.bub');if(b)b.dataset.fmt='1'}chat.appendChild(d);chat.scrollTop=chat.scrollHeight;const th=localStorage.getItem('gtheme');if(th==='light'&&role==='guideon'){d.style.background='#ffffff';d.style.color='#1e1b4b';d.style.border='1px solid #c4b5fd';}if(role==='guideon') updateRegenerateButton();return d;}
+function am(role,content,img=null,ts=null){const chat=document.getElementById('chat');const wl=chat.querySelector('.wl');if(wl)wl.remove();const d=document.createElement('div');d.className='msg '+(role==='guideon'?'g':'user');const av=role==='guideon'?'🧠':'👤';const ac=role==='guideon'?'g':'u';const t=role==='guideon'?marked.parse(content||''):(content||'').replace(/\n/g,'<br>');const ih=img?'<br><img src="'+img+'" loading="lazy" style="max-width:220px;border-radius:12px;margin-top:8px">':'';const ah=role==='guideon'?'<div class="ba"><button class="cb" onclick="(()=>{const ta=document.createElement(\'textarea\');ta.value=this.closest(\'.mc\').querySelector(\'.bub\').innerText;ta.style.position=\'fixed\';ta.style.top=\'-9999px\';document.body.appendChild(ta);ta.focus();ta.select();try{document.execCommand(\'copy\');}catch(e){};document.body.removeChild(ta);cBtn.textContent=\'✅\';setTimeout(()=>{cBtn.textContent=\'📋 Copier\';},2000);})()">Copier</button><button class="cb" onclick="fb(this,1)">👍</button><button class="cb" onclick="fb(this,-1)">👎</button><button class="cb" onclick="speak(this)">🔊</button><button class="cb" onclick="shareMsg(this)">Partager</button></div>':'';d.innerHTML='<div class="av '+ac+'">'+av+'</div><div class="mc"><div class="bub">'+t+ih+'</div>'+ah+'<div class="mt">'+gt(ts)+'</div></div>';if(content===''){const b=d.querySelector('.bub');if(b)b.dataset.fmt='1'}chat.appendChild(d);chat.scrollTop=chat.scrollHeight;const th=localStorage.getItem('gtheme');if(th==='light'&&role==='guideon'){d.style.background='#ffffff';d.style.color='#1e1b4b';d.style.border='1px solid #c4b5fd';}if(role==='guideon') updateRegenerateButton();return d;}
 function regenerateResponse(btn) {
   const msg = btn.closest('.msg');
   if (!msg) return;
@@ -599,7 +572,7 @@ function loadProfile(){
   fetch('/api/profile', {headers: {'Authorization': 'Bearer '+tok}})
     .then(r=>r.json())
     .then(d => {
-      document.getElementById('profileData').innerHTML = '👥 ' + d.profile.name + '<br>✉️ ' + d.profile.email;
+      document.getElementById('profileData').innerHTML = '👤 ' + d.profile.name + '<br>✉️ ' + d.profile.email;
       document.getElementById('pn').value = d.profile.name || '';
       document.getElementById('toneInput').value = d.profile.tone || '';
       document.getElementById('styleInput').value = d.profile.style || '';
@@ -688,7 +661,7 @@ function loadProfile(){
   fetch('/api/profile', {headers: {'Authorization': 'Bearer '+tok}})
     .then(r=>r.json())
     .then(d => {
-      document.getElementById('profileData').innerHTML = '👥 ' + d.profile.name + '<br>✉️ ' + d.profile.email;
+      document.getElementById('profileData').innerHTML = '👤 ' + d.profile.name + '<br>✉️ ' + d.profile.email;
       document.getElementById('pn').value = d.profile.name || '';
       document.getElementById('toneInput').value = d.profile.tone || '';
       document.getElementById('styleInput').value = d.profile.style || '';
@@ -750,7 +723,7 @@ function loadStats(){
 </select>
 <input type="range" id="temp" min="0" max="1" step="0.1" value="0.7" title="Créativité" style="width:45px;cursor:pointer;" oninput="setTemp(this.value)">
 <button onclick="showImgModal()" style="padding:5px 8px;background:#065f46;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:11px;">🖼️</button></div></div>
-<div id="prof" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9998;align-items:flex-start;justify-content:center;overflow-y:auto;padding-top:20px;"><div style="background:#1a1a2e;padding:24px;border-radius:16px;width:88%;max-width:480px;border:1px solid #2d1b69;margin-bottom:20px;"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;"><h3 style="color:#a78bfa;margin:0;">⚙️ Paramètres</h3><button onclick="document.getElementById('prof').style.display='none'" style="background:none;border:none;color:#6b7280;font-size:24px;cursor:pointer;padding:0;width:24px;height:24px;">✕</button></div><div style="color:#9ca3af;font-size:12px;margin-bottom:16px;padding:8px;background:#0f0f1a;border-radius:8px;">📧 <span id="userEmail">Email</span></div><div style="display:flex;gap:4px;border-bottom:1px solid #2d1b69;margin-bottom:16px;"><button onclick="switchTab('profile')" class="tab-btn" data-tab="profile" style="flex:1;padding:10px 6px;background:transparent;border:none;color:#a78bfa;border-bottom:2px solid #7c3aed;cursor:pointer;font-size:11px;">👥</button><button onclick="switchTab('privacy')" class="tab-btn" data-tab="privacy" style="flex:1;padding:10px 6px;background:transparent;border:none;color:#6b7280;border-bottom:2px solid transparent;cursor:pointer;font-size:11px;">🔒</button><button onclick="switchTab('security')" class="tab-btn" data-tab="security" style="flex:1;padding:10px 6px;background:transparent;border:none;color:#6b7280;border-bottom:2px solid transparent;cursor:pointer;font-size:11px;">🔐</button><button onclick="switchTab('accessibility')" class="tab-btn" data-tab="accessibility" style="flex:1;padding:10px 6px;background:transparent;border:none;color:#6b7280;border-bottom:2px solid transparent;cursor:pointer;font-size:11px;">♿</button><button onclick="switchTab('shared')" class="tab-btn" data-tab="shared" style="flex:1;padding:10px 6px;background:transparent;border:none;color:#6b7280;border-bottom:2px solid transparent;cursor:pointer;font-size:11px;">🔗</button><button onclick="switchTab('privacy-advanced')" class="tab-btn" data-tab="privacy-advanced" style="flex:1;padding:10px 6px;background:transparent;border:none;color:#6b7280;border-bottom:2px solid transparent;cursor:pointer;font-size:11px;">🛡️</button><button onclick="switchTab('updates')" class="tab-btn" data-tab="updates" style="flex:1;padding:10px 6px;background:transparent;border:none;color:#6b7280;border-bottom:2px solid transparent;cursor:pointer;font-size:11px;">📦</button><button onclick="switchTab('realtime')" class="tab-btn" data-tab="realtime" style="flex:1;padding:10px 6px;background:transparent;border:none;color:#6b7280;border-bottom:2px solid transparent;cursor:pointer;font-size:11px;">📊</button><button onclick="switchTab('about')" class="tab-btn" data-tab="about" style="flex:1;padding:10px 6px;background:transparent;border:none;color:#6b7280;border-bottom:2px solid transparent;cursor:pointer;font-size:11px;">ℹ️</button></div><div id="tab-profile" class="tab-content" style="display:block;"><input id="pn" placeholder="Nouveau nom" style="width:100%;padding:10px;background:#0f0f1a;color:#fff;border:1px solid #2d1b69;border-radius:8px;margin-bottom:8px;box-sizing:border-box;"><button onclick="saveName()" style="width:100%;padding:8px;background:#1e3a8a;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:8px;font-size:12px;">💾 Enregistrer nom</button><input id="pp" type="password" placeholder="Nouveau mot de passe" style="width:100%;padding:10px;background:#0f0f1a;color:#fff;border:1px solid #2d1b69;border-radius:8px;margin-bottom:8px;box-sizing:border-box;"><button onclick="savePassword()" style="width:100%;padding:8px;background:#1e3a8a;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:8px;font-size:12px;">💾 Enregistrer mot de passe</button><textarea id="inst" placeholder="Instructions..." style="width:100%;padding:10px;background:#0f0f1a;color:#fff;border:1px solid #2d1b69;border-radius:8px;margin-bottom:8px;box-sizing:border-box;height:80px;resize:none;font-family:inherit;font-size:13px;"></textarea><button onclick="savePreferences()" style="width:100%;padding:10px;background:#1e3a8a;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:12px;">💾 Sauvegarder préférences</button><select id="toneInput" style="width:100%;padding:10px;background:#0f0f1a;color:#fff;border:1px solid #2d1b69;border-radius:8px;margin-bottom:8px;box-sizing:border-box;">
+<div id="prof" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9998;align-items:flex-start;justify-content:center;overflow-y:auto;padding-top:20px;"><div style="background:#1a1a2e;padding:24px;border-radius:16px;width:88%;max-width:480px;border:1px solid #2d1b69;margin-bottom:20px;"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;"><h3 style="color:#a78bfa;margin:0;">⚙️ Paramètres</h3><button onclick="document.getElementById('prof').style.display='none'" style="background:none;border:none;color:#6b7280;font-size:24px;cursor:pointer;padding:0;width:24px;height:24px;">✕</button></div><div style="color:#9ca3af;font-size:12px;margin-bottom:16px;padding:8px;background:#0f0f1a;border-radius:8px;">📧 <span id="userEmail">Email</span></div><div style="display:flex;gap:4px;border-bottom:1px solid #2d1b69;margin-bottom:16px;"><button onclick="switchTab('profile')" class="tab-btn" data-tab="profile" style="flex:1;padding:10px 6px;background:transparent;border:none;color:#a78bfa;border-bottom:2px solid #7c3aed;cursor:pointer;font-size:11px;">👤</button><button onclick="switchTab('privacy')" class="tab-btn" data-tab="privacy" style="flex:1;padding:10px 6px;background:transparent;border:none;color:#6b7280;border-bottom:2px solid transparent;cursor:pointer;font-size:11px;">🔒</button><button onclick="switchTab('security')" class="tab-btn" data-tab="security" style="flex:1;padding:10px 6px;background:transparent;border:none;color:#6b7280;border-bottom:2px solid transparent;cursor:pointer;font-size:11px;">🔐</button><button onclick="switchTab('accessibility')" class="tab-btn" data-tab="accessibility" style="flex:1;padding:10px 6px;background:transparent;border:none;color:#6b7280;border-bottom:2px solid transparent;cursor:pointer;font-size:11px;">♿</button><button onclick="switchTab('shared')" class="tab-btn" data-tab="shared" style="flex:1;padding:10px 6px;background:transparent;border:none;color:#6b7280;border-bottom:2px solid transparent;cursor:pointer;font-size:11px;">🔗</button><button onclick="switchTab('privacy-advanced')" class="tab-btn" data-tab="privacy-advanced" style="flex:1;padding:10px 6px;background:transparent;border:none;color:#6b7280;border-bottom:2px solid transparent;cursor:pointer;font-size:11px;">🛡️</button><button onclick="switchTab('updates')" class="tab-btn" data-tab="updates" style="flex:1;padding:10px 6px;background:transparent;border:none;color:#6b7280;border-bottom:2px solid transparent;cursor:pointer;font-size:11px;">📦</button><button onclick="switchTab('realtime')" class="tab-btn" data-tab="realtime" style="flex:1;padding:10px 6px;background:transparent;border:none;color:#6b7280;border-bottom:2px solid transparent;cursor:pointer;font-size:11px;">📊</button><button onclick="switchTab('about')" class="tab-btn" data-tab="about" style="flex:1;padding:10px 6px;background:transparent;border:none;color:#6b7280;border-bottom:2px solid transparent;cursor:pointer;font-size:11px;">ℹ️</button></div><div id="tab-profile" class="tab-content" style="display:block;"><input id="pn" placeholder="Nouveau nom" style="width:100%;padding:10px;background:#0f0f1a;color:#fff;border:1px solid #2d1b69;border-radius:8px;margin-bottom:8px;box-sizing:border-box;"><button onclick="saveName()" style="width:100%;padding:8px;background:#1e3a8a;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:8px;font-size:12px;">💾 Enregistrer nom</button><input id="pp" type="password" placeholder="Nouveau mot de passe" style="width:100%;padding:10px;background:#0f0f1a;color:#fff;border:1px solid #2d1b69;border-radius:8px;margin-bottom:8px;box-sizing:border-box;"><button onclick="savePassword()" style="width:100%;padding:8px;background:#1e3a8a;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:8px;font-size:12px;">💾 Enregistrer mot de passe</button><textarea id="inst" placeholder="Instructions..." style="width:100%;padding:10px;background:#0f0f1a;color:#fff;border:1px solid #2d1b69;border-radius:8px;margin-bottom:8px;box-sizing:border-box;height:80px;resize:none;font-family:inherit;font-size:13px;"></textarea><button onclick="savePreferences()" style="width:100%;padding:10px;background:#1e3a8a;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:12px;">💾 Sauvegarder préférences</button><select id="toneInput" style="width:100%;padding:10px;background:#0f0f1a;color:#fff;border:1px solid #2d1b69;border-radius:8px;margin-bottom:8px;box-sizing:border-box;">
 <option value="">-- Sélectionner un tone --</option>
 <option value="formel">📋 Formel</option>
 <option value="decontracte">😊 Décontracté</option>
@@ -779,7 +752,7 @@ function stab(m){amode=m;document.getElementById('an').style.display=m==='reg'?'
 function setModel(m){curModel=m;localStorage.setItem('gmodel',m);}
 function setTemp(v){curTemp=parseFloat(v);}
 function showImgModal(){document.getElementById('imgmod').style.display='flex';}
-function showBar(n){const b=document.getElementById('ubar');b.style.display='flex';document.getElementById('uname').textContent='👥 '+n;document.body.style.paddingTop='50px';}
+function showBar(n){const b=document.getElementById('ubar');b.style.display='flex';document.getElementById('uname').textContent='👤 '+n;document.body.style.paddingTop='50px';}
 function openSidebar(){document.getElementById('sidebar').style.display='flex';loadSessions();}
 function closeSidebar(){document.getElementById('sidebar').style.display='none';}
 function showProfile(){
@@ -874,7 +847,7 @@ async function searchHist(q){
       const d=document.createElement('div');
       d.style.cssText='padding:5px;background:#1a1a2e;border-radius:5px;margin-bottom:3px;cursor:pointer;';
       const preview=m.content.length>60?m.content.substring(0,60)+'...':m.content;
-      d.innerHTML='<p style="color:#e2e8f0;font-size:11px;">'+(m.role==='user'?'👥':'🧠')+' '+preview.replace(/</g,'&lt;')+'</p>';
+      d.innerHTML='<p style="color:#e2e8f0;font-size:11px;">'+(m.role==='user'?'👤':'🧠')+' '+preview.replace(/</g,'&lt;')+'</p>';
       if(m.session_id)d.onclick=()=>switchSession(m.session_id);
       res.appendChild(d);
     });
@@ -1007,7 +980,7 @@ async function saveProfile(){
   const n=document.getElementById('pn').value.trim(),p=document.getElementById('pp').value,inst=document.getElementById('inst').value;
   const tok=localStorage.getItem('gtoken');
   try{
-    if(n||p){const r=await fetch('/api/profile',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:tok,name:n,password:p})});const d=await r.json();if(d.success&&n){localStorage.setItem('gname',n);document.getElementById('uname').textContent='👥 '+n;}}
+    if(n||p){const r=await fetch('/api/profile',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:tok,name:n,password:p})});const d=await r.json();if(d.success&&n){localStorage.setItem('gname',n);document.getElementById('uname').textContent='👤 '+n;}}
     await fetch('/api/instructions',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:tok,instructions:inst})});
     confirm('✅ Profil mis à jour!');document.getElementById('prof').style.display='none';
   }catch(e){alert('Erreur sauvegarde');}
@@ -1017,7 +990,7 @@ async function viewMemory(){
   try{
     const r=await fetch('/api/memory/view',{headers:{'Authorization':'Bearer '+tok}});
     const d=await r.json();const mv=document.getElementById('memview');mv.style.display='block';
-    mv.innerHTML='<b style="color:#a78bfa;">🧠 Ta mémoire:</b><br>👥 '+( d.name||'?')+'<br>📧 '+(d.email||'?')+'<br>📝 '+(d.instructions||'Aucune instruction')+'<br>📅 '+(d.created_at?new Date(d.created_at).toLocaleDateString('fr-FR'):'?');
+    mv.innerHTML='<b style="color:#a78bfa;">🧠 Ta mémoire:</b><br>👤 '+( d.name||'?')+'<br>📧 '+(d.email||'?')+'<br>📝 '+(d.instructions||'Aucune instruction')+'<br>📅 '+(d.created_at?new Date(d.created_at).toLocaleDateString('fr-FR'):'?');
   }catch(e){}
 }
 async function clearMem(){
@@ -1197,7 +1170,7 @@ window.fetch=async function(u,o={}){
 };
 function fb(btn,val){
   const card=btn.closest('.ba');
-  card.querySelectorAll('.cb').forEach(b=>{if(b.textContent==='✅'||b.textContent==='❌')b.style.opacity='0.4';});
+  card.querySelectorAll('.cb').forEach(b=>{if(b.textContent==='👍'||b.textContent==='👎')b.style.opacity='0.4';});
   btn.style.opacity='1';
   try{
     const tok=localStorage.getItem('gtoken');
@@ -1284,7 +1257,7 @@ function loadProfile(){
   fetch('/api/profile', {headers: {'Authorization': 'Bearer '+tok}})
     .then(r=>r.json())
     .then(d => {
-      document.getElementById('profileData').innerHTML = '👥 ' + d.profile.name + '<br>✉️ ' + d.profile.email;
+      document.getElementById('profileData').innerHTML = '👤 ' + d.profile.name + '<br>✉️ ' + d.profile.email;
       document.getElementById('pn').value = d.profile.name || '';
       document.getElementById('toneInput').value = d.profile.tone || '';
       document.getElementById('styleInput').value = d.profile.style || '';
@@ -1344,30 +1317,6 @@ function loadStats(){
 <div id="imgmod" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9999;align-items:center;justify-content:center;"><div style="background:#1a1a2e;padding:24px;border-radius:16px;width:90%;max-width:450px;border:1px solid #2d1b69;"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;"><h3 style="color:#a78bfa;margin:0;">🖼️ Analyser une image</h3><button onclick="document.getElementById('imgmod').style.display='none'" style="background:none;border:none;color:#6b7280;font-size:24px;cursor:pointer;">✕</button></div><div style="display:flex;gap:8px;margin-bottom:16px;border-bottom:1px solid #2d1b69;padding-bottom:8px;"><button onclick="document.getElementById('urlTab').style.display='block';document.getElementById('uploadTab').style.display='none'" style="background:none;border:none;color:#a78bfa;cursor:pointer;font-size:14px;padding:8px;">🔗 URL</button><button onclick="document.getElementById('uploadTab').style.display='block';document.getElementById('urlTab').style.display='none'" style="background:none;border:none;color:#6b7280;cursor:pointer;font-size:14px;padding:8px;">📱 Images</button></div><div id="urlTab" style="display:block;"><input type="url" id="imgUrl" placeholder="https://exemple.com/image.jpg" style="width:100%;padding:10px;background:#0f0f1a;border:1px solid #2d1b69;color:#e0e0e0;border-radius:6px;margin-bottom:12px;font-size:13px;"></div><div id="uploadTab" style="display:none;"><input type="file" id="imgFile" accept="image/*" style="width:100%;padding:8px;background:#0f0f1a;border:1px solid #2d1b69;color:#e0e0e0;border-radius:6px;margin-bottom:12px;font-size:13px;"></div><textarea id="imgDesc" placeholder="Optionnel: Pose une question..." style="width:100%;padding:10px;background:#0f0f1a;border:1px solid #2d1b69;color:#e0e0e0;border-radius:6px;margin-bottom:12px;font-size:13px;resize:vertical;height:80px;"></textarea><button onclick="analyzeImage()" style="width:100%;padding:10px;background:linear-gradient(135deg,#7c3aed,#2563eb);border:none;color:white;border-radius:6px;cursor:pointer;font-weight:bold;">📊 Analyser</button></div></div>
 <script>function analyzeImage(){const url=document.getElementById("imgUrl").value;const file=document.getElementById("imgFile").files[0];const desc=document.getElementById("imgDesc").value||"Décris cette image";if(!url&&!file){am("guideon","Fournis une URL ou upload une image");return;}ve=true;document.getElementById("imgmod").style.display="none";am("guideon","🔍 Analyse en cours, veuillez patienter (5-10 secondes)...");if(url){fetch("/api/analyze",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({imageUrl:url,question:desc})}).then(r=>r.json()).then(d=>{ve=false;am("guideon",d.reply||"Erreur");}).catch(e=>{ve=false;am("guideon","Erreur: "+e.message);});}else if(file){const reader=new FileReader();reader.onload=(e)=>{fetch("/api/analyze",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({imageBase64:e.target.result,question:desc})}).then(r=>r.json()).then(d=>{ve=false;am("guideon",d.reply||"Erreur");}).catch(e=>{ve=false;am("guideon","Erreur: "+e.message);});};reader.readAsDataURL(file);}}</script>
 <script>function analyzePdfWithWorker(pdfData){if(!window.pdfWorker){window.pdfWorker=new Worker('pdf-worker.js');}window.pdfWorker.onmessage=(e)=>{if(e.data.success){am('guideon','✅ '+e.data.text);}else{am('guideon','❌ Erreur PDF: '+e.data.error);}};window.pdfWorker.postMessage({pdfData});}</script>
-
-<script>
-function initColorPicker(){
-  const colorPicker=document.createElement('input');
-  colorPicker.type='color';
-  colorPicker.id='colorTheme';
-  colorPicker.value='#7c3aed';
-  colorPicker.style.cssText='position:fixed;top:155px;left:20px;width:45px;height:45px;cursor:pointer;border:2px solid #a78bfa;border-radius:50%;z-index:999;';
-  colorPicker.onchange=()=>{
-    const color=colorPicker.value;
-    localStorage.setItem('gthemeColor',color);
-    document.querySelectorAll('button.pb').forEach(b=>b.style.background='linear-gradient(135deg,'+color+','+color+'cc)');
-    document.documentElement.style.setProperty('--primary',color);
-  };
-  document.body.appendChild(colorPicker);
-  const saved=localStorage.getItem('gthemeColor');
-  if(saved) {
-    colorPicker.value=saved;
-    document.querySelectorAll('button.pb').forEach(b=>b.style.background='linear-gradient(135deg,'+saved+','+saved+'cc)');
-  }
-}
-window.addEventListener('DOMContentLoaded',initColorPicker);
-</script>
-
 </body>
 <script>
 // Fonctions pour les nouveaux onglets
@@ -1386,7 +1335,7 @@ function loadProfile(){
   fetch('/api/profile', {headers: {'Authorization': 'Bearer '+tok}})
     .then(r=>r.json())
     .then(d => {
-      document.getElementById('profileData').innerHTML = '👥 ' + d.profile.name + '<br>✉️ ' + d.profile.email;
+      document.getElementById('profileData').innerHTML = '👤 ' + d.profile.name + '<br>✉️ ' + d.profile.email;
       document.getElementById('pn').value = d.profile.name || '';
       document.getElementById('toneInput').value = d.profile.tone || '';
       document.getElementById('styleInput').value = d.profile.style || '';
@@ -1462,29 +1411,5 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 })();
 </script>
-
-<script>
-function initColorPicker(){
-  const colorPicker=document.createElement('input');
-  colorPicker.type='color';
-  colorPicker.id='colorTheme';
-  colorPicker.value='#7c3aed';
-  colorPicker.style.cssText='position:fixed;top:155px;left:20px;width:45px;height:45px;cursor:pointer;border:2px solid #a78bfa;border-radius:50%;z-index:999;';
-  colorPicker.onchange=()=>{
-    const color=colorPicker.value;
-    localStorage.setItem('gthemeColor',color);
-    document.querySelectorAll('button.pb').forEach(b=>b.style.background='linear-gradient(135deg,'+color+','+color+'cc)');
-    document.documentElement.style.setProperty('--primary',color);
-  };
-  document.body.appendChild(colorPicker);
-  const saved=localStorage.getItem('gthemeColor');
-  if(saved) {
-    colorPicker.value=saved;
-    document.querySelectorAll('button.pb').forEach(b=>b.style.background='linear-gradient(135deg,'+saved+','+saved+'cc)');
-  }
-}
-window.addEventListener('DOMContentLoaded',initColorPicker);
-</script>
-
 </body>
 </html>
