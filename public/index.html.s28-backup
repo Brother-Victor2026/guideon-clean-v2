@@ -444,7 +444,7 @@ if(localStorage.getItem('gclearedChat') === 'true') {
     chatHistory = [];
   }
 }
-let refreshIntervalId=null;async function autoRefreshToken(){const tok=localStorage.getItem("gtoken");if(!tok)return;try{const r=await fetch("/api/refresh",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({token:tok})});const d=await r.json();if(d.token){localStorage.setItem("gtoken",d.token);console.log("✅ Token rafraîchi");}else{console.warn("❌ Refresh échoué:",d.error);logout();}}catch(e){console.error("Erreur refresh:",e.message);}}function startTokenRefresh(){if(refreshIntervalId)clearInterval(refreshIntervalId);refreshIntervalId=setInterval(autoRefreshToken,4*60*1000);console.log("🔄 Refresh automatique activé");}function stopTokenRefresh(){if(refreshIntervalId){clearInterval(refreshIntervalId);refreshIntervalId=null;console.log("🛑 Refresh arrêté");}}function cp(){const p=document.getElementById('pi').value;if(p===PW){document.getElementById('lm').classList.remove('show');}else{document.getElementById('pe').style.display='block';}}
+function cp(){const p=document.getElementById('pi').value;if(p===PW){document.getElementById('lm').classList.remove('show');}else{document.getElementById('pe').style.display='block';}}
 function tvv(){ve=!ve;document.getElementById('vt').textContent=ve?'🔊':'🔇';}
 function sp(t){if(!ve)return;const u=new SpeechSynthesisUtterance(t);u.lang='fr-FR';u.rate=0.9;speechSynthesis.speak(u);}function speak(btn){
 const bub=btn.closest('.mc').querySelector('.bub');
@@ -969,10 +969,10 @@ async function doAuth(){
     const r=await fetch('/api/'+(amode==='login'?'login':'register'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:e,password:p,name:n})});
     const d=await r.json();
     if(d.error){er.textContent=d.error;er.style.display='block';btn.textContent=amode==='login'?'Se connecter':'Créer mon compte';btn.disabled=false;return;}
-    localStorage.setItem('gtoken',d.token);localStorage.setItem('gname',d.name||e.split('@')[0]);startTokenRefresh();
+    localStorage.setItem('gtoken',d.token);localStorage.setItem('gname',d.name||e.split('@')[0]);
     document.getElementById('am').style.display='none';
     const lm=document.getElementById('lm');if(lm)lm.classList.remove('show');
-    showBar(localStorage.getItem('gname'));startTokenRefresh();
+    showBar(localStorage.getItem('gname'));
     const saved=localStorage.getItem('session');
     if(saved){curSession=parseInt(saved);await switchSession(curSession);}else await newSession();
   }catch(err){er.textContent='Erreur de connexion';er.style.display='block';btn.textContent='Se connecter';btn.disabled=false;}

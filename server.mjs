@@ -30,7 +30,7 @@ const SB = { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 
 
 function hashPwd(p) { return crypto.createHash('sha256').update(p + SECRET).digest('hex'); }
 function makeToken(id, email) {
-  const p = Buffer.from(JSON.stringify({ id, email, exp: Date.now() + 60*24*60*60*1000 })).toString('base64');
+  const p = Buffer.from(JSON.stringify({ id, email, exp: Date.now() + 90*24*60*60*1000 })).toString('base64');
   return p + '.' + crypto.createHmac('sha256', SECRET).update(p).digest('hex');
 }
 function checkToken(t) {
@@ -1208,3 +1208,16 @@ app.post('/api/analyze', async (req, res) => {
 
 app.listen(process.env.PORT || 8080, () => console.log("Guideon actif !"));
 
+
+app.post('/api/refresh', async (req, res) => {
+  try {
+    const { token } = req.body;
+    if (!token) return res.status(401).json({ error: 'Token requis' });
+    
+    const user = checkToken(token);
+    if (!user) return res.status(401).json({ error: 'Token invalide' });
+    
+    const newToken = makeToken(user.id, user.email);
+    res.json({ token: newToken, success: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});

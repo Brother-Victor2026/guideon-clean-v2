@@ -1,0 +1,51 @@
+    doc.fontSize(11).text(`Email: ${userData[0]?.email || 'N/A'}`);
+    doc.text(`Nom: ${userData[0]?.name || 'N/A'}`);
+    doc.text(`Inscription: ${new Date(userData[0]?.created_at).toLocaleDateString('fr-FR')}`);
+    doc.text('');
+    
+    doc.fontSize(14).text('💬 Statistiques', { underline: true });
+    doc.fontSize(11).text(`Total conversations: ${conversations.length}`);
+    doc.text('');
+    
+    doc.fontSize(14).text('🔒 Engagement de Confidentialité', { underline: true });
+    doc.fontSize(11).text('✓ Aucune donnée personnelle vendue à des tiers');
+    doc.text('✓ Chiffrement end-to-end disponible');
+    doc.text('✓ Droits RGPD & CCPA garantis');
+    doc.text('✓ Données supprimées après 90 jours d\'inactivité');
+    doc.text('');
+    
+    doc.fontSize(10).text('Généré le: ' + new Date().toLocaleString('fr-FR'));
+    doc.end();
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Endpoint analyse PDF avec GROQ - Session 21
+app.post('/api/analyze-pdf', multer({storage: multer.memoryStorage(), limits: {fileSize: 50*1024*1024}}).single('pdf'), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({error: 'Aucun fichier PDF'});
+    if (req.file.mimetype !== 'application/pdf') return res.status(400).json({error: 'Doit être un PDF'});
+
+    console.log(`[PDF] Analyse: ${req.file.originalname} (${req.file.size} bytes)`);
+
+    let pdfText = '';
+    try {
+      const data = await pdfParse(req.file.buffer);
+      pdfText = data.text;
+    } catch(e) {
+      console.error(`[PDF] Erreur parsing: ${e.message}`);
+      return res.status(400).json({error: 'Erreur parsing PDF: ' + e.message});
+    }
+
+    if (!pdfText || pdfText.trim().length === 0) {
+      return res.status(400).json({error: 'PDF vide ou non lisible'});
+    }
+
+    const textToAnalyze = pdfText.substring(0, 10000);
+    console.log(`[PDF] Texte extrait: ${textToAnalyze.length} chars`);
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+
+    const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {

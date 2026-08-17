@@ -1,0 +1,38 @@
+let refreshIntervalId = null;
+
+async function autoRefreshToken() {
+  const tok = localStorage.getItem('gtoken');
+  if (!tok) return;
+  
+  try {
+    const r = await fetch('/api/refresh', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: tok })
+    });
+    const d = await r.json();
+    if (d.token) {
+      localStorage.setItem('gtoken', d.token);
+      console.log('✅ Token rafraîchi');
+    } else {
+      console.warn('❌ Refresh échoué:', d.error);
+      logout();
+    }
+  } catch(e) {
+    console.error('Erreur refresh:', e.message);
+  }
+}
+
+function startTokenRefresh() {
+  if (refreshIntervalId) clearInterval(refreshIntervalId);
+  refreshIntervalId = setInterval(autoRefreshToken, 4 * 60 * 1000);
+  console.log('🔄 Refresh automatique activé (toutes les 4 min)');
+}
+
+function stopTokenRefresh() {
+  if (refreshIntervalId) {
+    clearInterval(refreshIntervalId);
+    refreshIntervalId = null;
+    console.log('🛑 Refresh automatique arrêté');
+  }
+}
