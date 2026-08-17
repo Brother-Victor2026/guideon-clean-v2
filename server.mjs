@@ -1,5 +1,5 @@
 import dotenv from 'dotenv';
-dotenv.config();
+dotenv.config({ path: '/data/data/com.termux/files/home/my-ai/.env' });
 
 import express from 'express';
 import compression from 'compression';

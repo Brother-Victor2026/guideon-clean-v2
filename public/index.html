@@ -51,7 +51,7 @@ header{background:linear-gradient(135deg,#1a0533,#0d1f4d);padding:14px 16px;disp
 .av.u{background:linear-gradient(135deg,#065f46,#1e3a8a)}
 .mc{display:flex;flex-direction:column;gap:4px;max-width:100%}
 .mt{font-size:10px;color:#4a4a6a}.msg.user .mt{text-align:right}
-.bub{padding:10px 14px;border-radius:18px;font-size:14px;line-height:1.6;word-break:break-word;color:inherit}
+.bub{padding:10px 14px;border-radius:18px;font-size:14px;line-height:1.6;word-break:break-word;color:inherit;max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}.bub img{max-width:100% !important;height:auto}.bub table{width:100%;overflow-x:auto}
 .msg.g .bub{background:transparent;border:none;border-radius:0;padding:0;color:#e0e0ff}
 .msg.user .bub{background:linear-gradient(135deg,#065f46,#0d4f86);border-radius:18px 4px 18px 18px;color:#fff}
 .ba{display:flex;gap:6px;margin-top:4px}
@@ -799,7 +799,7 @@ function openSidebar(){document.getElementById('sidebar').style.display='flex';l
 function closeSidebar(){document.getElementById('sidebar').style.display='none';}
 function showProfile(){
   document.getElementById('prof').style.display='flex';
-  const tok=localStorage.getItem('gtoken');
+  const tok=localStorage.getItem('gtoken');setTimeout(()=>{const db=document.getElementById('debugStatus');if(!db){const d=document.createElement('div');d.id='debugStatus';d.style.cssText='position:fixed;top:60px;right:10px;background:#0f0f1a;border:2px solid #7c3aed;color:#7c3aed;padding:8px 12px;border-radius:6px;font-size:11px;z-index:9999;max-width:150px;word-wrap:break-word;';d.innerHTML='🔍 gtoken: '+(tok?'✅ OK ('+tok.substring(0,10)+'...)':'❌ VIDE');document.body.appendChild(d);}},100);console.log('🔍 Au démarrage - gtoken:', tok ? '✅ Présent' : '❌ VIDE');if(tok)console.log('Token length:', tok.length);
   const email=localStorage.getItem('gname')||'utilisateur@example.com';
   document.getElementById('userEmail').textContent=localStorage.getItem('gname')||'Email non disponible';
   fetch('/api/memory/view',{headers:{'Authorization':'Bearer '+tok}}).then(r=>r.json()).then(d=>{if(d&&d.instructions)document.getElementById('inst').value=d.instructions;}).catch(()=>{});
