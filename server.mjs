@@ -1222,3 +1222,18 @@ app.post('/api/refresh', async (req, res) => {
     res.json({ token: newToken, success: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
+
+app.get('/api/shared', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) return res.status(401).json({ error: 'Token requis' });
+    
+    const user = checkToken(token);
+    if (!user) return res.status(401).json({ error: 'Non autorisé' });
+    
+    // Retourner les sessions de l'utilisateur (qui peuvent être partagées)
+    const r = await fetch(`${DB}/sessions?user_id=eq.${String(user.id)}&order=created_at.desc`, { headers: SB });
+    const data = await r.json();
+    res.json(Array.isArray(data) ? data : []);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
