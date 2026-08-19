@@ -970,7 +970,7 @@ async function doAuth(){
     const r=await fetch('/api/'+(amode==='login'?'login':'register'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:e,password:p,name:n})});
     const d=await r.json();
     if(d.error){er.textContent=d.error;er.style.display='block';btn.textContent=amode==='login'?'Se connecter':'Créer mon compte';btn.disabled=false;return;}
-    localStorage.setItem('gtoken',d.token);localStorage.setItem('gname',d.name||e.split('@')[0]);startTokenRefresh();document.getElementById('am').style.display='none';document.getElementById('chat').style.display='flex';showBar(d.name||e.split('@')[0]);
+    localStorage.setItem('gtoken',d.token);localStorage.setItem('gname',d.name||e.split('@')[0]);startTokenRefresh();history.replaceState({page:'chat'},'Chat',window.location.href);for(let i=0;i<5;i++)history.pushState({page:'chat'+i},'','#chat'+i);document.getElementById('am').style.display='none';document.getElementById('chat').style.display='flex';showBar(d.name||e.split('@')[0]);
     document.getElementById('am').style.display='none';
     const lm=document.getElementById('lm');if(lm)lm.classList.remove('show');
     showBar(localStorage.getItem('gname'));startTokenRefresh();

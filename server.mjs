@@ -202,7 +202,7 @@ app.post('/api/chat', async (req, res) => {
       if (user) {
         userId = String(user.id);
         const [hRes, uRes] = await Promise.all([
-          fetch(`${DB}/conversations?user_id=eq.${userId}&session_id=eq.${session_id}&order=id.asc&limit=30`, { headers: SB }),
+          fetch(`${DB}/conversations?user_id=eq.${userId}&session_id=eq.${session_id}&order=id.asc&limit=10`, { headers: SB }),
           fetch(`${DB}/users?id=eq.${userId}&select=instructions`, { headers: SB })
         ]);
         const hData = await hRes.json();
@@ -272,7 +272,7 @@ app.post('/api/chat', async (req, res) => {
     const SYSTEM_MSG = { role: 'system', content: sysContent };
     const hist = dbHistory.length > 0 ? dbHistory : (history || []);
     const messages = [SYSTEM_MSG, ...hist.filter(h=>h&&h.role&&h.content).map(h => ({ role: h.role, content: h.content })), { role: 'user', content: message }];
-    const geminiBody = JSON.stringify({ model: MODELS[model] || "openai/gpt-oss-120b", messages, temperature: parseFloat(temperature) || 0.7, stream: true });
+    const geminiBody = JSON.stringify({ model: MODELS[model] || "openai/gpt-oss-120b", messages, temperature: parseFloat(temperature) || 0.5, stream: true });
     let response;
     for (let attempt = 0; attempt < 2; attempt++) {
       if (attempt > 0) await new Promise(r => setTimeout(r, 2000));
