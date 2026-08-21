@@ -335,11 +335,13 @@ app.post('/api/chat', async (req, res) => {
           const content = parsed.choices?.[0]?.delta?.content;
           if (content) {
             reply += content;
-            pending += content;
+            res.write(`data: ${JSON.stringify({ content: content })}\n\n`);await new Promise(r => setTimeout(r, 10));
             let fullMatch = pending.match(/\[GENERATE_IMAGE:\s*([\s\S]+?)\]/);
             while (fullMatch && !imageDone) {
               const before = pending.slice(0, fullMatch.index);
-              if (before) res.write(`data: ${JSON.stringify({ content: before })}\n\n`);
+              if (before) res.write(`data: ${JSON.stringify({ content: before })}
+
+`);res.flush();
               const desc = fullMatch[1].trim();
               if (desc && wantsVisual) {
                 try {
@@ -358,7 +360,9 @@ app.post('/api/chat', async (req, res) => {
             const startIdx = findWatchTagStart(pending);
             if (startIdx !== -1) {
               const before = pending.slice(0, startIdx);
-              if (before) res.write(`data: ${JSON.stringify({ content: before })}\n\n`);
+              if (before) res.write(`data: ${JSON.stringify({ content: before })}
+
+`);res.flush();
               pending = pending.slice(startIdx);
             } else {
               const holdLen = partialTagSuffixLength(pending);
@@ -375,6 +379,7 @@ app.post('/api/chat', async (req, res) => {
       res.write(`data: ${JSON.stringify({ content: pending })}\n\n`);
       pending = '';
     }
+    res.end();
     reply = reply.replace(/\[GENERATE_IMAGE:\s*[\s\S]+?\]/g, '').replace(/^\s*true\s*$/m, '').trim();
 
     if (token && DB) {
