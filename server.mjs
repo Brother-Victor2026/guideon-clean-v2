@@ -417,7 +417,7 @@ app.post('/api/chat', async (req, res) => {
     res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
     res.end();
     // Extraire et sauvegarder memories en arriere-plan
-    if (false && reply && user && user.id) { // EXTRACTION MEMORIES DESACTIVEE (economie quota Gemini free tier)
+    if (true && reply && user && user.id) { // EXTRACTION MEMORIES DESACTIVEE (economie quota Gemini free tier)
       try {
         const extractRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
           method: 'POST',
@@ -1206,45 +1206,6 @@ app.post('/api/analyze', async (req, res) => {
     res.json({ error: e.message });
   }
 });
-
-
-
-    const memData = await memRes.json();
-    
-    res.json({ 
-      success: true, 
-      testToken, 
-      memoriesResponse: memData 
-    });
-  } catch(e) {
-    res.status(500).json({ error: e.message });
-  }
-});
-
-
-
-
-    const addData = await addRes.json();
-    console.log('✅ Mémoire ajoutée:', addData);
-    
-    // 3. Récupère les mémoires
-    const getRes = await fetch('http://localhost:8080/api/memories', {
-      headers: { 'Authorization': 'Bearer ' + token }
-    });
-    const getData = await getRes.json();
-    console.log('✅ Mémoires récupérées:', getData.length);
-    
-    res.json({ 
-      success: true,
-      memoireAjoutee: addData,
-      toutesLesMémoires: getData
-    });
-  } catch(e) {
-    console.log('❌ Erreur:', e.message);
-    res.status(500).json({ error: e.message });
-  }
-});
-
 
 app.listen(process.env.PORT || 8080, () => console.log("Guideon actif !"));
 
