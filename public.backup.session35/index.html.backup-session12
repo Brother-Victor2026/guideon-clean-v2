@@ -109,27 +109,28 @@ function loadStats(){
 
 const API_URL = window.location.origin;
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('✅ DOMContentLoaded déclenché');
-  document.getElementById('pdfUploadInput').addEventListener('change', async (e) => {
-    alert('PDF file selected: ' + (e.target.files[0]?.name || 'unknown'));
-    const file = e.target.files[0];
-    if (!file) return;
-    const formData = new FormData();
-    formData.append('pdf', file);
-    try {
-      const response = await fetch('/api/upload', {method: 'POST', body: formData});
-      const data = await response.json();
-      if (data.success) {
-        alert(`PDF uploadé: ${data.url}`);
-        document.getElementById('ui').value = `Fichier PDF: ${data.fileName}\nURL: ${data.url}`;
-      } else {
-        alert(`Erreur: ${data.error}`);
-      }
-    } catch(err) {
-      alert(`Upload échoué: ${err.message}`);
+document.getElementById('pdfUploadInput').addEventListener('change', async (e) => {
+  alert('PDF file selected: ' + (e.target.files[0]?.name || 'unknown'));
+  const file = e.target.files[0];
+  if (!file) return;
+  const formData = new FormData();
+  formData.append('pdf', file);
+  try {
+    const response = await fetch('/api/upload', {method: 'POST', body: formData});
+    const data = await response.json();
+    if (data.success) {
+            alert(`PDF uploadé: ${data.url}`);
+      document.getElementById('ui').value = `Fichier PDF: ${data.fileName}\nURL: ${data.url}`;
+    } else {
+      alert(`Erreur: ${data.error}`);
     }
-  });
+  } catch(err) {
+    alert(`Upload échoué: ${err.message}`);
+  }
 });
+});
+
+
 function loadRealtime(){
   const el = document.getElementById('realtimeData');
   el.innerHTML = 'Chargement...';
@@ -176,7 +177,6 @@ function loadStats(){
 }
 
 
-});
 </script>
 <script src="functions.js"></script>
 <script>
@@ -409,37 +409,7 @@ function loadStats(){
 <button class="pb" onclick="up('/resume ')">📝 Resumer</button>
 <button class="pb" onclick="up('/image ')">🎨 Image</button>
 <button class="pb" onclick="up('!web ')">🌐 Web</button>
-<button class="pp" onclick="document.getElementById('pdfUploadInput').click();">📄 PDF</button><input type="file" id="pdfUploadInput" accept=".pdf" multiple style="display:none;">
-<script>
-(function() {
-  const pdfInput = document.getElementById('pdfUploadInput');
-  if (pdfInput) {
-    pdfInput.addEventListener('change', async (e) => {
-      const files = e.target.files;
-      if (files.length === 0) return;
-      
-      // Créer un dialog avec OK et Annuler
-      const fileNames = Array.from(files).map(f => f.name).join(', ');
-      const confirmed = confirm('Ajouter ' + files.length + ' fichier(s)?\n\n' + fileNames);
-      
-      if (confirmed) {
-        const textarea = document.getElementById('ui');
-        for (const file of files) {
-          const formData = new FormData();
-          formData.append('pdf', file);
-          fetch('/api/analyze-pdf', {method: 'POST', body: formData})
-            .then(r => r.json())
-            .then(data => { if (textarea) textarea.value += '\n📄 ' + data.fileName + '\n\n' + data.analysis; alert('✅ Analysé'); })
-            .catch(err => alert('❌ ' + err.message));
-        }
-      }
-      
-      // Réinitialiser l'input
-      e.target.value = '';
-    });
-  }
-})();
-</script>
+<button class="pp" onclick="document.getElementById('pdfUploadInput').click();">📄 PDF</button><input type="file" id="pdfUploadInput" accept=".pdf" style="display:none;">
 <button class="pb" onclick="cc()">🗑️ Effacer</button>
 </div>
 <div id="chat">
@@ -456,17 +426,6 @@ function loadStats(){
 const PW="guideon2024";
   const userId=localStorage.getItem("gid")||crypto.randomUUID();localStorage.setItem("gid",userId);
 let chatHistory=[],ve=false,rec=null,il=false;
-// Restaurer chatHistory au démarrage
-if(localStorage.getItem('gclearedChat') === 'true') {
-  chatHistory = [];
-} else if(localStorage.getItem('gchatHistory')) {
-  try {
-    chatHistory = JSON.parse(localStorage.getItem('gchatHistory'));
-  } catch(e) {
-    chatHistory = [];
-  }
-}
-
 function cp(){const p=document.getElementById('pi').value;if(p===PW){document.getElementById('lm').classList.remove('show');}else{document.getElementById('pe').style.display='block';}}
 function tvv(){ve=!ve;document.getElementById('vt').textContent=ve?'🔊':'🔇';}
 function sp(t){if(!ve)return;const u=new SpeechSynthesisUtterance(t);u.lang='fr-FR';u.rate=0.9;speechSynthesis.speak(u);}function speak(btn){
@@ -505,7 +464,7 @@ speechSynthesis.speak(u);
 }
 function tm(){if(!('webkitSpeechRecognition'in window||'SpeechRecognition'in window)){alert('Micro non supporte.');return;}if(il){rec.stop();return;}rec=new(window.SpeechRecognition||window.webkitSpeechRecognition)();rec.lang='fr-FR';rec.onstart=()=>{il=true;document.getElementById('mb').classList.add('on');};rec.onresult=(e)=>{document.getElementById('ui').value=e.results[0][0].transcript;};rec.onend=()=>{il=false;document.getElementById('mb').classList.remove('on');};rec.start();}
 function up(p){const i=document.getElementById('ui');i.value=p;i.focus();}
-function cc(){if(!confirm('Êtes-vous sûr de vouloir effacer tout ?')){return;}chatHistory=[];localStorage.setItem('gclearedChat','true');document.getElementById('chat').innerHTML='<div class="wl"><div class="big">🧠</div><h2>Nouvelle conversation</h2><p>Que puis-je faire ?</p></div>';addSug();}
+function cc(){chatHistory=[];document.getElementById('chat').innerHTML='<div class="wl"><div class="big">🧠</div><h2>Nouvelle conversation</h2><p>Que puis-je faire ?</p></div>';addSug();}
 function gt(ts=null){return (ts?new Date(ts):new Date()).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});}
 function copyMsg(event) {
   const btn = event.target || event.currentTarget;
@@ -607,7 +566,7 @@ document.getElementById('chat').scrollTop=document.getElementById('chat').scroll
 }
 if(!el){rty();if(full)el=am('guideon',full);}else{const bub=el.querySelector('.bub');if(bub)bub.innerHTML=marked.parse(full)+imgHtml;
 addCopyButtons(bub);}const _bub=el&&el.querySelector('.bub');if(_bub)_bub.innerHTML=_bub.innerHTML.replace(/Voici (un|une) (portrait|image|dessin|tableau|illustration|aperçu) de[^.!?\n]*[.!?]?\s*/gi,'');
-chatHistory.push({role:'user',content:msg});localStorage.setItem('gchatHistory',JSON.stringify(chatHistory));chatHistory.push({role:'assistant',content:full});ve=false;
+chatHistory.push({role:'user',content:msg});chatHistory.push({role:'assistant',content:full});ve=false;
 }catch(e){rty();am('guideon','Erreur: '+e.message);ve=false;}
 }
 document.getElementById('ui').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sm();}});
@@ -776,33 +735,6 @@ function loadStats(){
 <button onclick="showProfile()" style="background:none;border:none;color:#a78bfa;font-size:18px;cursor:pointer;" title="Paramètres">⚙️</button>
 <button onclick="closeSidebar()" style="background:none;border:none;color:#6b7280;font-size:18px;cursor:pointer;">✕</button>
 </div>
-<!-- SECTION PROJETS MENU LATÉRAL -->
-<div style="margin-bottom:16px;padding:12px;border-top:1px solid #2d1b69;">
-  <h3 style="color:#a78bfa;margin:0 0 10px 0;font-size:14px;">📂 Projets</h3>
-  <button class="pb" onclick="createNewProject()" style="margin-bottom:6px;width:100%;padding:8px;font-size:12px;">➕ Créer un nouveau projet</button>
-  <button class="pb" onclick="showMyProjects()" style="width:100%;padding:8px;font-size:12px;">📋 Voir mes projets</button>
-</div>
-
-<!-- DESCRIPTION GUIDÉON + OPTIONS -->
-<div style="margin-bottom:16px;padding:12px;background:#0f0f1a;border-radius:8px;border-left:3px solid #a78bfa;font-size:11px;">
-  <p style="color:#a78bfa;font-weight:bold;margin:0 0 6px 0;">🧠 Guidéon</p>
-  <p style="color:#9ca3af;margin:0 0 8px 0;">Ton assistant IA personnel intelligent, sage et bienveillant.</p>
-  <p style="color:#9ca3af;margin:0 0 8px 0;">Les projets fournissent à Guidéon un contexte partagé pour les chats et fichiers.</p>
-  
-  <p style="color:#a78bfa;font-weight:bold;margin:8px 0 6px 0;font-size:11px;">Options:</p>
-  
-  <label style="display:flex;align-items:flex-start;gap:6px;margin-bottom:8px;color:#9ca3af;cursor:pointer;">
-    <input type="radio" name="projectMode" value="default" id="modeDefault" checked onchange="saveProjectMode('default')" style="margin-top:2px;cursor:pointer;">
-    <span><strong>Par défaut</strong><br>Accès aux éléments d'autres chats.</span>
-  </label>
-  
-  <label style="display:flex;align-items:flex-start;gap:6px;color:#9ca3af;cursor:pointer;">
-    <input type="radio" name="projectMode" value="only" id="modeOnly" onchange="saveProjectMode('only')" style="margin-top:2px;cursor:pointer;">
-    <span><strong>Projet seulement</strong><br>Accès aux propres éléments seulement.</span>
-  </label>
-</div>
-
-
 <button onclick="newSession()" style="width:100%;padding:10px;background:linear-gradient(135deg,#4c1d95,#1e3a8a);color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:10px;">➕ Nouvelle conversation</button>
     <button id="floatingNewSessionBtn" onclick="newSession()" style="padding:10px;background:linear-gradient(135deg,#4c1d95,#1e3a8a);color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:10px;position:fixed;bottom:16px;left:12px;right:12px;z-index:1000;">➕ Nouvelle conversation</button>
 <input id="srch" placeholder="🔍 Rechercher..." oninput="searchHist(this.value)" style="width:100%;padding:8px;background:#1a1a2e;color:#fff;border:1px solid #2d1b69;border-radius:8px;margin-bottom:8px;box-sizing:border-box;font-size:12px;">
@@ -839,7 +771,14 @@ function loadStats(){
 <option value="creatif">✨ Créatif</option>
 <option value="technique">🔧 Technique</option>
 <option value="simplifie">🎯 Simplifié</option>
-</select><button onclick="saveToneStyle()" style="width:100%;padding:10px;background:#1e3a8a;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:12px;">💾 Enregistrer Tone/Style</button><label style="color:#9ca3af;font-size:12px;display:flex;align-items:center;gap:8px;margin-bottom:12px;cursor:pointer;"><input type="checkbox" id="tmpChat"> Mode temporaire</label><div style="margin-bottom:12px;"><label style="color:#a78bfa;font-size:12px;">🌙 Thème</label><select id="themeSelect" onchange="applyTheme(this.value)" style="width:100%;padding:8px;background:#0f0f1a;color:#fff;border:1px solid #2d1b69;border-radius:8px;font-size:13px;"><option value="dark">Sombre</option><option value="light">Clair</option></select></div><div style="margin-bottom:12px;"><label style="color:#a78bfa;font-size:12px;">🌍 Langue</label><select id="langSelect" style="width:100%;padding:8px;background:#0f0f1a;color:#fff;border:1px solid #2d1b69;border-radius:8px;font-size:13px;"><option value="auto">Auto</option><option value="fr">Français</option><option value="en">Anglais</option></select></div><div style="margin-bottom:12px;"><label style="color:#a78bfa;font-size:12px;">📏 Longueur</label><select id="lengthSelect" style="width:100%;padding:8px;background:#0f0f1a;color:#fff;border:1px solid #2d1b69;border-radius:8px;font-size:13px;"><option value="normal">Normale</option><option value="short">Courte</option><option value="long">Détaillée</option></select></div><div style="margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;"><label style="color:#a78bfa;font-size:12px;">🔔 Notifications</label><input type="checkbox" id="notifCheck" onchange="localStorage.setItem('gnotif',this.checked)" style="width:18px;height:18px;cursor:pointer;"></div><button onclick="showStats()" style="width:100%;padding:10px;background:#1e3a8a;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:8px;">📊 Statistiques</button><button onclick="viewMemory()" style="width:100%;padding:10px;background:#1e3a8a;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:8px;">🧠 Mémoire</button><button onclick="clearMem()" style="width:100%;padding:10px;background:#374151;color:#fff;border:none;border-radius:8px;cursor:pointer;">🗑️ Effacer mémoire</button></div><div id="tab-privacy" class="tab-content" style="display:none;"><h4 style="color:#a78bfa;">Données</h4><button onclick="downloadData()" style="width:100%;padding:10px;background:#1e3a8a;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:8px;">📥 Télécharger</button><button onclick="deleteData()" style="width:100%;padding:10px;background:#7f1d1d;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:16px;">🗑️ Supprimer</button><h4 style="color:#a78bfa;">Partage</h4><label style="color:#9ca3af;font-size:12px;"><input type="checkbox" id="shareControl"> Autoriser partage</label></div><div id="tab-security" class="tab-content" style="display:none;"><h4 style="color:#a78bfa;">Mot de passe</h4><input id="newPwdSec" type="password" placeholder="Nouveau" style="width:100%;padding:10px;background:#0f0f1a;color:#fff;border:1px solid #2d1b69;border-radius:8px;margin-bottom:8px;box-sizing:border-box;"><input id="confirmPwdSec" type="password" placeholder="Confirmer" style="width:100%;padding:10px;background:#0f0f1a;color:#fff;border:1px solid #2d1b69;border-radius:8px;margin-bottom:8px;box-sizing:border-box;"><button onclick="changePassword()" style="width:100%;padding:10px;background:#2d1b69;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:16px;">Changer</button><h4 style="color:#a78bfa;">Sessions</h4><div id="sessionsList" style="background:#0f0f1a;border:1px solid #2d1b69;border-radius:8px;padding:12px;margin-bottom:8px;font-size:12px;color:#9ca3af;">Chargement...</div><button onclick="logoutOtherSessions()" style="width:100%;padding:10px;background:#7f1d1d;color:#fff;border:none;border-radius:8px;cursor:pointer;">Déconnecter</button></div><div id="tab-accessibility" class="tab-content" style="display:none;"><h4 style="color:#a78bfa;">Thème</h4><select id="advThemeSelect" style="width:100%;padding:8px;background:#0f0f1a;color:#fff;border:1px solid #2d1b69;border-radius:8px;margin-bottom:12px;"><option>Sombre</option><option>Clair</option><option>Contraste</option></select><h4 style="color:#a78bfa;">Police</h4><input type="range" id="fontSizeSlider" min="12" max="18" value="14" onchange="changeFontSize(this.value)" style="width:100%;margin-bottom:8px;"><span id="fontSizeValue" style="color:#9ca3af;">14px</span><h4 style="color:#a78bfa;margin-top:12px;">Contraste</h4><input type="range" id="contrastSlider" min="100" max="150" value="100" onchange="changeContrast(this.value)" style="width:100%;margin-bottom:8px;"><span id="contrastValue" style="color:#9ca3af;">Normal</span></div><div id="tab-shared" class="tab-content" style="display:none;"><h4 style="color:#a78bfa;">📋 Conversations partagées</h4><div id="sharedList" style="background:#0f0f1a;border:1px solid #2d1b69;border-radius:8px;padding:12px;margin-bottom:12px;font-size:12px;color:#9ca3af;min-height:100px;">Chargement...</div><h4 style="color:#a78bfa;">Permissions</h4><label style="color:#9ca3af;font-size:12px;display:flex;align-items:center;gap:8px;margin-bottom:8px;"><input type="checkbox" id="allowPublicShare"> Autoriser partages publics</label><label style="color:#9ca3af;font-size:12px;display:flex;align-items:center;gap:8px;"><input type="checkbox" id="allowCollabShare"> Autoriser collaborations</label></div><div id="tab-privacy-advanced" class="tab-content" style="display:none;"><h4 style="color:#a78bfa;">🛡️ Confidentialité des données</h4><p style="color:#9ca3af;font-size:12px;margin-bottom:12px;">Guidéon s'engage pour la transparence des pratiques en matière de données.</p><label style="color:#9ca3af;font-size:12px;display:flex;align-items:center;gap:8px;margin-bottom:12px;cursor:pointer;"><input type="checkbox" id="analyticsConsent"> Permettre l'analyse des interactions (améliore l'IA)</label><label style="color:#9ca3af;font-size:12px;display:flex;align-items:center;gap:8px;margin-bottom:12px;cursor:pointer;"><input type="checkbox" id="cloudBackup"> Sauvegarder dans le cloud</label><label style="color:#9ca3af;font-size:12px;display:flex;align-items:center;gap:8px;margin-bottom:16px;cursor:pointer;"><input type="checkbox" id="deleteHistoryAuto" checked> Supprimer l'historique après 90 jours inactifs</label><h4 style="color:#a78bfa;">Données tierces</h4><div style="background:#0f0f1a;border-left:3px solid #7c3aed;padding:10px;border-radius:4px;margin-bottom:12px;"><p style="color:#9ca3af;font-size:11px;margin:0;">✓ Aucune donnée personnelle vendue à des tiers<br>✓ Chiffrement end-to-end disponible<br>✓ Droits RGPD & CCPA garantis</p></div><button onclick="downloadPrivacyReport()" style="width:100%;padding:10px;background:#1e3a8a;color:#fff;border:none;border-radius:8px;cursor:pointer;">📄 Rapport de confidentialité</button></div><div id="tab-updates" class="tab-content" style="display:none;"></div><div id="tab-realtime" class="tab-content" style="display:none;"><h4 style="color:#a78bfa;">📊 Données en temps réel</h4><button onclick="loadRealtime()" style="width:100%;padding:10px;background:#1e3a8a;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:12px;">🔄 Charger données</button><div id="realtimeData" style="background:#0f0f1a;border:1px solid #2d1b69;border-radius:8px;padding:12px;font-size:12px;color:#9ca3af;min-height:100px;"></div></div><div id="tab-about" class="tab-content" style="display:none;"><h4 style="color:#a78bfa;">Guidéon v2.0</h4><p style="color:#9ca3af;font-size:12px;margin-bottom:12px;">📅 Juillet 2026 | 🎯 Production</p><h4 style="color:#a78bfa;">Liens</h4><div style="display:flex;flex-direction:column;gap:6px;"><a href="#" style="color:#7c3aed;text-decoration:none;font-size:12px;">📖 Docs</a><a href="mailto:support@guideon.ai" style="color:#7c3aed;text-decoration:none;font-size:12px;">📧 Support</a><a href="#" style="color:#7c3aed;text-decoration:none;font-size:12px;">📊 Status</a></div></div><div style="display:flex;gap:8px;margin-top:16px;"><button onclick="saveProfile()" style="flex:1;padding:10px;background:#2d1b69;color:#fff;border:none;border-radius:8px;cursor:pointer;">💾 Sauver</button><button onclick="logout()" style="flex:1;padding:10px;background:#7f1d1d;color:#fff;border:none;border-radius:8px;cursor:pointer;">🚪 Quitter</button></div><button onclick="createNewAccount()" style="width:100%;padding:10px;background:#5f0000;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-top:8px;margin-bottom:8px;">❌ Supprimer</button><button onclick="switchToRegistration()" style="width:100%;padding:10px;background:#065f46;color:#fff;border:none;border-radius:8px;cursor:pointer;">➕ Créer compte</button><div id="memview" style="display:none;margin-top:12px;padding:12px;background:#0f0f1a;border-radius:8px;color:#9ca3af;font-size:12px;line-height:1.6;"></div></div></div>
+</select><button onclick="saveToneStyle()" style="width:100%;padding:10px;background:#1e3a8a;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:12px;">💾 Enregistrer Tone/Style</button><label style="color:#9ca3af;font-size:12px;display:flex;align-items:center;gap:8px;margin-bottom:12px;cursor:pointer;"><input type="checkbox" id="tmpChat"> Mode temporaire</label><div style="margin-bottom:12px;"><label style="color:#a78bfa;font-size:12px;">🌙 Thème</label><select id="themeSelect" onchange="applyTheme(this.value)" style="width:100%;padding:8px;background:#0f0f1a;color:#fff;border:1px solid #2d1b69;border-radius:8px;font-size:13px;"><option value="dark">Sombre</option><option value="light">Clair</option></select></div><div style="margin-bottom:12px;"><label style="color:#a78bfa;font-size:12px;">🌍 Langue</label><select id="langSelect" style="width:100%;padding:8px;background:#0f0f1a;color:#fff;border:1px solid #2d1b69;border-radius:8px;font-size:13px;"><option value="auto">Auto</option><option value="fr">Français</option><option value="en">Anglais</option></select></div><div style="margin-bottom:12px;"><label style="color:#a78bfa;font-size:12px;">📏 Longueur</label><select id="lengthSelect" style="width:100%;padding:8px;background:#0f0f1a;color:#fff;border:1px solid #2d1b69;border-radius:8px;font-size:13px;"><option value="normal">Normale</option><option value="short">Courte</option><option value="long">Détaillée</option></select></div><div style="margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;"><label style="color:#a78bfa;font-size:12px;">🔔 Notifications</label><input type="checkbox" id="notifCheck" onchange="localStorage.setItem('gnotif',this.checked)" style="width:18px;height:18px;cursor:pointer;"></div><button onclick="showStats()" style="width:100%;padding:10px;background:#1e3a8a;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:8px;">📊 Statistiques</button><button onclick="viewMemory()" style="width:100%;padding:10px;background:#1e3a8a;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:8px;">🧠 Mémoire</button><button onclick="clearMem()" style="width:100%;padding:10px;background:#374151;color:#fff;border:none;border-radius:8px;cursor:pointer;">🗑️ Effacer mémoire</button></div><div id="tab-privacy" class="tab-content" style="display:none;"><h4 style="color:#a78bfa;">Données</h4><button onclick="downloadData()" style="width:100%;padding:10px;background:#1e3a8a;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:8px;">📥 Télécharger</button><button onclick="deleteData()" style="width:100%;padding:10px;background:#7f1d1d;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:16px;">🗑️ Supprimer</button><h4 style="color:#a78bfa;">Partage</h4><label style="color:#9ca3af;font-size:12px;"><input type="checkbox" id="shareControl"> Autoriser partage</label></div><div id="tab-security" class="tab-content" style="display:none;"><h4 style="color:#a78bfa;">Mot de passe</h4><input id="newPwdSec" type="password" placeholder="Nouveau" style="width:100%;padding:10px;background:#0f0f1a;color:#fff;border:1px solid #2d1b69;border-radius:8px;margin-bottom:8px;box-sizing:border-box;"><input id="confirmPwdSec" type="password" placeholder="Confirmer" style="width:100%;padding:10px;background:#0f0f1a;color:#fff;border:1px solid #2d1b69;border-radius:8px;margin-bottom:8px;box-sizing:border-box;"><button onclick="changePassword()" style="width:100%;padding:10px;background:#2d1b69;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:16px;">Changer</button><h4 style="color:#a78bfa;">Sessions</h4><div id="sessionsList" style="background:#0f0f1a;border:1px solid #2d1b69;border-radius:8px;padding:12px;margin-bottom:8px;font-size:12px;color:#9ca3af;">Chargement...</div><button onclick="logoutOtherSessions()" style="width:100%;padding:10px;background:#7f1d1d;color:#fff;border:none;border-radius:8px;cursor:pointer;">Déconnecter</button></div><div id="tab-accessibility" class="tab-content" style="display:none;"><h4 style="color:#a78bfa;">Thème</h4><select id="advThemeSelect" style="width:100%;padding:8px;background:#0f0f1a;color:#fff;border:1px solid #2d1b69;border-radius:8px;margin-bottom:12px;"><option>Sombre</option><option>Clair</option><option>Contraste</option></select><h4 style="color:#a78bfa;">Police</h4><input type="range" id="fontSizeSlider" min="12" max="18" value="14" onchange="changeFontSize(this.value)" style="width:100%;margin-bottom:8px;"><span id="fontSizeValue" style="color:#9ca3af;">14px</span><h4 style="color:#a78bfa;margin-top:12px;">Contraste</h4><input type="range" id="contrastSlider" min="100" max="150" value="100" onchange="changeContrast(this.value)" style="width:100%;margin-bottom:8px;"><span id="contrastValue" style="color:#9ca3af;">Normal</span></div><div id="tab-shared" class="tab-content" style="display:none;"><h4 style="color:#a78bfa;">📋 Conversations partagées</h4><div id="sharedList" style="background:#0f0f1a;border:1px solid #2d1b69;border-radius:8px;padding:12px;margin-bottom:12px;font-size:12px;color:#9ca3af;min-height:100px;">Chargement...</div><h4 style="color:#a78bfa;">Permissions</h4><label style="color:#9ca3af;font-size:12px;display:flex;align-items:center;gap:8px;margin-bottom:8px;"><input type="checkbox" id="allowPublicShare"> Autoriser partages publics</label><label style="color:#9ca3af;font-size:12px;display:flex;align-items:center;gap:8px;"><input type="checkbox" id="allowCollabShare"> Autoriser collaborations</label></div><div id="tab-privacy-advanced" class="tab-content" style="display:none;"><h4 style="color:#a78bfa;">🛡️ Confidentialité des données</h4><p style="color:#9ca3af;font-size:12px;margin-bottom:12px;">Guidéon s'engage pour la transparence des pratiques en matière de données.</p><label style="color:#9ca3af;font-size:12px;display:flex;align-items:center;gap:8px;margin-bottom:12px;cursor:pointer;"><input type="checkbox" id="analyticsConsent"> Permettre l'analyse des interactions (améliore l'IA)</label><label style="color:#9ca3af;font-size:12px;display:flex;align-items:center;gap:8px;margin-bottom:12px;cursor:pointer;"><input type="checkbox" id="cloudBackup"> Sauvegarder dans le cloud</label><label style="color:#9ca3af;font-size:12px;display:flex;align-items:center;gap:8px;margin-bottom:16px;cursor:pointer;"><input type="checkbox" id="deleteHistoryAuto" checked> Supprimer l'historique après 90 jours inactifs</label><h4 style="color:#a78bfa;">Données tierces</h4><div style="background:#0f0f1a;border-left:3px solid #7c3aed;padding:10px;border-radius:4px;margin-bottom:12px;"><p style="color:#9ca3af;font-size:11px;margin:0;">✓ Aucune donnée personnelle vendue à des tiers<br>✓ Chiffrement end-to-end disponible<br>✓ Droits RGPD & CCPA garantis</p></div><button onclick="downloadPrivacyReport()" style="width:100%;padding:10px;background:#1e3a8a;color:#fff;border:none;border-radius:8px;cursor:pointer;">📄 Rapport de confidentialité</button></div><div id="tab-updates" class="tab-content" style="display:none;"><h4 style="color:#a78bfa;">📦 Mises à jour</h4><div style="background:#0f0f1a;border:1px solid #2d1b69;border-radius:8px;padding:12px;margin-bottom:16px;"><p style="color:#a78bfa;font-size:13px;font-weight:bold;margin:0 0 6px 0;">Version 2.0.5 - 30 juillet 2026</p><p style="color:#9ca3af;font-size:12px;margin:0 0 8px 0;">🎉 Nouvelles fonctionnalités disponibles</p><ul style="color:#9ca3af;font-size:12px;margin:6px 0;padding-left:20px;"><li>✨ Endpoint /api/sessions/logout-others</li><li>🔗 Interface d'inscription améliorée</li><li>🛡️ Nouvelles options de confidentialité</li><li>📊 Statistiques détaillées</li></ul></div><h4 style="color:#a78bfa;">Vérification</h4><button onclick="checkUpdates()" style="width:100%;padding:10px;background:#1e3a8a;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:8px;">🔄 Vérifier les mises à jour</button><label style="color:#9ca3af;font-size:12px;display:flex;align-items:center;gap:8px;margin-top:12px;"><input type="checkbox" id="autoUpdate" checked> Mises à jour automatiques</label></div><div id="tab-realtime" class="tab-content" style="display:none;"><h4 style="color:#a78bfa;">📊 Données en temps réel</h4><button onclick="loadRealtime()" style="width:100%;padding:10px;background:#1e3a8a;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:12px;">🔄 Charger données</button><div id="realtimeData" style="background:#0f0f1a;border:1px solid #2d1b69;border-radius:8px;padding:12px;font-size:12px;color:#9ca3af;min-height:100px;"></div></div><div id="tab-about" class="tab-content" style="display:none;"><h4 style="color:#a78bfa;">Guidéon v2.0</h4><p style="color:#9ca3af;font-size:12px;margin-bottom:12px;">📅 Juillet 2026 | 🎯 Production</p><h4 style="color:#a78bfa;">Liens</h4><div style="display:flex;flex-direction:column;gap:6px;"><a href="#" style="color:#7c3aed;text-decoration:none;font-size:12px;">📖 Docs</a><a href="mailto:support@guideon.ai" style="color:#7c3aed;text-decoration:none;font-size:12px;">📧 Support</a><a href="#" style="color:#7c3aed;text-decoration:none;font-size:12px;">📊 Status</a></div></div><div style="display:flex;gap:8px;margin-top:16px;"><button onclick="saveProfile()" style="flex:1;padding:10px;background:#2d1b69;color:#fff;border:none;border-radius:8px;cursor:pointer;">💾 Sauver</button><button onclick="logout()" style="flex:1;padding:10px;background:#7f1d1d;color:#fff;border:none;border-radius:8px;cursor:pointer;">🚪 Quitter</button></div><button onclick="createNewAccount()" style="width:100%;padding:10px;background:#5f0000;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-top:8px;margin-bottom:8px;">❌ Supprimer</button><button onclick="switchToRegistration()" style="width:100%;padding:10px;background:#065f46;color:#fff;border:none;border-radius:8px;cursor:pointer;">➕ Créer compte</button><div id="memview" style="display:none;margin-top:12px;padding:12px;background:#0f0f1a;border-radius:8px;color:#9ca3af;font-size:12px;line-height:1.6;"></div></div></div>
+<div id="imgmod" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9998;align-items:center;justify-content:center;">
+<div style="background:#1a1a2e;padding:24px;border-radius:16px;width:88%;max-width:340px;border:1px solid #2d1b69;">
+<h3 style="color:#a78bfa;margin-bottom:12px;">🖼️ Analyser une image</h3>
+<input id="imgurl" placeholder="URL de l'image" style="width:100%;padding:10px;background:#0f0f1a;color:#fff;border:1px solid #2d1b69;border-radius:8px;margin-bottom:8px;box-sizing:border-box;">
+<input id="imgq" placeholder="Question (optionnel)" style="width:100%;padding:10px;background:#0f0f1a;color:#fff;border:1px solid #2d1b69;border-radius:8px;margin-bottom:12px;box-sizing:border-box;">
+<button onclick="analyzeImg()" style="width:100%;padding:10px;background:linear-gradient(135deg,#065f46,#1e3a8a);color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:8px;">🔍 Analyser</button>
+<button onclick="document.getElementById('imgmod').style.display='none'" style="width:100%;padding:10px;background:transparent;color:#6b7280;border:1px solid #374151;border-radius:8px;cursor:pointer;">Annuler</button>
 </div></div>
 <div id="sharemod" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9998;align-items:center;justify-content:center;">
 <div style="background:#1a1a2e;padding:24px;border-radius:16px;width:88%;max-width:340px;border:1px solid #2d1b69;">
@@ -967,7 +906,7 @@ async function newSession(){
         const response = await fetch('/api/sessions', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({token: localStorage.getItem('gtoken')})});
         const data = await response.json();
         if(data.success && data.session) {
-            localStorage.setItem('session', data.session.id);
+            localStorage.setItem('gsession', data.session.id);
             location.reload();
             
         }
@@ -978,7 +917,7 @@ async function newSession(){
 }
 
 async function switchSession(id){
-  curSession=id;localStorage.setItem('session',id);
+  curSession=id;localStorage.setItem('gsession',id);
   const chat=document.getElementById('chat');
   if(chat)chat.innerHTML='';
   try{history=[];}catch(e){}
@@ -1034,7 +973,7 @@ async function deleteSession(id){
   if(!confirm('Supprimer cette conversation ?'))return;
   const tok=localStorage.getItem('gtoken');
   await fetch('/api/sessions/'+id,{method:'DELETE',headers:{'Authorization':'Bearer '+tok}});
-  if(curSession===id){curSession=null;localStorage.removeItem('session');const chat=document.getElementById('chat');if(chat)chat.innerHTML='';try{history=[];}catch(e){}}
+  if(curSession===id){curSession=null;localStorage.removeItem('gsession');const chat=document.getElementById('chat');if(chat)chat.innerHTML='';try{history=[];}catch(e){}}
   loadSessions();
 }
 
@@ -1050,12 +989,12 @@ async function doAuth(){
     document.getElementById('am').style.display='none';
     const lm=document.getElementById('lm');if(lm)lm.classList.remove('show');
     showBar(localStorage.getItem('gname'));
-    const saved=localStorage.getItem('session');
+    const saved=localStorage.getItem('gsession');
     if(saved){curSession=parseInt(saved);await switchSession(curSession);}else await newSession();
   }catch(err){er.textContent='Erreur de connexion';er.style.display='block';btn.textContent='Se connecter';btn.disabled=false;}
 }
 
-function logout(){if(!confirm('Se déconnecter ?'))return;localStorage.removeItem('gtoken');localStorage.removeItem('gname');localStorage.removeItem('session');location.reload();}
+function logout(){if(!confirm('Se déconnecter ?'))return;localStorage.removeItem('gtoken');localStorage.removeItem('gname');localStorage.removeItem('gsession');location.reload();}
 
 function applyTheme(theme){
   localStorage.setItem('gtheme', theme);
@@ -1165,7 +1104,7 @@ if(!tok){
 }else{
   showBar(localStorage.getItem('gname'));
   const lm=document.getElementById('lm');if(lm)lm.classList.remove('show');
-  const saved=localStorage.getItem('session');
+  const saved=localStorage.getItem('gsession');
   if(saved){curSession=parseInt(saved);switchSession(curSession);}
   else newSession();
 }
@@ -1279,7 +1218,7 @@ window.fetch=async function(u,o={}){
         const tok2=localStorage.getItem('gtoken');
         const sr=await _of('/api/sessions',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:tokenLS,title:'Nouvelle conversation'})});
         const ss=await sr.json();
-        if(ss&&ss.id){curSession=ss.id;localStorage.setItem('session',ss.id);}
+        if(ss&&ss.id){curSession=ss.id;localStorage.setItem('gsession',ss.id);}
       }
       b.session_id=curSession;
       const imgWords=['génère une image','crée une image','génère moi','dessine','montre une image','donne moi une image','fais moi une image','je veux une image','montre moi une image','affiche une image','generate an image','create an image','draw me'];
@@ -1368,7 +1307,7 @@ function addCopyButtons(el){
 function switchTab(t){document.querySelectorAll('.tab-content').forEach(e=>e.style.display='none');document.querySelectorAll('.tab-btn').forEach(e=>{e.style.color='#6b7280';e.style.borderBottomColor='transparent'});document.getElementById('tab-'+t).style.display='block';const e=document.querySelector('[data-tab="'+t+'"]');e&&(e.style.color='#a78bfa',e.style.borderBottomColor='#7c3aed')}
 function downloadData(){const t=localStorage.getItem('gtoken');t&&fetch('/api/user/data',{headers:{'Authorization':'Bearer '+t}}).then(t=>t.blob()).then(t=>{const e=URL.createObjectURL(t),a=document.createElement('a');a.href=e,a.download='guideon-data-'+(new Date).toISOString().split('T')[0]+'.json',a.click(),URL.revokeObjectURL(e)}).catch(t=>alert('Erreur: '+t.message))}
 function deleteData(){confirm('⚠️ Données supprimées définitivement?')&&fetch('/api/user/data',{method:'DELETE',headers:{'Authorization':'Bearer '+localStorage.getItem('gtoken')}}).then(t=>t.json()).then(t=>alert(t.success?'✅ Supprimé':'❌ '+t.error)).catch(t=>alert('Erreur'))}
-function showModal(title,message,okText='OK',cancelText=null,onOk=null,onCancel=null){const d=document.createElement('div');d.id='modalOverlay_'+Date.now();d.style.cssText='position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:10000;';const m=document.createElement('div');m.style.cssText='background:#0f0f1a;border:2px solid #7c3aed;border-radius:12px;padding:20px;max-width:400px;box-shadow:0 10px 40px rgba(0,0,0,0.5);';const t=document.createElement('h3');t.textContent=title;t.style.cssText='color:#a78bfa;margin:0 0 12px 0;font-size:16px;';const msg=document.createElement('p');msg.textContent=message;msg.style.cssText='color:#9ca3af;margin:0 0 20px 0;font-size:14px;line-height:1.5;';const btns=document.createElement('div');btns.style.cssText='display:flex;gap:8px;justify-content:flex-end;';if(cancelText){const cancelBtn=document.createElement('button');cancelBtn.textContent=cancelText;cancelBtn.style.cssText='padding:8px 16px;background:#374151;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:13px;';cancelBtn.onclick=()=>{d.remove();if(onCancel)onCancel();};btns.appendChild(cancelBtn);}const okBtn=document.createElement('button');okBtn.textContent=okText;okBtn.style.cssText='padding:8px 16px;background:#2d1b69;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:13px;';okBtn.onclick=()=>{d.remove();if(onOk)onOk();};btns.appendChild(okBtn);m.appendChild(t);m.appendChild(msg);m.appendChild(btns);d.appendChild(m);document.body.appendChild(d);}function changePassword(){const newPwd=document.getElementById('newPwdSec').value,confirmPwd=document.getElementById('confirmPwdSec').value;if(!newPwd||!confirmPwd){showModal('Erreur','Remplissez tous les champs','OK');return;}if(newPwd!==confirmPwd){showModal('Erreur','Les mots de passe ne correspondent pas','OK');return;}showModal('Confirmation','Êtes-vous sûr de vouloir changer votre mot de passe?','Annuler','Accepter',()=>{},()=>{const btn=event.target;btn.disabled=true;btn.textContent='⏳ Changement...';fetch('/api/user/password',{method:'PUT',headers:{'Authorization':'Bearer '+localStorage.getItem('gtoken'),'Content-Type':'application/json'},body:JSON.stringify({password:newPwd})}).then(r=>r.json()).then(r=>{if(r.success){showModal('Succès','✅ Mot de passe changé!','OK',null,()=>{document.getElementById('newPwdSec').value='';document.getElementById('confirmPwdSec').value='';btn.disabled=false;btn.textContent='Changer';});}else{showModal('Erreur','❌ '+r.error,'OK',null,()=>{btn.disabled=false;btn.textContent='Changer';});}}).catch(e=>{showModal('Erreur','❌ Erreur: '+e.message,'OK',null,()=>{btn.disabled=false;btn.textContent='Changer';});});});}
+function changePassword(){const t=document.getElementById('newPwdSec').value,e=document.getElementById('confirmPwdSec').value;t&&e?t===e?fetch('/api/user/password',{method:'PUT',headers:{'Authorization':'Bearer '+localStorage.getItem('gtoken'),'Content-Type':'application/json'},body:JSON.stringify({password:t})}).then(t=>t.json()).then(e=>{e.success?(alert('✅ Changé!'),document.getElementById('newPwdSec').value='',document.getElementById('confirmPwdSec').value=''):alert('❌ '+e.error)}).catch(t=>alert('Erreur')):alert('❌ Mots de passe différents'):alert('❌ Remplissez les champs')}
 async function logoutOtherSessions(){confirm('Déconnecter les autres sessions?')&&fetch('/api/sessions/logout-others',{method:'POST',headers:{'Authorization':'Bearer '+localStorage.getItem('gtoken')}}).then(t=>t.json()).then(t=>alert(t.message||'✅ Fermé')).catch(()=>alert('Erreur'))}
 function changeFontSize(t){document.getElementById('fontSizeValue').textContent=t+'px',document.body.style.fontSize=t+'px',localStorage.setItem('gfontsize',t)}
 function changeContrast(t){const e=['Normal','Élevé','Très élevé'],a=Math.min(2,Math.floor((t-100)/25));document.getElementById('contrastValue').textContent=e[a]||'Normal',document.body.style.filter='contrast('+t/100+')',localStorage.setItem('gcontrast',t)}
@@ -1436,129 +1375,8 @@ function loadStats(){
 
 
 </script>
-<!-- MODALE INTERACTIVE CRÉER UN PROJET (STYLE CHATGPT) -->
-<div id="createProjectInterface" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:10000;justify-content:center;align-items:center;">
-  <div style="background:#0f0f1a;border:1px solid #2d1b69;border-radius:16px;padding:24px;width:90%;max-width:500px;max-height:85vh;overflow-y:auto;">
-    
-    <!-- HEADER -->
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
-      <h1 style="color:#a78bfa;margin:0;font-size:20px;">Nouveau projet</h1>
-      <button onclick="closeCreateProjectInterface()" style="background:none;border:none;color:#9ca3af;font-size:24px;cursor:pointer;">✕</button>
-    </div>
-    
-    <!-- INPUT PRINCIPAL -->
-    <input id="projectMainInput" type="text" placeholder="par exemple, planification d'un anniversaire" style="width:100%;padding:12px;background:#1a1a2e;border:1px solid #2d1b69;border-radius:8px;color:#fff;font-size:14px;box-sizing:border-box;margin-bottom:20px;">
-    
-    <!-- CATÉGORIES -->
-    <p style="color:#a78bfa;font-weight:bold;margin:0 0 12px 0;font-size:12px;">Sélectionne une catégorie:</p>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:20px;">
-      <button class="categoryBtn" onclick="selectCategory('devoirs', this)" style="padding:10px;background:#2d1b69;color:#fff;border:1px solid #a78bfa;border-radius:8px;cursor:pointer;font-size:12px;transition:all 0.3s;">🏠 Devoirs</button>
-      <button class="categoryBtn" onclick="selectCategory('investissement', this)" style="padding:10px;background:#2d1b69;color:#fff;border:1px solid #a78bfa;border-radius:8px;cursor:pointer;font-size:12px;transition:all 0.3s;">💰 Investissement</button>
-      <button class="categoryBtn" onclick="selectCategory('ecriture', this)" style="padding:10px;background:#2d1b69;color:#fff;border:1px solid #a78bfa;border-radius:8px;cursor:pointer;font-size:12px;transition:all 0.3s;">✏️ Écriture</button>
-      <button class="categoryBtn" onclick="selectCategory('sante', this)" style="padding:10px;background:#2d1b69;color:#fff;border:1px solid #a78bfa;border-radius:8px;cursor:pointer;font-size:12px;transition:all 0.3s;">🏥 Santé</button>
-      <button class="categoryBtn" onclick="selectCategory('voyages', this)" style="padding:10px;background:#2d1b69;color:#fff;border:1px solid #a78bfa;border-radius:8px;cursor:pointer;font-size:12px;transition:all 0.3s;">✈️ Voyages</button>
-      <button class="categoryBtn" onclick="selectCategory('autre', this)" style="padding:10px;background:#2d1b69;color:#fff;border:1px solid #a78bfa;border-radius:8px;cursor:pointer;font-size:12px;transition:all 0.3s;">🎯 Autre</button>
-    </div>
-    
-    <!-- TEXTAREA DESCRIPTION -->
-    <p style="color:#a78bfa;font-weight:bold;margin:0 0 8px 0;font-size:12px;">Description du projet (optionnel):</p>
-    <textarea id="projectDesc" placeholder="Ajoute plus de détails sur ton projet..." style="width:100%;padding:12px;background:#1a1a2e;border:1px solid #2d1b69;border-radius:8px;color:#fff;font-size:12px;box-sizing:border-box;margin-bottom:20px;height:120px;resize:none;"></textarea>
-    
-    <!-- OPTIONS SUPPLÉMENTAIRES -->
-    <p style="color:#a78bfa;font-weight:bold;margin:0 0 12px 0;font-size:12px;">Options supplémentaires:</p>
-    <label style="display:flex;align-items:center;gap:8px;margin-bottom:10px;color:#9ca3af;font-size:12px;cursor:pointer;">
-      <input type="radio" name="newProjectMode" value="default" id="newModeDef" checked style="cursor:pointer;">
-      <span><strong>Par défaut</strong> - Accès aux éléments d'autres chats</span>
-    </label>
-    <label style="display:flex;align-items:center;gap:8px;margin-bottom:20px;color:#9ca3af;font-size:12px;cursor:pointer;">
-      <input type="radio" name="newProjectMode" value="only" id="newModeOnly" style="cursor:pointer;">
-      <span><strong>Projet seulement</strong> - Éléments visibles seulement ici</span>
-    </label>
-    
-    <!-- BOUTONS ACTION -->
-    <div style="display:flex;gap:10px;">
-      <button onclick="saveNewProject()" style="flex:1;padding:12px;background:#a78bfa;color:#000;border:none;border-radius:8px;font-weight:bold;cursor:pointer;font-size:14px;">✅ Créer un projet</button>
-      <button onclick="closeCreateProjectInterface()" style="flex:1;padding:12px;background:#2d1b69;color:#fff;border:1px solid #a78bfa;border-radius:8px;cursor:pointer;font-size:14px;">❌ Annuler</button>
-    </div>
-  </div>
-</div>
-
-
-<!-- MODALE 1: CONFIRMATION CATÉGORIE -->
-<div id="confirmCategoryModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:10001;justify-content:center;align-items:center;">
-  <div style="background:#0f0f1a;border:1px solid #2d1b69;border-radius:12px;padding:20px;width:85%;max-width:350px;">
-    <h2 style="color:#a78bfa;margin:0 0 15px 0;font-size:16px;">Confirmer la catégorie?</h2>
-    <p id="confirmCategoryText" style="color:#9ca3af;margin:0 0 20px 0;font-size:13px;"></p>
-    <div style="display:flex;gap:10px;">
-      <button onclick="confirmCategory()" style="flex:1;padding:10px;background:#a78bfa;color:#000;border:none;border-radius:8px;font-weight:bold;cursor:pointer;">✅ OK</button>
-      <button onclick="closeConfirmCategory()" style="flex:1;padding:10px;background:#2d1b69;color:#fff;border:1px solid #a78bfa;border-radius:8px;cursor:pointer;">❌ Annuler</button>
-    </div>
-  </div>
-</div>
-
-<!-- MODALE 2: VOIR MES PROJETS -->
-<div id="myProjectsModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:10000;justify-content:center;align-items:center;">
-  <div style="background:#0f0f1a;border:1px solid #2d1b69;border-radius:12px;padding:20px;width:90%;max-width:450px;max-height:80vh;overflow-y:auto;">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;">
-      <h2 style="color:#a78bfa;margin:0;font-size:16px;">📂 Mes Projets</h2>
-      <button onclick="closeMyProjectsModal()" style="background:none;border:none;color:#9ca3af;font-size:20px;cursor:pointer;">✕</button>
-    </div>
-    
-    <div id="projectsListContainer" style="margin-bottom:15px;"></div>
-    
-    <button onclick="closeMyProjectsModal()" style="width:100%;padding:10px;background:#2d1b69;color:#fff;border:1px solid #a78bfa;border-radius:8px;cursor:pointer;font-size:13px;">❌ Fermer</button>
-  </div>
-</div>
-
-
-<!-- MODALE 3: PROJET CRÉÉ AVEC SUCCÈS -->
-<div id="projectCreatedModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:10002;justify-content:center;align-items:center;">
-  <div style="background:#0f0f1a;border:1px solid #2d1b69;border-radius:12px;padding:20px;width:85%;max-width:350px;">
-    <h2 style="color:#65a30d;margin:0 0 15px 0;font-size:16px;">✅ Projet créé avec succès!</h2>
-    <p id="projectCreatedName" style="color:#9ca3af;margin:0 0 20px 0;font-size:13px;"></p>
-    <div style="display:flex;gap:10px;">
-      <button onclick="closeProjectCreatedModal()" style="width:100%;padding:10px;background:#a78bfa;color:#000;border:none;border-radius:8px;font-weight:bold;cursor:pointer;">✅ OK</button>
-    </div>
-  </div>
-</div>
-
-
-<script>
-(function() {
-  const chatDiv = document.getElementById('chat');
-  if (!chatDiv) return;
-  
-  let touchStartY = 0;
-  let touchEndY = 0;
-  
-  chatDiv.addEventListener('touchstart', (e) => {
-    touchStartY = e.changedTouches[0].screenY;
-  }, false);
-  
-  chatDiv.addEventListener('touchend', (e) => {
-    touchEndY = e.changedTouches[0].screenY;
-    handleSwipe();
-  }, false);
-  
-  function handleSwipe() {
-    const diff = touchStartY - touchEndY;
-    const threshold = 50;
-    
-    if (Math.abs(diff) > threshold) {
-      if (diff > 0) {
-        // Swipe vers le haut = scroll vers le bas
-        chatDiv.scrollTop += 100;
-      } else {
-        // Swipe vers le bas = scroll vers le haut
-        chatDiv.scrollTop -= 100;
-      }
-    }
-  }
-})();
-</script>
-<div id="imgmod" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9999;align-items:center;justify-content:center;"><div style="background:#1a1a2e;padding:24px;border-radius:16px;width:90%;max-width:450px;border:1px solid #2d1b69;"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;"><h3 style="color:#a78bfa;margin:0;">🖼️ Analyser une image</h3><button onclick="document.getElementById('imgmod').style.display='none'" style="background:none;border:none;color:#6b7280;font-size:24px;cursor:pointer;">✕</button></div><div style="display:flex;gap:8px;margin-bottom:16px;border-bottom:1px solid #2d1b69;padding-bottom:8px;"><button onclick="document.getElementById('urlTab').style.display='block';document.getElementById('uploadTab').style.display='none'" style="background:none;border:none;color:#a78bfa;cursor:pointer;font-size:14px;padding:8px;">🔗 URL</button><button onclick="document.getElementById('uploadTab').style.display='block';document.getElementById('urlTab').style.display='none'" style="background:none;border:none;color:#6b7280;cursor:pointer;font-size:14px;padding:8px;">📱 Images</button></div><div id="urlTab" style="display:block;"><input type="url" id="imgUrl" placeholder="https://exemple.com/image.jpg" style="width:100%;padding:10px;background:#0f0f1a;border:1px solid #2d1b69;color:#e0e0e0;border-radius:6px;margin-bottom:12px;font-size:13px;"></div><div id="uploadTab" style="display:none;"><input type="file" id="imgFile" accept="image/*" style="width:100%;padding:8px;background:#0f0f1a;border:1px solid #2d1b69;color:#e0e0e0;border-radius:6px;margin-bottom:12px;font-size:13px;"></div><textarea id="imgDesc" placeholder="Optionnel: Pose une question..." style="width:100%;padding:10px;background:#0f0f1a;border:1px solid #2d1b69;color:#e0e0e0;border-radius:6px;margin-bottom:12px;font-size:13px;resize:vertical;height:80px;"></textarea><button onclick="analyzeImage()" style="width:100%;padding:10px;background:linear-gradient(135deg,#7c3aed,#2563eb);border:none;color:white;border-radius:6px;cursor:pointer;font-weight:bold;">📊 Analyser</button></div></div>
-<script>function analyzeImage(){const url=document.getElementById("imgUrl").value;const file=document.getElementById("imgFile").files[0];const desc=document.getElementById("imgDesc").value||"Décris cette image";if(!url&&!file){am("guideon","Fournis une URL ou upload une image");return;}ve=true;document.getElementById("imgmod").style.display="none";am("guideon","🔍 Analyse en cours, veuillez patienter (5-10 secondes)...");if(url){fetch("/api/analyze",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({imageUrl:url,question:desc})}).then(r=>r.json()).then(d=>{ve=false;am("guideon",d.reply||"Erreur");}).catch(e=>{ve=false;am("guideon","Erreur: "+e.message);});}else if(file){const reader=new FileReader();reader.onload=(e)=>{fetch("/api/analyze",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({imageBase64:e.target.result,question:desc})}).then(r=>r.json()).then(d=>{ve=false;am("guideon",d.reply||"Erreur");}).catch(e=>{ve=false;am("guideon","Erreur: "+e.message);});};reader.readAsDataURL(file);}}</script>
 </body>
+<script src="functions.js"></script>
 <script>
 // Fonctions pour les nouveaux onglets
   const el = document.getElementById('realtimeData');
@@ -1615,83 +1433,4 @@ function switchToRegistration(){
   alert("✅ Formulaire d'enregistrement prêt");
 }
 </script>
-<script src="functions.js"></script>
-<!-- Modal Privacy Report -->
-<div id="privacyModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9999;align-items:flex-start;justify-content:center;overflow-y:auto;padding-top:20px;">
-  <div style="background:#1a1a2e;padding:24px;border-radius:16px;width:88%;max-width:600px;border:1px solid #2d1b69;margin-bottom:20px;">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-      <h3 style="color:#a78bfa;margin:0;">📊 Rapport de Confidentialité</h3>
-      <button onclick="document.getElementById('privacyModal').style.display='none'" style="background:none;border:none;color:#6b7280;font-size:24px;cursor:pointer;padding:0;width:24px;height:24px;">✕</button>
-    </div>
-    <div id="privacyContent" style="color:#9ca3af;font-size:12px;line-height:1.8;margin-bottom:16px;"></div>
-    <div style="display:flex;gap:8px;">
-      <button onclick="downloadPrivacyPDF()" style="flex:1;padding:10px;background:#2d1b69;color:#fff;border:none;border-radius:8px;cursor:pointer;">📥 Télécharger PDF</button>
-      <button onclick="document.getElementById('privacyModal').style.display='none'" style="flex:1;padding:10px;background:#374151;color:#fff;border:none;border-radius:8px;cursor:pointer;">✕ Fermer</button>
-    </div>
-  </div>
-</div>
-
-</html><script>
-document.addEventListener('DOMContentLoaded', () => {
-  const tabUpdates = document.getElementById('tab-updates');
-  if (tabUpdates) {
-    const observer = new MutationObserver(() => {
-      if (tabUpdates.style.display !== 'none') {
-        checkUpdates();
-      }
-    });
-    observer.observe(tabUpdates, { attributes: true });
-  }
-});
-</script>
-<!-- MODALE INTERACTIVE CRÉER UN PROJET (STYLE CHATGPT) -->
-</div>
-
-
-<!-- MODALE 3: PROJET CRÉÉ AVEC SUCCÈS -->
-<div  style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:10002;justify-content:center;align-items:center;">
-  <div style="background:#0f0f1a;border:1px solid #2d1b69;border-radius:12px;padding:20px;width:85%;max-width:350px;">
-    <h2 style="color:#65a30d;margin:0 0 15px 0;font-size:16px;">✅ Projet créé avec succès!</h2>
-    <p id="projectCreatedName" style="color:#9ca3af;margin:0 0 20px 0;font-size:13px;"></p>
-    <div style="display:flex;gap:10px;">
-      <button onclick="closeProjectCreatedModal()" style="width:100%;padding:10px;background:#a78bfa;color:#000;border:none;border-radius:8px;font-weight:bold;cursor:pointer;">✅ OK</button>
-    </div>
-  </div>
-</div>
-
-
-<script>
-(function() {
-  const chatDiv = document.getElementById('chat');
-  if (!chatDiv) return;
-  
-  let touchStartY = 0;
-  let touchEndY = 0;
-  
-  chatDiv.addEventListener('touchstart', (e) => {
-    touchStartY = e.changedTouches[0].screenY;
-  }, false);
-  
-  chatDiv.addEventListener('touchend', (e) => {
-    touchEndY = e.changedTouches[0].screenY;
-    handleSwipe();
-  }, false);
-  
-  function handleSwipe() {
-    const diff = touchStartY - touchEndY;
-    const threshold = 50;
-    
-    if (Math.abs(diff) > threshold) {
-      if (diff > 0) {
-        // Swipe vers le haut = scroll vers le bas
-        chatDiv.scrollTop += 100;
-      } else {
-        // Swipe vers le bas = scroll vers le haut
-        chatDiv.scrollTop -= 100;
-      }
-    }
-  }
-})();
-</script>
-</body>
 </html>

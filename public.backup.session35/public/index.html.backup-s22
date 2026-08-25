@@ -456,17 +456,6 @@ function loadStats(){
 const PW="guideon2024";
   const userId=localStorage.getItem("gid")||crypto.randomUUID();localStorage.setItem("gid",userId);
 let chatHistory=[],ve=false,rec=null,il=false;
-// Restaurer chatHistory au démarrage
-if(localStorage.getItem('gclearedChat') === 'true') {
-  chatHistory = [];
-} else if(localStorage.getItem('gchatHistory')) {
-  try {
-    chatHistory = JSON.parse(localStorage.getItem('gchatHistory'));
-  } catch(e) {
-    chatHistory = [];
-  }
-}
-
 function cp(){const p=document.getElementById('pi').value;if(p===PW){document.getElementById('lm').classList.remove('show');}else{document.getElementById('pe').style.display='block';}}
 function tvv(){ve=!ve;document.getElementById('vt').textContent=ve?'🔊':'🔇';}
 function sp(t){if(!ve)return;const u=new SpeechSynthesisUtterance(t);u.lang='fr-FR';u.rate=0.9;speechSynthesis.speak(u);}function speak(btn){
@@ -505,7 +494,7 @@ speechSynthesis.speak(u);
 }
 function tm(){if(!('webkitSpeechRecognition'in window||'SpeechRecognition'in window)){alert('Micro non supporte.');return;}if(il){rec.stop();return;}rec=new(window.SpeechRecognition||window.webkitSpeechRecognition)();rec.lang='fr-FR';rec.onstart=()=>{il=true;document.getElementById('mb').classList.add('on');};rec.onresult=(e)=>{document.getElementById('ui').value=e.results[0][0].transcript;};rec.onend=()=>{il=false;document.getElementById('mb').classList.remove('on');};rec.start();}
 function up(p){const i=document.getElementById('ui');i.value=p;i.focus();}
-function cc(){if(!confirm('Êtes-vous sûr de vouloir effacer tout ?')){return;}chatHistory=[];localStorage.setItem('gclearedChat','true');document.getElementById('chat').innerHTML='<div class="wl"><div class="big">🧠</div><h2>Nouvelle conversation</h2><p>Que puis-je faire ?</p></div>';addSug();}
+function cc(){chatHistory=[];document.getElementById('chat').innerHTML='<div class="wl"><div class="big">🧠</div><h2>Nouvelle conversation</h2><p>Que puis-je faire ?</p></div>';addSug();}
 function gt(ts=null){return (ts?new Date(ts):new Date()).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});}
 function copyMsg(event) {
   const btn = event.target || event.currentTarget;
@@ -607,7 +596,7 @@ document.getElementById('chat').scrollTop=document.getElementById('chat').scroll
 }
 if(!el){rty();if(full)el=am('guideon',full);}else{const bub=el.querySelector('.bub');if(bub)bub.innerHTML=marked.parse(full)+imgHtml;
 addCopyButtons(bub);}const _bub=el&&el.querySelector('.bub');if(_bub)_bub.innerHTML=_bub.innerHTML.replace(/Voici (un|une) (portrait|image|dessin|tableau|illustration|aperçu) de[^.!?\n]*[.!?]?\s*/gi,'');
-chatHistory.push({role:'user',content:msg});localStorage.setItem('gchatHistory',JSON.stringify(chatHistory));chatHistory.push({role:'assistant',content:full});ve=false;
+chatHistory.push({role:'user',content:msg});chatHistory.push({role:'assistant',content:full});ve=false;
 }catch(e){rty();am('guideon','Erreur: '+e.message);ve=false;}
 }
 document.getElementById('ui').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sm();}});
@@ -1556,8 +1545,6 @@ function loadStats(){
   }
 })();
 </script>
-<div id="imgmod" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9999;align-items:center;justify-content:center;"><div style="background:#1a1a2e;padding:24px;border-radius:16px;width:90%;max-width:450px;border:1px solid #2d1b69;"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;"><h3 style="color:#a78bfa;margin:0;">🖼️ Analyser une image</h3><button onclick="document.getElementById('imgmod').style.display='none'" style="background:none;border:none;color:#6b7280;font-size:24px;cursor:pointer;">✕</button></div><div style="display:flex;gap:8px;margin-bottom:16px;border-bottom:1px solid #2d1b69;padding-bottom:8px;"><button onclick="document.getElementById('urlTab').style.display='block';document.getElementById('uploadTab').style.display='none'" style="background:none;border:none;color:#a78bfa;cursor:pointer;font-size:14px;padding:8px;">🔗 URL</button><button onclick="document.getElementById('uploadTab').style.display='block';document.getElementById('urlTab').style.display='none'" style="background:none;border:none;color:#6b7280;cursor:pointer;font-size:14px;padding:8px;">📱 Images</button></div><div id="urlTab" style="display:block;"><input type="url" id="imgUrl" placeholder="https://exemple.com/image.jpg" style="width:100%;padding:10px;background:#0f0f1a;border:1px solid #2d1b69;color:#e0e0e0;border-radius:6px;margin-bottom:12px;font-size:13px;"></div><div id="uploadTab" style="display:none;"><input type="file" id="imgFile" accept="image/*" style="width:100%;padding:8px;background:#0f0f1a;border:1px solid #2d1b69;color:#e0e0e0;border-radius:6px;margin-bottom:12px;font-size:13px;"></div><textarea id="imgDesc" placeholder="Optionnel: Pose une question..." style="width:100%;padding:10px;background:#0f0f1a;border:1px solid #2d1b69;color:#e0e0e0;border-radius:6px;margin-bottom:12px;font-size:13px;resize:vertical;height:80px;"></textarea><button onclick="analyzeImage()" style="width:100%;padding:10px;background:linear-gradient(135deg,#7c3aed,#2563eb);border:none;color:white;border-radius:6px;cursor:pointer;font-weight:bold;">📊 Analyser</button></div></div>
-<script>function analyzeImage(){const url=document.getElementById("imgUrl").value;const file=document.getElementById("imgFile").files[0];const desc=document.getElementById("imgDesc").value||"Décris cette image";if(!url&&!file){am("guideon","Fournis une URL ou upload une image");return;}ve=true;document.getElementById("imgmod").style.display="none";am("guideon","🔍 Analyse en cours, veuillez patienter (5-10 secondes)...");if(url){fetch("/api/analyze",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({imageUrl:url,question:desc})}).then(r=>r.json()).then(d=>{ve=false;am("guideon",d.reply||"Erreur");}).catch(e=>{ve=false;am("guideon","Erreur: "+e.message);});}else if(file){const reader=new FileReader();reader.onload=(e)=>{fetch("/api/analyze",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({imageBase64:e.target.result,question:desc})}).then(r=>r.json()).then(d=>{ve=false;am("guideon",d.reply||"Erreur");}).catch(e=>{ve=false;am("guideon","Erreur: "+e.message);});};reader.readAsDataURL(file);}}</script>
 </body>
 <script>
 // Fonctions pour les nouveaux onglets

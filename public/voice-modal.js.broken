@@ -1,0 +1,173 @@
+// SESSION 35 - MODAL VOCALE (RESTAURÉE + FIXES CRITIQUES SEULEMENT)
+let recognition = null;
+let isListening = false;
+let isGuideOnSpeaking = false;
+let ttsUtterance = null;
+let voiceForm = 'Cove';
+
+const voiceForms = {
+  'Cove': { pitch: 1, rate: 1 },
+  'Spruce': { pitch: 0.9, rate: 0.95 },
+  'Breeze': { pitch: 1.1, rate: 1.05 },
+  'Sol': { pitch: 0.8, rate: 1.1 },
+  'Jupiter': { pitch: 1.2, rate: 1 },
+  'Ember': { pitch: 1, rate: 0.9 },
+  'Maple': { pitch: 0.95, rate: 1.15 },
+  'Vale': { pitch: 1.3, rate: 0.85 },
+  'Arbor': { pitch: 0.85, rate: 1.2 }
+};
+
+function initVoice() {
+  if (recognition) return;
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) return;
+  recognition = new SR();
+  recognition.continuous = true;
+  recognition.interimResults = true;
+  recognition.lang = 'fr-FR';
+  recognition.onstart = () => {
+    isListening = true;
+    document.getElementById('voiceStatus').textContent = '🎤 En écoute...';
+    animatePulse();
+  };
+  recognition.onresult = (event) => {
+    if (isGuideOnSpeaking) {
+      window.speechSynthesis.cancel();
+      isGuideOnSpeaking = false;
+      document.getElementById('voiceMicBtn').textContent = '🎤 Parler';
+    }
+    let transcript = '';
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      transcript += event.results[i][0].transcript;
+    }
+    document.getElementById('voiceText').textContent = transcript;
+    if (event.results[event.results.length - 1].isFinal) {
+      recognition.stop();
+      setTimeout(() => sendVoiceMessage(transcript), 100);
+    }
+  };
+  recognition.onend = () => {
+    isListening = false;
+  };
+}
+
+function startListening() {
+  if (!recognition) initVoice();
+  if (recognition && !isListening) {
+    document.getElementById('voiceText').textContent = '';
+    recognition.start();
+  }
+}
+
+function stopGuideOnSpeaking() {
+  const synth = window.speechSynthesis;
+  synth.cancel();
+  isGuideOnSpeaking = false;
+  document.getElementById('voiceMicBtn').textContent = '🎤 Parler';
+  document.getElementById('voiceStatus').textContent = '✅ Prêt';
+  setTimeout(() => startListening(), 100);
+}
+
+async function sendVoiceMessage(text) {
+  if (!text.trim()) return;
+  addVoiceMessage('user', text);
+  document.getElementById('voiceStatus').textContent = '⏳ Réponse...';
+  try {
+    const token = localStorage.getItem('token');
+    const resp = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...(token ? { 'Authorization': `Bearer ${token}` } : {}) },
+      body: JSON.stringify({ message: text, token, model: 'llama-70b', temperature: 0.7 })
+    });
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder();
+    let reply = '';
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      const lines = decoder.decode(value, { stream: true }).split('\n');
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          try {
+            const d = JSON.parse(line.slice(6));
+            if (d.content) reply += d.content;
+          } catch(e) {}
+        }
+      }
+    }
+    if (reply.trim()) {
+      addVoiceMessage('assistant', reply.trim());
+      speakResponse(reply.trim());
+    }
+  } catch(e) {
+    console.error(e);
+    setTimeout(() => startListening(), 500);
+  }
+}
+
+function speakResponse(text) {
+  const synth = window.speechSynthesis;
+  if (ttsUtterance) synth.cancel();
+  ttsUtterance = new SpeechSynthesisUtterance(text);
+  ttsUtterance.lang = 'fr-FR';
+  const form = voiceForms[voiceForm] || voiceForms['Cove'];
+  ttsUtterance.pitch = form.pitch;
+  ttsUtterance.rate = form.rate;
+  ttsUtterance.volume = 1;
+  ttsUtterance.onstart = () => {
+    isGuideOnSpeaking = true;
+    document.getElementById('voiceMicBtn').textContent = '⏹️ Arrêter';
+    document.getElementById('voiceStatus').textContent = '🔊 Parle...';
+  };
+  ttsUtterance.onend = () => {
+    isGuideOnSpeaking = false;
+    document.getElementById('voiceMicBtn').textContent = '🎤 Parler';
+    document.getElementById('voiceStatus').textContent = '✅ Écoute';
+    document.getElementById('voiceText').textContent = '';
+    setTimeout(() => startListening(), 0);
+  };
+  synth.speak(ttsUtterance);
+}
+
+function changeVoiceForm(form) {
+  voiceForm = form;
+  document.getElementById('voiceMenu').style.display = 'none';
+}
+
+function changeAudioOutput(output) {
+  document.getElementById('audioMenu').style.display = 'none';
+}
+
+function toggleCC() {
+  alert('CC: À implémenter');
+}
+
+function showPhotoMenu() {
+  const m = document.getElementById('photoMenuModal');
+  if (m) m.remove();
+  const modal = document.createElement('div');
+  modal.id = 'photoMenuModal';
+  modal.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#1a1a2e;padding:20px;border-radius:12px;border:2px solid #a78bfa;z-index:10001;min-width:280px;';
+  modal.innerHTML = '<h3 style="color:#a78bfa;margin:0 0 15px 0;">📷 Photo</h3><button onclick="alert(\'📷 Prendre\');document.getElementById(\'photoMenuModal\').remove()" style="width:100%;padding:10px;background:#1e3a8a;color:#fff;border:none;border-radius:6px;cursor:pointer;margin-bottom:8px;">📷 Prendre</button><button onclick="alert(\'Charger\');document.getElementById(\'photoMenuModal\').remove()" style="width:100%;padding:10px;background:#374151;color:#fff;border:none;border-radius:6px;cursor:pointer;">🖼️ Charger</button>';
+  document.body.appendChild(modal);
+}
+
+function animatePulse() {
+  const v = document.getElementById('voiceVisualizer');
+  if (!v || !isListening) return;
+  const s = 0.8 + Math.sin(Date.now() / 300) * 0.2;
+  v.style.transform = `scale(${s})`;
+  if (isListening) requestAnimationFrame(animatePulse);
+}
+
+function addVoiceMessage(role, content) {
+  const box = document.getElementById('voiceChatBox');
+  if (!box) return;
+  const div = document.createElement('div');
+  div.style.cssText = `margin:6px 0;padding:8px;border-radius:6px;background:${role==='user'?'#7c3aed':'#1a1a2e'};color:#fff;font-size:11px;border:1px solid ${role==='user'?'#a78bfa':'#2d1b69'};word-wrap:break-word;`;
+  div.textContent = (role === 'user' ? '🗣️ ' : '🎙️ ') + content;
+  box.appendChild(div);
+  box.scrollTop = box.scrollHeight;
+}
+
+window.addEventListener('load', () => { initVoice(); startListening(); });

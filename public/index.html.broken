@@ -1,14 +1,36 @@
 <!DOCTYPE html>
 <html lang="fr">
-<head>
-  <script src="clear-cache.js"></script>
-    <script src="init-checkboxes.js"></script>
-    <script src="attach-listeners.js"></script>
-  
-<meta charset="UTF-8">
+<head><script src="clear-cache.js"></script><script src="init-checkboxes.js"></script><script src="attach-listeners.js"></script><meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>Guideon</title>
 <style>
+body { font-size: 16px; line-height: 1.8; }
+.bub { font-size: 16px; line-height: 1.8; }
+
+body { font-size: 14px; line-height: 1.7; }
+.bub { font-size: 14px; line-height: 1.7; }
+
+body { font-size: 15px; line-height: 1.8; letter-spacing: 0.5px; font-weight: 400; }
+.bub { font-size: 15px; line-height: 1.8; letter-spacing: 0.3px; }
+h1, h2, h3 { font-size: 18px; font-weight: 600; }
+button { font-size: 14px; font-weight: 600; }
+
+.mc { padding: 8px 12px; margin: 4px 0; }
+.bub { padding: 8px 12px; }
+.msg { margin: 4px 0; }
+.ba { gap: 4px; }
+
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif; line-height: 1.6; }
+.bub { line-height: 1.7; }
+button { font-weight: 500; }
+
+* { transition: all 0.3s ease; }
+button { transition: background 0.2s ease, transform 0.1s ease; }
+button:hover { transform: scale(1.05); }
+button:active { transform: scale(0.95); }
+.msg { animation: slideIn 0.3s ease; }
+@keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:sans-serif;background:#0a0a0f;color:#e0e0e0;height:100vh;display:flex;flex-direction:column}
 header{background:linear-gradient(135deg,#1a0533,#0d1f4d);padding:14px 16px;display:flex;align-items:center;gap:10px}
@@ -29,7 +51,7 @@ header{background:linear-gradient(135deg,#1a0533,#0d1f4d);padding:14px 16px;disp
 .av.u{background:linear-gradient(135deg,#065f46,#1e3a8a)}
 .mc{display:flex;flex-direction:column;gap:4px;max-width:100%}
 .mt{font-size:10px;color:#4a4a6a}.msg.user .mt{text-align:right}
-.bub{padding:10px 14px;border-radius:18px;font-size:14px;line-height:1.6;word-break:break-word;color:inherit}
+.bub{padding:10px 14px;border-radius:18px;font-size:14px;line-height:1.6;word-break:break-word;color:inherit;max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}.bub img{max-width:100% !important;height:auto}.bub table{width:100%;overflow-x:auto}
 .msg.g .bub{background:transparent;border:none;border-radius:0;padding:0;color:#e0e0ff}
 .msg.user .bub{background:linear-gradient(135deg,#065f46,#0d4f86);border-radius:18px 4px 18px 18px;color:#fff}
 .ba{display:flex;gap:6px;margin-top:4px}
@@ -54,7 +76,6 @@ header{background:linear-gradient(135deg,#1a0533,#0d1f4d);padding:14px 16px;disp
 .mb2 input{width:100%;background:#0a0a0f;border:1px solid #2d1b69;color:#e0e0e0;padding:10px 14px;border-radius:10px;font-size:14px;outline:none;margin-bottom:12px}
 .mb2 button{width:100%;background:linear-gradient(135deg,#7c3aed,#2563eb);border:none;color:#fff;padding:10px;border-radius:10px;font-size:14px;cursor:pointer}
 .er{color:#f87171;font-size:12px;margin-bottom:8px;display:none}
-
 .typing-dots{display:inline-flex;gap:4px;padding:8px 4px;}
 .typing-dots span{width:8px;height:8px;border-radius:50%;background:#9ca3af;animation:typing-blink 1.4s infinite both;}
 .typing-dots span:nth-child(2){animation-delay:0.2s;}
@@ -73,13 +94,12 @@ function loadRealtime(){
     el.innerHTML = '<h5>🌤️ Météo: ' + w.weather.temperature + ' - ' + w.weather.condition + '</h5><h5>📰 News: ' + n.articles[0].title + '</h5><h5>📈 Stocks: ' + s.stocks.map(st=>st.symbol+' '+st.price).join(', ') + '</h5>';
   }).catch(e => el.innerHTML = '❌ ' + e.message);
 }
-
 function loadProfile(){
   const tok = localStorage.getItem('gtoken');
   fetch('/api/profile', {headers: {'Authorization': 'Bearer '+tok}})
     .then(r=>r.json())
     .then(d => {
-      document.getElementById('profileData').innerHTML = '👤 ' + d.profile.name + '<br>✉️ ' + d.profile.email;
+      document.getElementById('profileData').innerHTML = '👥 ' + d.profile.name + '<br>✉️ ' + d.profile.email;
       document.getElementById('pn').value = d.profile.name || '';
       document.getElementById('toneInput').value = d.profile.tone || '';
       document.getElementById('styleInput').value = d.profile.style || '';
@@ -87,7 +107,6 @@ function loadProfile(){
     })
     .catch(e => document.getElementById('profileData').innerHTML = '❌ ' + e.message);
 }
-
 function updateProfile(){
   const tok = localStorage.getItem('gtoken');
   const tone = document.getElementById('toneInput').value;
@@ -98,7 +117,6 @@ function updateProfile(){
     body: JSON.stringify({tone, style})
   }).then(r=>r.json()).then(d => alert(d.message || '✅ Sauvegardé')).catch(e => alert('❌ ' + e.message));
 }
-
 function loadStats(){
   const tok = localStorage.getItem('gtoken');
   fetch('/api/feedback/stats', {headers: {'Authorization': 'Bearer '+tok}})
@@ -106,7 +124,6 @@ function loadStats(){
     .then(d => document.getElementById('statsData').innerHTML = '📈 Feedback total: ' + d.total_feedbacks + '<br>😊 Satisfaction: ' + d.satisfaction_rate)
     .catch(e => document.getElementById('statsData').innerHTML = '❌ ' + e.message);
 }
-
 const API_URL = window.location.origin;
 document.addEventListener('DOMContentLoaded', () => {
     console.log('✅ DOMContentLoaded déclenché');
@@ -141,13 +158,12 @@ function loadRealtime(){
     el.innerHTML = '<h5>🌤️ Météo: ' + w.weather.temperature + ' - ' + w.weather.condition + '</h5><h5>📰 News: ' + n.articles[0].title + '</h5><h5>📈 Stocks: ' + s.stocks.map(st=>st.symbol+' '+st.price).join(', ') + '</h5>';
   }).catch(e => el.innerHTML = '❌ ' + e.message);
 }
-
 function loadProfile(){
   const tok = localStorage.getItem('gtoken');
   fetch('/api/profile', {headers: {'Authorization': 'Bearer '+tok}})
     .then(r=>r.json())
     .then(d => {
-      document.getElementById('profileData').innerHTML = '👤 ' + d.profile.name + '<br>✉️ ' + d.profile.email;
+      document.getElementById('profileData').innerHTML = '👥 ' + d.profile.name + '<br>✉️ ' + d.profile.email;
       document.getElementById('pn').value = d.profile.name || '';
       document.getElementById('toneInput').value = d.profile.tone || '';
       document.getElementById('styleInput').value = d.profile.style || '';
@@ -155,7 +171,6 @@ function loadProfile(){
     })
     .catch(e => document.getElementById('profileData').innerHTML = '❌ ' + e.message);
 }
-
 function updateProfile(){
   const tok = localStorage.getItem('gtoken');
   const tone = document.getElementById('toneInput').value;
@@ -166,7 +181,6 @@ function updateProfile(){
     body: JSON.stringify({tone, style})
   }).then(r=>r.json()).then(d => alert(d.message || '✅ Sauvegardé')).catch(e => alert('❌ ' + e.message));
 }
-
 function loadStats(){
   const tok = localStorage.getItem('gtoken');
   fetch('/api/feedback/stats', {headers: {'Authorization': 'Bearer '+tok}})
@@ -174,12 +188,10 @@ function loadStats(){
     .then(d => document.getElementById('statsData').innerHTML = '📈 Feedback total: ' + d.total_feedbacks + '<br>😊 Satisfaction: ' + d.satisfaction_rate)
     .catch(e => document.getElementById('statsData').innerHTML = '❌ ' + e.message);
 }
-
-
 });
 </script>
 <script src="functions.js"></script>
-<script>
+<script>let pendingSessionId=null;document.addEventListener('visibilitychange',async()=>{if(!document.hidden&&pendingSessionId){console.log('📱 App active - Vérification réponse',pendingSessionId);const tok=localStorage.getItem('gtoken');if(tok){try{const r=await fetch('/api/history/'+pendingSessionId,{headers:{'Authorization':'Bearer '+tok}});const data=await r.json();if(data.length>0){const lastMsg=data[data.length-1];if(lastMsg.role==='guidéon'){am('guidéon',lastMsg.content);pendingSessionId=null;}}}catch(e){console.error('Erreur vérif:',e);}}}});if('serviceWorker' in navigator){navigator.serviceWorker.register('/service-worker.js').then(reg=>{console.log('✅ Service Worker enregistré');}).catch(err=>{console.error('❌ SW error:',err);});}document.addEventListener('DOMContentLoaded',()=>{setInterval(()=>{if(localStorage.getItem('gtoken')){const am=document.getElementById('am');const chat=document.getElementById('chat');if(am&&am.style.display==='flex'){am.style.display='none';}if(chat&&chat.style.display!=='flex'){chat.style.display='flex';}}},100);});
 async function createNewAccount(){if(!confirm("Vous allez être déconnecté(e). Continuer ?"))return;const tok=localStorage.getItem("gtoken");try{await fetch("/api/auth/logout",{method:"POST",headers:{"Authorization":"Bearer "+tok}});}catch(e){}localStorage.removeItem("gtoken");localStorage.removeItem("gname");document.getElementById("prof").style.display="none";document.getElementById("authModal").scrollIntoView({behavior:"smooth"});stab("reg");location.reload();}
 async function saveName() {
   const name = document.getElementById('pn')?.value;
@@ -199,7 +211,6 @@ async function saveName() {
     })
     .catch(e => alert('Erreur: '+e.message));
 }
-
 async function savePassword() {
   const pwd = document.getElementById('pp')?.value;
   if(!pwd || pwd.length < 6) return alert('Min 6 chars');
@@ -214,7 +225,6 @@ async function savePassword() {
     })
     .catch(e => alert('Erreur: '+e.message));
 }
-
 async function savePreferences() {
   const inst = document.getElementById('inst')?.value;
   const token = localStorage.getItem('gtoken');
@@ -224,7 +234,6 @@ async function savePreferences() {
   }
   if(confirm('✅ Préférences sauvegardées - Continuer ?')) location.reload();
 }
-
 async function saveToneStyle() {
   const tone = document.getElementById('toneInput')?.value;
   const style = document.getElementById('styleInput')?.value;
@@ -239,29 +248,18 @@ async function saveToneStyle() {
     })
     .catch(e => alert('Erreur: '+e.message));
 }
-
-
 </script>
 <script src="functions.js"></script>
 <script>
 function togglePwd(id,btn){const el=document.getElementById(id);const show=el.type==="password";el.type=show?"text":"password";btn.textContent=show?"Cacher":"Voir";}
-
 function showForgot() {
   const email = document.getElementById('ae') ? document.getElementById('ae').value : '';
   const modal = document.createElement('div');
   modal.id = 'forgotModal';
   modal.style = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:99999;';
-  modal.innerHTML = `<div style="background:#1a1a2e;padding:24px;border-radius:12px;width:90%;max-width:400px;">
-    <h3 style="color:#a78bfa;margin-bottom:16px;">Mot de passe oublié</h3>
-    <input id="forgotEmail" type="email" placeholder="Votre email" value="${email}" style="width:100%;padding:10px;background:#0f0f1a;color:#fff;border:1px solid #2d1b69;border-radius:8px;margin-bottom:12px;box-sizing:border-box;">
-    <p style="color:#a78bfa;font-size:12px;margin-bottom:8px;text-align:center;">Si vous ne trouvez pas l'email, verifiez vos spams ou la boite de courrier indesirable dans le menu gauche de Gmail.</p>
-            <div id="forgotMsg" style="color:#a78bfa;font-size:13px;margin-bottom:8px;display:none;"></div>
-    <button onclick="sendForgot()" style="width:100%;padding:10px;background:#7c3aed;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:8px;">Envoyer le lien</button>
-    <button onclick="document.getElementById('forgotModal').remove()" style="width:100%;padding:10px;background:none;color:#a78bfa;border:1px solid #2d1b69;border-radius:8px;cursor:pointer;">Annuler</button>
-  </div>`;
+  modal.innerHTML = `<div style="background:#1a1a2e;padding:24px;border-radius:12px;width:90%;max-width:400px;"><h3 style="color:#a78bfa;margin-bottom:16px;">Mot de passe oublié</h3><input id="forgotEmail" type="email" placeholder="Votre email" value="${email}" style="width:100%;padding:10px;background:#0f0f1a;color:#fff;border:1px solid #2d1b69;border-radius:8px;margin-bottom:12px;box-sizing:border-box;"><p style="color:#a78bfa;font-size:12px;margin-bottom:8px;text-align:center;">Si vous ne trouvez pas l'email, verifiez vos spams ou la boite de courrier indesirable dans le menu gauche de Gmail.</p><div id="forgotMsg" style="color:#a78bfa;font-size:13px;margin-bottom:8px;display:none;"></div><button onclick="sendForgot()" style="width:100%;padding:10px;background:#7c3aed;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:8px;">Envoyer le lien</button><button onclick="document.getElementById('forgotModal').remove()" style="width:100%;padding:10px;background:none;color:#a78bfa;border:1px solid #2d1b69;border-radius:8px;cursor:pointer;">Annuler</button></div>`;
   (document.getElementById('am')||document.body).appendChild(modal);
 }
-
 async function sendForgot() {
   const email = document.getElementById('forgotEmail').value.trim();
   const msg = document.getElementById('forgotMsg');
@@ -274,8 +272,6 @@ async function sendForgot() {
           msg.textContent += '\n\n🔐 Code: ' + d.reset_code;
         }
 }
-
-
 function loadRealtime(){
   const el = document.getElementById('realtimeData');
   el.innerHTML = 'Chargement...';
@@ -287,13 +283,12 @@ function loadRealtime(){
     el.innerHTML = '<h5>🌤️ Météo: ' + w.weather.temperature + ' - ' + w.weather.condition + '</h5><h5>📰 News: ' + n.articles[0].title + '</h5><h5>📈 Stocks: ' + s.stocks.map(st=>st.symbol+' '+st.price).join(', ') + '</h5>';
   }).catch(e => el.innerHTML = '❌ ' + e.message);
 }
-
 function loadProfile(){
   const tok = localStorage.getItem('gtoken');
   fetch('/api/profile', {headers: {'Authorization': 'Bearer '+tok}})
     .then(r=>r.json())
     .then(d => {
-      document.getElementById('profileData').innerHTML = '👤 ' + d.profile.name + '<br>✉️ ' + d.profile.email;
+      document.getElementById('profileData').innerHTML = '👥 ' + d.profile.name + '<br>✉️ ' + d.profile.email;
       document.getElementById('pn').value = d.profile.name || '';
       document.getElementById('toneInput').value = d.profile.tone || '';
       document.getElementById('styleInput').value = d.profile.style || '';
@@ -301,7 +296,6 @@ function loadProfile(){
     })
     .catch(e => document.getElementById('profileData').innerHTML = '❌ ' + e.message);
 }
-
 function updateProfile(){
   const tok = localStorage.getItem('gtoken');
   const tone = document.getElementById('toneInput').value;
@@ -312,7 +306,6 @@ function updateProfile(){
     body: JSON.stringify({tone, style})
   }).then(r=>r.json()).then(d => alert(d.message || '✅ Sauvegardé')).catch(e => alert('❌ ' + e.message));
 }
-
 function loadStats(){
   const tok = localStorage.getItem('gtoken');
   fetch('/api/feedback/stats', {headers: {'Authorization': 'Bearer '+tok}})
@@ -320,14 +313,10 @@ function loadStats(){
     .then(d => document.getElementById('statsData').innerHTML = '📈 Feedback total: ' + d.total_feedbacks + '<br>😊 Satisfaction: ' + d.satisfaction_rate)
     .catch(e => document.getElementById('statsData').innerHTML = '❌ ' + e.message);
 }
-
-
 </script>
 </head>
 <body>
-<div id="splashScreen" style="position:fixed;top:0;left:0;width:100%;height:100%;background:linear-gradient(135deg,#4c1d95,#1e3a8a);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:99999;">
-  <div style="font-size:90px;margin-bottom:10px;">🧠</div>
-  <h1 style="color:#c084fc;font-size:30px;font-weight:700;font-family:sans-serif;margin:0;">Guidéon</h1>
+<div id="splashScreen" style="position:fixed;top:0;left:0;width:100%;height:100%;background:linear-gradient(135deg,#4c1d95,#1e3a8a);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:99999;"><div style="font-size:90px;margin-bottom:10px;">🧠</div><h1 style="color:#c084fc;font-size:30px;font-weight:700;font-family:sans-serif;margin:0;">Guidéon</h1>
 </div>
 <script src="functions.js"></script>
 <script>
@@ -339,7 +328,6 @@ window.addEventListener('load', function() {
     setTimeout(function() { s.remove(); }, 500);
   }, 1200);
 });
-
 function loadRealtime(){
   const el = document.getElementById('realtimeData');
   el.innerHTML = 'Chargement...';
@@ -351,13 +339,12 @@ function loadRealtime(){
     el.innerHTML = '<h5>🌤️ Météo: ' + w.weather.temperature + ' - ' + w.weather.condition + '</h5><h5>📰 News: ' + n.articles[0].title + '</h5><h5>📈 Stocks: ' + s.stocks.map(st=>st.symbol+' '+st.price).join(', ') + '</h5>';
   }).catch(e => el.innerHTML = '❌ ' + e.message);
 }
-
 function loadProfile(){
   const tok = localStorage.getItem('gtoken');
   fetch('/api/profile', {headers: {'Authorization': 'Bearer '+tok}})
     .then(r=>r.json())
     .then(d => {
-      document.getElementById('profileData').innerHTML = '👤 ' + d.profile.name + '<br>✉️ ' + d.profile.email;
+      document.getElementById('profileData').innerHTML = '👥 ' + d.profile.name + '<br>✉️ ' + d.profile.email;
       document.getElementById('pn').value = d.profile.name || '';
       document.getElementById('toneInput').value = d.profile.tone || '';
       document.getElementById('styleInput').value = d.profile.style || '';
@@ -365,7 +352,6 @@ function loadProfile(){
     })
     .catch(e => document.getElementById('profileData').innerHTML = '❌ ' + e.message);
 }
-
 function updateProfile(){
   const tok = localStorage.getItem('gtoken');
   const tone = document.getElementById('toneInput').value;
@@ -376,7 +362,6 @@ function updateProfile(){
     body: JSON.stringify({tone, style})
   }).then(r=>r.json()).then(d => alert(d.message || '✅ Sauvegardé')).catch(e => alert('❌ ' + e.message));
 }
-
 function loadStats(){
   const tok = localStorage.getItem('gtoken');
   fetch('/api/feedback/stats', {headers: {'Authorization': 'Bearer '+tok}})
@@ -384,11 +369,7 @@ function loadStats(){
     .then(d => document.getElementById('statsData').innerHTML = '📈 Feedback total: ' + d.total_feedbacks + '<br>😊 Satisfaction: ' + d.satisfaction_rate)
     .catch(e => document.getElementById('statsData').innerHTML = '❌ ' + e.message);
 }
-
-
-</script>
-
-<div class="mo" id="lm">
+</script><div class="mo" id="lm">
 <div class="mb2">
 <div style="font-size:40px;margin-bottom:10px">🧠</div>
 <h2>Guideon</h2><p>Entrez le mot de passe</p>
@@ -408,7 +389,7 @@ function loadStats(){
 <button class="pb" onclick="up('/traduire ')">🌍 Traduire</button>
 <button class="pb" onclick="up('/resume ')">📝 Resumer</button>
 <button class="pb" onclick="up('/image ')">🎨 Image</button>
-<button class="pb" onclick="up('!web ')">🌐 Web</button>
+<button class="pb" onclick="up('/web ')">🌐 Web</button>
 <button class="pp" onclick="document.getElementById('pdfUploadInput').click();">📄 PDF</button><input type="file" id="pdfUploadInput" accept=".pdf" multiple style="display:none;">
 <script>
 (function() {
@@ -417,11 +398,9 @@ function loadStats(){
     pdfInput.addEventListener('change', async (e) => {
       const files = e.target.files;
       if (files.length === 0) return;
-      
       // Créer un dialog avec OK et Annuler
       const fileNames = Array.from(files).map(f => f.name).join(', ');
       const confirmed = confirm('Ajouter ' + files.length + ' fichier(s)?\n\n' + fileNames);
-      
       if (confirmed) {
         const textarea = document.getElementById('ui');
         for (const file of files) {
@@ -429,11 +408,10 @@ function loadStats(){
           formData.append('pdf', file);
           fetch('/api/analyze-pdf', {method: 'POST', body: formData})
             .then(r => r.json())
-            .then(data => { if (textarea) textarea.value += '\n📄 ' + data.fileName + '\n\n' + data.analysis; alert('✅ Analysé'); })
+            .then(data => { if (data.error) alert('❌ ' + data.error); else if (textarea) { textarea.value += '\n📄 ' + data.fileName + '\n\n' + data.analysis; alert('✅ Analysé'); } })
             .catch(err => alert('❌ ' + err.message));
         }
       }
-      
       // Réinitialiser l'input
       e.target.value = '';
     });
@@ -445,10 +423,10 @@ function loadStats(){
 <div id="chat">
 <div class="wl"><div class="big">🧠</div><h2>Bonjour ! Je suis votre assistant virtuel Guideon</h2><p>Que puis-je faire pour vous ?</p></div>
 </div>
-<div class="ia">
-<div id="app-footer" style="position:fixed;bottom:8px;right:12px;font-size:10px;color:#6b7280;z-index:100;pointer-events:none;">🧠 Guidéon peut faire des erreurs</div>
-<textarea id="ui" placeholder="Ecrivez votre message..." rows="1"></textarea>
+<div class="ia" style="padding-bottom:70px;">
+<div id="app-footer" style="text-align:center;font-size:9px;color:#6b7280;pointer-events:none;display:none;margin-top:8px;margin-bottom:8px;">🧠 Guidéon is an AI. Please verify important information.</div><textarea id="ui" placeholder="Ecrivez votre message..." rows="1"></textarea>
 <button class="mb" id="mb" onclick="tm()">🎤</button>
+<button class="mb" onclick="openVoiceModal()">🎙️</button>
 <button class="sb" onclick="sm()">➤</button>
 </div>
 <script src="functions.js"></script>
@@ -466,8 +444,7 @@ if(localStorage.getItem('gclearedChat') === 'true') {
     chatHistory = [];
   }
 }
-
-function cp(){const p=document.getElementById('pi').value;if(p===PW){document.getElementById('lm').classList.remove('show');}else{document.getElementById('pe').style.display='block';}}
+let refreshIntervalId=null;async function autoRefreshToken(){const tok=localStorage.getItem("gtoken");if(!tok)return;try{const r=await fetch("/api/refresh",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({token:tok})});const d=await r.json();if(d.token){localStorage.setItem("gtoken",d.token);console.log("✅ Token rafraîchi");}else{console.warn("❌ Refresh échoué:",d.error);logout();}}catch(e){console.error("Erreur refresh:",e.message);}}function startTokenRefresh(){if(refreshIntervalId)clearInterval(refreshIntervalId);refreshIntervalId=setInterval(autoRefreshToken,4*60*1000);console.log("🔄 Refresh automatique activé");}function stopTokenRefresh(){if(refreshIntervalId){clearInterval(refreshIntervalId);refreshIntervalId=null;console.log("🛑 Refresh arrêté");}}function cp(){const p=document.getElementById('pi').value;if(p===PW){document.getElementById('lm').classList.remove('show');}else{document.getElementById('pe').style.display='block';}}
 function tvv(){ve=!ve;document.getElementById('vt').textContent=ve?'🔊':'🔇';}
 function sp(t){if(!ve)return;const u=new SpeechSynthesisUtterance(t);u.lang='fr-FR';u.rate=0.9;speechSynthesis.speak(u);}function speak(btn){
 const bub=btn.closest('.mc').querySelector('.bub');
@@ -487,7 +464,6 @@ html+=text.slice(last).replace(/\n/g,'<br>');
 bub.innerHTML=html;
 const u=new SpeechSynthesisUtterance(text);
 u.lang='fr-FR';u.rate=0.9;
-
 btn.textContent='⏹️';
 const wpm=135*u.rate;
 const msPerWord=60000/wpm;
@@ -517,9 +493,7 @@ function copyMsg(event) {
     setTimeout(() => { btn.textContent = '📋 Copier'; }, 2000);
   }).catch(err => console.error('❌ Copy failed:', err));
 }
-
-function am(role,content,img=null,ts=null){const chat=document.getElementById('chat');const wl=chat.querySelector('.wl');if(wl)wl.remove();const d=document.createElement('div');d.className='msg '+(role==='guideon'?'g':'user');const av=role==='guideon'?'🧠':'👤';const ac=role==='guideon'?'g':'u';const t=role==='guideon'?marked.parse(content||''):(content||'').replace(/\n/g,'<br>');const ih=img?'<br><img src="'+img+'" style="max-width:220px;border-radius:12px;margin-top:8px">':'';const ah=role==='guideon'?'<div class="ba"><button class="cb" onclick="(()=>{const ta=document.createElement(\'textarea\');ta.value=this.closest(\'.mc\').querySelector(\'.bub\').innerText;ta.style.position=\'fixed\';ta.style.top=\'-9999px\';document.body.appendChild(ta);ta.focus();ta.select();try{document.execCommand(\'copy\');}catch(e){};document.body.removeChild(ta);cBtn.textContent=\'✅\';setTimeout(()=>{cBtn.textContent=\'📋 Copier\';},2000);})()">Copier</button><button class="cb" onclick="fb(this,1)">👍</button><button class="cb" onclick="fb(this,-1)">👎</button><button class="cb" onclick="speak(this)">🔊</button><button class="cb" onclick="shareMsg(this)">Partager</button></div>':'';d.innerHTML='<div class="av '+ac+'">'+av+'</div><div class="mc"><div class="bub">'+t+ih+'</div>'+ah+'<div class="mt">'+gt(ts)+'</div></div>';if(content===''){const b=d.querySelector('.bub');if(b)b.dataset.fmt='1'}chat.appendChild(d);chat.scrollTop=chat.scrollHeight;const th=localStorage.getItem('gtheme');if(th==='light'&&role==='guideon'){d.style.background='#ffffff';d.style.color='#1e1b4b';d.style.border='1px solid #c4b5fd';}if(role==='guideon') updateRegenerateButton();return d;}
-
+function am(role,content,img=null,ts=null){const chat=document.getElementById('chat');const wl=chat.querySelector('.wl');if(wl)wl.remove();const d=document.createElement('div');d.className='msg '+(role==='guideon'?'g':'user');const av=role==='guideon'?'🧠':'👥';const ac=role==='guideon'?'g':'u';const t=role==='guideon'?marked.parse(content||''):(content||'').replace(/\n/g,'<br>');const ih=img?'<br><img src="'+img+'" loading="lazy" style="max-width:220px;border-radius:12px;margin-top:8px">':'';const ah=role==='guideon'?'<div class="ba"><button class="cb" onclick="(()=>{const ta=document.createElement(\'textarea\');ta.value=this.closest(\'.mc\').querySelector(\'.bub\').innerText;ta.style.position=\'fixed\';ta.style.top=\'-9999px\';document.body.appendChild(ta);ta.focus();ta.select();try{document.execCommand(\'copy\');}catch(e){};document.body.removeChild(ta);cBtn.textContent=\'✅\';setTimeout(()=>{cBtn.textContent=\'📋 Copier\';},2000);})()">Copier</button><button class="cb" onclick="fb(this,1)">✅</button><button class="cb" onclick="fb(this,-1)">❌</button><button class="cb" onclick="speak(this)">🔊</button><button class="cb" onclick="shareMsg(this)">Partager</button></div>':'';d.innerHTML='<div class="av '+ac+'">'+av+'</div><div class="mc"><div class="bub">'+t+ih+'</div>'+ah+'<div class="mt">'+gt(ts)+'</div></div>';if(content===''){const b=d.querySelector('.bub');if(b)b.dataset.fmt='1'}chat.appendChild(d);if(role==='guideon'&&content){if(navigator.serviceWorker.controller){navigator.serviceWorker.controller.postMessage({type:'SHOW_NOTIFICATION',message:content.substring(0,50)+'...'});}}chat.scrollTop=chat.scrollHeight;const th=localStorage.getItem('gtheme');if(th==='light'&&role==='guideon'){d.style.background='#ffffff';d.style.color='#1e1b4b';d.style.border='1px solid #c4b5fd';}if(role==='guideon'){updateRegenerateButton();const chat=document.getElementById('chat');const oldF=document.getElementById('app-footer');if(oldF)oldF.remove();const f=document.createElement('div');f.id='app-footer';f.style.cssText='text-align:center;font-size:11px;color:#6b7280;margin:12px 0;';f.textContent='🧠 Guidéon is an AI. Please verify important information.';chat.appendChild(f);}return d;}
 function regenerateResponse(btn) {
   const msg = btn.closest('.msg');
   if (!msg) return;
@@ -548,7 +522,6 @@ function regenerateResponse(btn) {
       console.error('Erreur régénération:', e);
     });
 }
-
 function updateRegenerateButton() {
   console.log('🔘 updateRegenerateButton() appelée');
   document.querySelectorAll('.msg.g .ba').forEach(ba => {
@@ -567,22 +540,35 @@ function updateRegenerateButton() {
     }
   }
 }
-
-
 function sty(){const chat=document.getElementById('chat');const d=document.createElement('div');d.className='msg g';d.id='ty';d.innerHTML='<div class="av g">🧠</div><div class="ty"><span></span><span></span><span></span></div>';chat.appendChild(d);chat.scrollTop=chat.scrollHeight;}
 function rty(){const t=document.getElementById('ty');if(t)t.remove();}
 function useSug(t){const ui=document.getElementById('ui');ui.value=t.replace(/&#39;/g,"'");ui.focus();ui.style.height='auto';ui.style.height=Math.min(ui.scrollHeight,120)+'px';}
+
+function displayChatHistory(){
+  if(chatHistory && chatHistory.length > 0) {
+    chatHistory.forEach(msg => {
+      am(msg.role === 'user' ? 'user' : 'guideon', msg.content, msg.image_url, msg.created_at);
+    });
+  } else {
+    addSug();
+  }
+}
+
+window.addEventListener('load', () => {
+  setTimeout(() => { displayChatHistory(); }, 500);
+});
+
 function addSug(){const chat=document.getElementById('chat');const d=document.createElement('div');d.className='sug';d.innerHTML='<button onclick="useSug(this.dataset.t)" data-t="Crée une image d&#39;un paysage de montagne au coucher du soleil">🎨 Crée une image d&#39;un paysage de montagne au coucher du soleil</button><button onclick="useSug(this.dataset.t)" data-t="Résume ce texte que je vais te coller">📝 Résume ce texte que je vais te coller</button><button onclick="useSug(this.dataset.t)" data-t="Donne-moi des conseils pour mieux gérer mon temps">🎓 Donne-moi des conseils pour mieux gérer mon temps</button><button onclick="useSug(this.dataset.t)" data-t="Aide-moi à élaborer un plan pour organiser mon projet">💡 Aide-moi à élaborer un plan pour organiser mon projet</button><button onclick="useSug(this.dataset.t)" data-t="Aide-moi à rédiger un email professionnel">✍️ Aide-moi à rédiger un email professionnel</button><button onclick="useSug(this.dataset.t)" data-t="Aide-moi à analyser ces données">📊 Aide-moi à analyser ces données</button><button onclick="useSug(this.dataset.t)" data-t="Propose-moi des idées créatives pour ce week-end">🔮 Propose-moi des idées créatives pour ce week-end</button><button onclick="useSug(this.dataset.t)" data-t="Surprends-moi avec une anecdote intéressante">🎁 Surprends-moi avec une anecdote intéressante</button><button onclick="useSug(this.dataset.t)" data-t="Analyse cette image que je vais t&#39;envoyer">👁️ Analyse cette image que je vais t&#39;envoyer</button>';chat.appendChild(d);}
-async function sm(){if(ve)return;ve=true;
+async function sm(){if(ve)return;ve=true;hideFooter();
 const i=document.getElementById('ui');const msg=i.value.trim();if(!msg)return;i.value='';i.style.height='auto';am('user',msg);sty();
 try{
 if(msg.startsWith('/image ')){
 const p=msg.substring(7);const r=await fetch('/api/image',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt:p,token:localStorage.getItem('gtoken'),session_id:curSession})});const d=await r.json();rty();am('guideon',d.comment||'Voici votre image !',d.url);return;
 }
 if(msg.startsWith('!web ')){
-const q=msg.substring(5);const sr=await fetch('/api/search',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({query:q})});const sd=await sr.json();const fm=sd.result?'[Info: '+sd.result+']\n\n'+q:q;const rH1=chatHistory.slice(-20);const r=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:fm,history:rH1})});const d=await r.json();rty();am('guideon',d.reply);return;
+const q=msg.substring(5);const cacheKey='search_'+q;let sd=null;const cached=sessionStorage.getItem(cacheKey);if(cached){sd=JSON.parse(cached);}else{const sr=await fetch('/api/search',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({query:q})});sd=await sr.json();sessionStorage.setItem(cacheKey,JSON.stringify(sd));}const fm=sd.result?'[Info: '+sd.result+']\n\n'+q:q;const rH1=chatHistory.slice(-20);const r=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:fm,history:rH1})});const d=await r.json();rty();am('guideon',d.reply);return;
 }
-const rH2=chatHistory.slice(-20);const r=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:msg,history:rH2})});
+if(!curSession)await newSession();const rH2=chatHistory.slice(-20);pendingSessionId=curSession;const r=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:msg,history:rH2})});
 if(r.status===429){try{const qd=await r.json();const resetTime=qd.resetTime||'plus tard';const qmsg='<div style="background:#2d1b3d;border:1px solid #a78bfa;border-radius:12px;padding:14px 16px;color:#e9d5ff;font-size:14px;line-height:1.5;">⏳ <strong>Vous avez atteint la limite de votre conversation.</strong><br>Revenez vers <strong>'+resetTime+'</strong> pour une nouvelle conversation.</div>';const bub=am('guideon','');if(bub)bub.innerHTML=qmsg;document.getElementById('chat').scrollTop=document.getElementById('chat').scrollHeight;}catch(qe){am('guideon','Vous avez atteint la limite de votre conversation. Reessayez plus tard.');}return;}
 const reader=r.body.getReader();const dec=new TextDecoder();let buf='';let full='';let el=null;let mc;let imgHtml='';
 while(true){
@@ -597,7 +583,7 @@ full+=p.content;if(!el){rty();el=am('guideon','');mc=el.querySelector('.mc');el.
 const bub=el.querySelector('.bub');if(bub)bub.innerHTML=marked.parse(full)+imgHtml;
 document.getElementById('chat').scrollTop=document.getElementById('chat').scrollHeight;
 }else if(p.image){
-imgHtml='<br><img src="'+p.image+'" style="max-width:220px;border-radius:12px;margin-top:8px;">';
+imgHtml='<br><img src="'+p.image+'" loading="lazy" style="max-width:220px;border-radius:12px;margin-top:8px;">';
 if(!el){rty();el=am('guideon','');mc=el.querySelector('.mc');el.scrollIntoView()}
 const bub=el.querySelector('.bub');if(bub)bub.innerHTML=marked.parse(full)+imgHtml;
 document.getElementById('chat').scrollTop=document.getElementById('chat').scrollHeight;
@@ -611,8 +597,7 @@ chatHistory.push({role:'user',content:msg});localStorage.setItem('gchatHistory',
 }catch(e){rty();am('guideon','Erreur: '+e.message);ve=false;}
 }
 document.getElementById('ui').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sm();}});
-document.getElementById('ui').addEventListener('input',function(){this.style.height='auto';this.style.height=Math.min(this.scrollHeight,120)+'px';});
-
+let inputDebounce;document.getElementById('ui').addEventListener('input',function(){clearTimeout(inputDebounce);this.style.height='auto';this.style.height=Math.min(this.scrollHeight,120)+'px';inputDebounce=setTimeout(()=>{},300);});
 function loadRealtime(){
   const el = document.getElementById('realtimeData');
   el.innerHTML = 'Chargement...';
@@ -624,13 +609,12 @@ function loadRealtime(){
     el.innerHTML = '<h5>🌤️ Météo: ' + w.weather.temperature + ' - ' + w.weather.condition + '</h5><h5>📰 News: ' + n.articles[0].title + '</h5><h5>📈 Stocks: ' + s.stocks.map(st=>st.symbol+' '+st.price).join(', ') + '</h5>';
   }).catch(e => el.innerHTML = '❌ ' + e.message);
 }
-
 function loadProfile(){
   const tok = localStorage.getItem('gtoken');
   fetch('/api/profile', {headers: {'Authorization': 'Bearer '+tok}})
     .then(r=>r.json())
     .then(d => {
-      document.getElementById('profileData').innerHTML = '👤 ' + d.profile.name + '<br>✉️ ' + d.profile.email;
+      document.getElementById('profileData').innerHTML = '👥 ' + d.profile.name + '<br>✉️ ' + d.profile.email;
       document.getElementById('pn').value = d.profile.name || '';
       document.getElementById('toneInput').value = d.profile.tone || '';
       document.getElementById('styleInput').value = d.profile.style || '';
@@ -638,7 +622,6 @@ function loadProfile(){
     })
     .catch(e => document.getElementById('profileData').innerHTML = '❌ ' + e.message);
 }
-
 function updateProfile(){
   const tok = localStorage.getItem('gtoken');
   const tone = document.getElementById('toneInput').value;
@@ -649,7 +632,6 @@ function updateProfile(){
     body: JSON.stringify({tone, style})
   }).then(r=>r.json()).then(d => alert(d.message || '✅ Sauvegardé')).catch(e => alert('❌ ' + e.message));
 }
-
 function loadStats(){
   const tok = localStorage.getItem('gtoken');
   fetch('/api/feedback/stats', {headers: {'Authorization': 'Bearer '+tok}})
@@ -657,10 +639,7 @@ function loadStats(){
     .then(d => document.getElementById('statsData').innerHTML = '📈 Feedback total: ' + d.total_feedbacks + '<br>😊 Satisfaction: ' + d.satisfaction_rate)
     .catch(e => document.getElementById('statsData').innerHTML = '❌ ' + e.message);
 }
-
-
-</script>
-  <div id="am" style="display:none;position:fixed;inset:0;background:#0a0a1a;z-index:9999;align-items:center;justify-content:center;">
+</script><div id="am" style="display:none;position:fixed;inset:0;background:#0a0a1a;z-index:9999;align-items:center;justify-content:center;">
 <div id="authModal" style="background:#1a1a2e;padding:28px;border-radius:16px;width:88%;max-width:340px;border:1px solid #2d1b69;">
 <h2 style="color:#a78bfa;text-align:center;margin-bottom:6px;">🧠 Guidéon</h2>
 <p style="color:#6b7280;text-align:center;font-size:12px;margin-bottom:18px;">Ton assistant IA personnel</p>
@@ -681,7 +660,6 @@ function updateStepsMessage() {
         }
     }
 }
-
 // Observateur pour surveiller les changements
 updateStepsMessage();
 var observer = new MutationObserver(function(mutations) {
@@ -695,14 +673,12 @@ var observer = new MutationObserver(function(mutations) {
         }
     }
 });
-
 // Écouter les changements de classes
 observer.observe(document.body, {
     attributes: true,
     attributeFilter: ['class'],
     subtree: true
 });
-
 // Vérifier aussi au démarrage
 window.addEventListener('load', function() {
     var moElement = document.querySelector('.mo.show');
@@ -711,7 +687,6 @@ window.addEventListener('load', function() {
         stepsMsg.innerHTML = 'Entrez vos identifiants pour accéder à votre espace Guidéon';
     }
 });
-
 function loadRealtime(){
   const el = document.getElementById('realtimeData');
   el.innerHTML = 'Chargement...';
@@ -723,13 +698,12 @@ function loadRealtime(){
     el.innerHTML = '<h5>🌤️ Météo: ' + w.weather.temperature + ' - ' + w.weather.condition + '</h5><h5>📰 News: ' + n.articles[0].title + '</h5><h5>📈 Stocks: ' + s.stocks.map(st=>st.symbol+' '+st.price).join(', ') + '</h5>';
   }).catch(e => el.innerHTML = '❌ ' + e.message);
 }
-
 function loadProfile(){
   const tok = localStorage.getItem('gtoken');
   fetch('/api/profile', {headers: {'Authorization': 'Bearer '+tok}})
     .then(r=>r.json())
     .then(d => {
-      document.getElementById('profileData').innerHTML = '👤 ' + d.profile.name + '<br>✉️ ' + d.profile.email;
+      document.getElementById('profileData').innerHTML = '👥 ' + d.profile.name + '<br>✉️ ' + d.profile.email;
       document.getElementById('pn').value = d.profile.name || '';
       document.getElementById('toneInput').value = d.profile.tone || '';
       document.getElementById('styleInput').value = d.profile.style || '';
@@ -737,7 +711,6 @@ function loadProfile(){
     })
     .catch(e => document.getElementById('profileData').innerHTML = '❌ ' + e.message);
 }
-
 function updateProfile(){
   const tok = localStorage.getItem('gtoken');
   const tone = document.getElementById('toneInput').value;
@@ -748,7 +721,6 @@ function updateProfile(){
     body: JSON.stringify({tone, style})
   }).then(r=>r.json()).then(d => alert(d.message || '✅ Sauvegardé')).catch(e => alert('❌ ' + e.message));
 }
-
 function loadStats(){
   const tok = localStorage.getItem('gtoken');
   fetch('/api/feedback/stats', {headers: {'Authorization': 'Bearer '+tok}})
@@ -756,8 +728,6 @@ function loadStats(){
     .then(d => document.getElementById('statsData').innerHTML = '📈 Feedback total: ' + d.total_feedbacks + '<br>😊 Satisfaction: ' + d.satisfaction_rate)
     .catch(e => document.getElementById('statsData').innerHTML = '❌ ' + e.message);
 }
-
-
 </script>
 <div style="display:flex;gap:8px;margin-bottom:16px;">
 <button onclick="stab('login')" class="tab-button active" data-tab="connexion" id="tl" style="flex:1;padding:8px;background:#2d1b69;color:#fff;border:none;border-radius:8px;cursor:pointer;">Connexion</button>
@@ -775,38 +745,11 @@ function loadStats(){
 <span style="color:#a78bfa;font-weight:bold;">💬 Conversations</span>
 <button onclick="showProfile()" style="background:none;border:none;color:#a78bfa;font-size:18px;cursor:pointer;" title="Paramètres">⚙️</button>
 <button onclick="closeSidebar()" style="background:none;border:none;color:#6b7280;font-size:18px;cursor:pointer;">✕</button>
-</div>
-<!-- SECTION PROJETS MENU LATÉRAL -->
-<div style="margin-bottom:16px;padding:12px;border-top:1px solid #2d1b69;">
-  <h3 style="color:#a78bfa;margin:0 0 10px 0;font-size:14px;">📂 Projets</h3>
-  <button class="pb" onclick="createNewProject()" style="margin-bottom:6px;width:100%;padding:8px;font-size:12px;">➕ Créer un nouveau projet</button>
-  <button class="pb" onclick="showMyProjects()" style="width:100%;padding:8px;font-size:12px;">📋 Voir mes projets</button>
-</div>
-
-<!-- DESCRIPTION GUIDÉON + OPTIONS -->
-<div style="margin-bottom:16px;padding:12px;background:#0f0f1a;border-radius:8px;border-left:3px solid #a78bfa;font-size:11px;">
-  <p style="color:#a78bfa;font-weight:bold;margin:0 0 6px 0;">🧠 Guidéon</p>
-  <p style="color:#9ca3af;margin:0 0 8px 0;">Ton assistant IA personnel intelligent, sage et bienveillant.</p>
-  <p style="color:#9ca3af;margin:0 0 8px 0;">Les projets fournissent à Guidéon un contexte partagé pour les chats et fichiers.</p>
-  
-  <p style="color:#a78bfa;font-weight:bold;margin:8px 0 6px 0;font-size:11px;">Options:</p>
-  
-  <label style="display:flex;align-items:flex-start;gap:6px;margin-bottom:8px;color:#9ca3af;cursor:pointer;">
-    <input type="radio" name="projectMode" value="default" id="modeDefault" checked onchange="saveProjectMode('default')" style="margin-top:2px;cursor:pointer;">
-    <span><strong>Par défaut</strong><br>Accès aux éléments d'autres chats.</span>
-  </label>
-  
-  <label style="display:flex;align-items:flex-start;gap:6px;color:#9ca3af;cursor:pointer;">
-    <input type="radio" name="projectMode" value="only" id="modeOnly" onchange="saveProjectMode('only')" style="margin-top:2px;cursor:pointer;">
-    <span><strong>Projet seulement</strong><br>Accès aux propres éléments seulement.</span>
-  </label>
-</div>
-
-
-<button onclick="newSession()" style="width:100%;padding:10px;background:linear-gradient(135deg,#4c1d95,#1e3a8a);color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:10px;">➕ Nouvelle conversation</button>
-    <button id="floatingNewSessionBtn" onclick="newSession()" style="padding:10px;background:linear-gradient(135deg,#4c1d95,#1e3a8a);color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:10px;position:fixed;bottom:16px;left:12px;right:12px;z-index:1000;">➕ Nouvelle conversation</button>
+</div><div style="margin-bottom:16px;padding:12px;border-top:1px solid #2d1b69;"><h3 style="color:#a78bfa;margin:0 0 10px 0;font-size:14px;">📂 Projets</h3><button class="pb" onclick="createNewProject()" style="margin-bottom:6px;width:100%;padding:8px;font-size:12px;">➕ Créer un nouveau projet</button><button class="pb" onclick="showMyProjects()" style="width:100%;padding:8px;font-size:12px;">📋 Voir mes projets</button>
+</div><div style="margin-bottom:16px;padding:12px;background:#0f0f1a;border-radius:8px;border-left:3px solid #a78bfa;font-size:11px;"><p style="color:#a78bfa;font-weight:bold;margin:0 0 6px 0;">🧠 Guidéon</p><p style="color:#9ca3af;margin:0 0 8px 0;">Ton assistant IA personnel intelligent, sage et bienveillant.</p><p style="color:#9ca3af;margin:0 0 8px 0;">Les projets fournissent à Guidéon un contexte partagé pour les chats et fichiers.</p><p style="color:#a78bfa;font-weight:bold;margin:8px 0 6px 0;font-size:11px;">Options:</p><label style="display:flex;align-items:flex-start;gap:6px;margin-bottom:8px;color:#9ca3af;cursor:pointer;"><input type="radio" name="projectMode" value="default" id="modeDefault" checked onchange="saveProjectMode('default')" style="margin-top:2px;cursor:pointer;"><span><strong>Par défaut</strong><br>Accès aux éléments d'autres chats.</span></label><label style="display:flex;align-items:flex-start;gap:6px;color:#9ca3af;cursor:pointer;"><input type="radio" name="projectMode" value="only" id="modeOnly" onchange="saveProjectMode('only')" style="margin-top:2px;cursor:pointer;"><span><strong>Projet seulement</strong><br>Accès aux propres éléments seulement.</span></label>
+</div><button onclick="newSession()" style="width:100%;padding:10px;background:linear-gradient(135deg,#4c1d95,#1e3a8a);color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:10px;">➕ Nouvelle conversation</button><button id="floatingNewSessionBtn" onclick="newSession()" style="padding:10px;background:linear-gradient(135deg,#4c1d95,#1e3a8a);color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:10px;position:fixed;bottom:16px;left:12px;right:12px;z-index:1000;">➕ Nouvelle conversation</button>
 <input id="srch" placeholder="🔍 Rechercher..." oninput="searchHist(this.value)" style="width:100%;padding:8px;background:#1a1a2e;color:#fff;border:1px solid #2d1b69;border-radius:8px;margin-bottom:8px;box-sizing:border-box;font-size:12px;">
-<div id="srchres" style="display:none;margin-bottom:8px;max-height:150px;overflow-y:auto;"></div>
+<div id="srchres" style="display:none;margin-bottom:8px;max-height:300px;overflow-y:auto;"></div>
 <div id="sesslist"></div>
 </div>
 <div id="ubar" style="display:none;position:fixed;top:0;left:0;right:0;background:linear-gradient(135deg,#0f0f1a,#1a1a2e);padding:8px 16px;z-index:998;border-bottom:1px solid #2d1b69;align-items:center;justify-content:space-between;">
@@ -821,11 +764,8 @@ function loadStats(){
 <option value="gemma">💎 Créatif</option>
 </select>
 <input type="range" id="temp" min="0" max="1" step="0.1" value="0.7" title="Créativité" style="width:45px;cursor:pointer;" oninput="setTemp(this.value)">
-<button onclick="showImgModal()" style="padding:5px 8px;background:#065f46;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:11px;">🖼️</button>
-
-
-</div></div>
-<div id="prof" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9998;align-items:flex-start;justify-content:center;overflow-y:auto;padding-top:20px;"><div style="background:#1a1a2e;padding:24px;border-radius:16px;width:88%;max-width:480px;border:1px solid #2d1b69;margin-bottom:20px;"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;"><h3 style="color:#a78bfa;margin:0;">⚙️ Paramètres</h3><button onclick="document.getElementById('prof').style.display='none'" style="background:none;border:none;color:#6b7280;font-size:24px;cursor:pointer;padding:0;width:24px;height:24px;">✕</button></div><div style="color:#9ca3af;font-size:12px;margin-bottom:16px;padding:8px;background:#0f0f1a;border-radius:8px;">📧 <span id="userEmail">Email</span></div><div style="display:flex;gap:4px;border-bottom:1px solid #2d1b69;margin-bottom:16px;"><button onclick="switchTab('profile')" class="tab-btn" data-tab="profile" style="flex:1;padding:10px 6px;background:transparent;border:none;color:#a78bfa;border-bottom:2px solid #7c3aed;cursor:pointer;font-size:11px;">👤</button><button onclick="switchTab('privacy')" class="tab-btn" data-tab="privacy" style="flex:1;padding:10px 6px;background:transparent;border:none;color:#6b7280;border-bottom:2px solid transparent;cursor:pointer;font-size:11px;">🔒</button><button onclick="switchTab('security')" class="tab-btn" data-tab="security" style="flex:1;padding:10px 6px;background:transparent;border:none;color:#6b7280;border-bottom:2px solid transparent;cursor:pointer;font-size:11px;">🔐</button><button onclick="switchTab('accessibility')" class="tab-btn" data-tab="accessibility" style="flex:1;padding:10px 6px;background:transparent;border:none;color:#6b7280;border-bottom:2px solid transparent;cursor:pointer;font-size:11px;">♿</button><button onclick="switchTab('shared')" class="tab-btn" data-tab="shared" style="flex:1;padding:10px 6px;background:transparent;border:none;color:#6b7280;border-bottom:2px solid transparent;cursor:pointer;font-size:11px;">🔗</button><button onclick="switchTab('privacy-advanced')" class="tab-btn" data-tab="privacy-advanced" style="flex:1;padding:10px 6px;background:transparent;border:none;color:#6b7280;border-bottom:2px solid transparent;cursor:pointer;font-size:11px;">🛡️</button><button onclick="switchTab('updates')" class="tab-btn" data-tab="updates" style="flex:1;padding:10px 6px;background:transparent;border:none;color:#6b7280;border-bottom:2px solid transparent;cursor:pointer;font-size:11px;">📦</button><button onclick="switchTab('realtime')" class="tab-btn" data-tab="realtime" style="flex:1;padding:10px 6px;background:transparent;border:none;color:#6b7280;border-bottom:2px solid transparent;cursor:pointer;font-size:11px;">📊</button><button onclick="switchTab('about')" class="tab-btn" data-tab="about" style="flex:1;padding:10px 6px;background:transparent;border:none;color:#6b7280;border-bottom:2px solid transparent;cursor:pointer;font-size:11px;">ℹ️</button></div><div id="tab-profile" class="tab-content" style="display:block;"><input id="pn" placeholder="Nouveau nom" style="width:100%;padding:10px;background:#0f0f1a;color:#fff;border:1px solid #2d1b69;border-radius:8px;margin-bottom:8px;box-sizing:border-box;"><button onclick="saveName()" style="width:100%;padding:8px;background:#1e3a8a;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:8px;font-size:12px;">💾 Enregistrer nom</button><input id="pp" type="password" placeholder="Nouveau mot de passe" style="width:100%;padding:10px;background:#0f0f1a;color:#fff;border:1px solid #2d1b69;border-radius:8px;margin-bottom:8px;box-sizing:border-box;"><button onclick="savePassword()" style="width:100%;padding:8px;background:#1e3a8a;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:8px;font-size:12px;">💾 Enregistrer mot de passe</button><textarea id="inst" placeholder="Instructions..." style="width:100%;padding:10px;background:#0f0f1a;color:#fff;border:1px solid #2d1b69;border-radius:8px;margin-bottom:8px;box-sizing:border-box;height:80px;resize:none;font-family:inherit;font-size:13px;"></textarea><button onclick="savePreferences()" style="width:100%;padding:10px;background:#1e3a8a;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:12px;">💾 Sauvegarder préférences</button><select id="toneInput" style="width:100%;padding:10px;background:#0f0f1a;color:#fff;border:1px solid #2d1b69;border-radius:8px;margin-bottom:8px;box-sizing:border-box;">
+<button onclick="showImgModal()" style="padding:5px 8px;background:#065f46;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:11px;">🖼️</button></div></div>
+<div id="prof" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9998;align-items:flex-start;justify-content:center;overflow-y:auto;padding-top:20px;"><div style="background:#1a1a2e;padding:24px;border-radius:16px;width:88%;max-width:480px;border:1px solid #2d1b69;margin-bottom:20px;"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;"><h3 style="color:#a78bfa;margin:0;">⚙️ Paramètres</h3><button onclick="document.getElementById('prof').style.display='none'" style="background:none;border:none;color:#6b7280;font-size:24px;cursor:pointer;padding:0;width:24px;height:24px;">✕</button></div><div style="color:#9ca3af;font-size:12px;margin-bottom:16px;padding:8px;background:#0f0f1a;border-radius:8px;">📧 <span id="userEmail">Email</span></div><div style="display:flex;gap:4px;border-bottom:1px solid #2d1b69;margin-bottom:16px;"><button onclick="switchTab('profile')" class="tab-btn" data-tab="profile" style="flex:1;padding:10px 6px;background:transparent;border:none;color:#a78bfa;border-bottom:2px solid #7c3aed;cursor:pointer;font-size:11px;">👥</button><button onclick="switchTab('privacy')" class="tab-btn" data-tab="privacy" style="flex:1;padding:10px 6px;background:transparent;border:none;color:#6b7280;border-bottom:2px solid transparent;cursor:pointer;font-size:11px;">🔒</button><button onclick="switchTab('security')" class="tab-btn" data-tab="security" style="flex:1;padding:10px 6px;background:transparent;border:none;color:#6b7280;border-bottom:2px solid transparent;cursor:pointer;font-size:11px;">🔐</button><button onclick="switchTab('accessibility')" class="tab-btn" data-tab="accessibility" style="flex:1;padding:10px 6px;background:transparent;border:none;color:#6b7280;border-bottom:2px solid transparent;cursor:pointer;font-size:11px;">♿</button><button onclick="switchTab('shared')" class="tab-btn" data-tab="shared" style="flex:1;padding:10px 6px;background:transparent;border:none;color:#6b7280;border-bottom:2px solid transparent;cursor:pointer;font-size:11px;">🔗</button><button onclick="switchTab('privacy-advanced')" class="tab-btn" data-tab="privacy-advanced" style="flex:1;padding:10px 6px;background:transparent;border:none;color:#6b7280;border-bottom:2px solid transparent;cursor:pointer;font-size:11px;">🛡️</button><button onclick="switchTab('updates')" class="tab-btn" data-tab="updates" style="flex:1;padding:10px 6px;background:transparent;border:none;color:#6b7280;border-bottom:2px solid transparent;cursor:pointer;font-size:11px;">📦</button><button onclick="switchTab('realtime')" class="tab-btn" data-tab="realtime" style="flex:1;padding:10px 6px;background:transparent;border:none;color:#6b7280;border-bottom:2px solid transparent;cursor:pointer;font-size:11px;">📊</button><button onclick="switchTab('memories')" class="tab-btn" data-tab="memories" style="flex:1;padding:10px 6px;background:transparent;border:none;color:#6b7280;border-bottom:2px solid transparent;cursor:pointer;font-size:11px;">🧠</button><button onclick="switchTab('about')" class="tab-btn" data-tab="about" style="flex:1;padding:10px 6px;background:transparent;border:none;color:#6b7280;border-bottom:2px solid transparent;cursor:pointer;font-size:11px;">ℹ️</button></div><div id="tab-profile" class="tab-content" style="display:block;"><input id="pn" placeholder="Nouveau nom" style="width:100%;padding:10px;background:#0f0f1a;color:#fff;border:1px solid #2d1b69;border-radius:8px;margin-bottom:8px;box-sizing:border-box;"><button onclick="saveName()" style="width:100%;padding:8px;background:#1e3a8a;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:8px;font-size:12px;">💾 Enregistrer nom</button><input id="pp" type="password" placeholder="Nouveau mot de passe" style="width:100%;padding:10px;background:#0f0f1a;color:#fff;border:1px solid #2d1b69;border-radius:8px;margin-bottom:8px;box-sizing:border-box;"><button onclick="savePassword()" style="width:100%;padding:8px;background:#1e3a8a;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:8px;font-size:12px;">💾 Enregistrer mot de passe</button><textarea id="inst" placeholder="Instructions..." style="width:100%;padding:10px;background:#0f0f1a;color:#fff;border:1px solid #2d1b69;border-radius:8px;margin-bottom:8px;box-sizing:border-box;height:80px;resize:none;font-family:inherit;font-size:13px;"></textarea><button onclick="savePreferences()" style="width:100%;padding:10px;background:#1e3a8a;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:12px;">💾 Sauvegarder préférences</button><select id="toneInput" style="width:100%;padding:10px;background:#0f0f1a;color:#fff;border:1px solid #2d1b69;border-radius:8px;margin-bottom:8px;box-sizing:border-box;">
 <option value="">-- Sélectionner un tone --</option>
 <option value="formel">📋 Formel</option>
 <option value="decontracte">😊 Décontracté</option>
@@ -839,7 +779,7 @@ function loadStats(){
 <option value="creatif">✨ Créatif</option>
 <option value="technique">🔧 Technique</option>
 <option value="simplifie">🎯 Simplifié</option>
-</select><button onclick="saveToneStyle()" style="width:100%;padding:10px;background:#1e3a8a;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:12px;">💾 Enregistrer Tone/Style</button><label style="color:#9ca3af;font-size:12px;display:flex;align-items:center;gap:8px;margin-bottom:12px;cursor:pointer;"><input type="checkbox" id="tmpChat"> Mode temporaire</label><div style="margin-bottom:12px;"><label style="color:#a78bfa;font-size:12px;">🌙 Thème</label><select id="themeSelect" onchange="applyTheme(this.value)" style="width:100%;padding:8px;background:#0f0f1a;color:#fff;border:1px solid #2d1b69;border-radius:8px;font-size:13px;"><option value="dark">Sombre</option><option value="light">Clair</option></select></div><div style="margin-bottom:12px;"><label style="color:#a78bfa;font-size:12px;">🌍 Langue</label><select id="langSelect" style="width:100%;padding:8px;background:#0f0f1a;color:#fff;border:1px solid #2d1b69;border-radius:8px;font-size:13px;"><option value="auto">Auto</option><option value="fr">Français</option><option value="en">Anglais</option></select></div><div style="margin-bottom:12px;"><label style="color:#a78bfa;font-size:12px;">📏 Longueur</label><select id="lengthSelect" style="width:100%;padding:8px;background:#0f0f1a;color:#fff;border:1px solid #2d1b69;border-radius:8px;font-size:13px;"><option value="normal">Normale</option><option value="short">Courte</option><option value="long">Détaillée</option></select></div><div style="margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;"><label style="color:#a78bfa;font-size:12px;">🔔 Notifications</label><input type="checkbox" id="notifCheck" onchange="localStorage.setItem('gnotif',this.checked)" style="width:18px;height:18px;cursor:pointer;"></div><button onclick="showStats()" style="width:100%;padding:10px;background:#1e3a8a;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:8px;">📊 Statistiques</button><button onclick="viewMemory()" style="width:100%;padding:10px;background:#1e3a8a;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:8px;">🧠 Mémoire</button><button onclick="clearMem()" style="width:100%;padding:10px;background:#374151;color:#fff;border:none;border-radius:8px;cursor:pointer;">🗑️ Effacer mémoire</button></div><div id="tab-privacy" class="tab-content" style="display:none;"><h4 style="color:#a78bfa;">Données</h4><button onclick="downloadData()" style="width:100%;padding:10px;background:#1e3a8a;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:8px;">📥 Télécharger</button><button onclick="deleteData()" style="width:100%;padding:10px;background:#7f1d1d;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:16px;">🗑️ Supprimer</button><h4 style="color:#a78bfa;">Partage</h4><label style="color:#9ca3af;font-size:12px;"><input type="checkbox" id="shareControl"> Autoriser partage</label></div><div id="tab-security" class="tab-content" style="display:none;"><h4 style="color:#a78bfa;">Mot de passe</h4><input id="newPwdSec" type="password" placeholder="Nouveau" style="width:100%;padding:10px;background:#0f0f1a;color:#fff;border:1px solid #2d1b69;border-radius:8px;margin-bottom:8px;box-sizing:border-box;"><input id="confirmPwdSec" type="password" placeholder="Confirmer" style="width:100%;padding:10px;background:#0f0f1a;color:#fff;border:1px solid #2d1b69;border-radius:8px;margin-bottom:8px;box-sizing:border-box;"><button onclick="changePassword()" style="width:100%;padding:10px;background:#2d1b69;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:16px;">Changer</button><h4 style="color:#a78bfa;">Sessions</h4><div id="sessionsList" style="background:#0f0f1a;border:1px solid #2d1b69;border-radius:8px;padding:12px;margin-bottom:8px;font-size:12px;color:#9ca3af;">Chargement...</div><button onclick="logoutOtherSessions()" style="width:100%;padding:10px;background:#7f1d1d;color:#fff;border:none;border-radius:8px;cursor:pointer;">Déconnecter</button></div><div id="tab-accessibility" class="tab-content" style="display:none;"><h4 style="color:#a78bfa;">Thème</h4><select id="advThemeSelect" style="width:100%;padding:8px;background:#0f0f1a;color:#fff;border:1px solid #2d1b69;border-radius:8px;margin-bottom:12px;"><option>Sombre</option><option>Clair</option><option>Contraste</option></select><h4 style="color:#a78bfa;">Police</h4><input type="range" id="fontSizeSlider" min="12" max="18" value="14" onchange="changeFontSize(this.value)" style="width:100%;margin-bottom:8px;"><span id="fontSizeValue" style="color:#9ca3af;">14px</span><h4 style="color:#a78bfa;margin-top:12px;">Contraste</h4><input type="range" id="contrastSlider" min="100" max="150" value="100" onchange="changeContrast(this.value)" style="width:100%;margin-bottom:8px;"><span id="contrastValue" style="color:#9ca3af;">Normal</span></div><div id="tab-shared" class="tab-content" style="display:none;"><h4 style="color:#a78bfa;">📋 Conversations partagées</h4><div id="sharedList" style="background:#0f0f1a;border:1px solid #2d1b69;border-radius:8px;padding:12px;margin-bottom:12px;font-size:12px;color:#9ca3af;min-height:100px;">Chargement...</div><h4 style="color:#a78bfa;">Permissions</h4><label style="color:#9ca3af;font-size:12px;display:flex;align-items:center;gap:8px;margin-bottom:8px;"><input type="checkbox" id="allowPublicShare"> Autoriser partages publics</label><label style="color:#9ca3af;font-size:12px;display:flex;align-items:center;gap:8px;"><input type="checkbox" id="allowCollabShare"> Autoriser collaborations</label></div><div id="tab-privacy-advanced" class="tab-content" style="display:none;"><h4 style="color:#a78bfa;">🛡️ Confidentialité des données</h4><p style="color:#9ca3af;font-size:12px;margin-bottom:12px;">Guidéon s'engage pour la transparence des pratiques en matière de données.</p><label style="color:#9ca3af;font-size:12px;display:flex;align-items:center;gap:8px;margin-bottom:12px;cursor:pointer;"><input type="checkbox" id="analyticsConsent"> Permettre l'analyse des interactions (améliore l'IA)</label><label style="color:#9ca3af;font-size:12px;display:flex;align-items:center;gap:8px;margin-bottom:12px;cursor:pointer;"><input type="checkbox" id="cloudBackup"> Sauvegarder dans le cloud</label><label style="color:#9ca3af;font-size:12px;display:flex;align-items:center;gap:8px;margin-bottom:16px;cursor:pointer;"><input type="checkbox" id="deleteHistoryAuto" checked> Supprimer l'historique après 90 jours inactifs</label><h4 style="color:#a78bfa;">Données tierces</h4><div style="background:#0f0f1a;border-left:3px solid #7c3aed;padding:10px;border-radius:4px;margin-bottom:12px;"><p style="color:#9ca3af;font-size:11px;margin:0;">✓ Aucune donnée personnelle vendue à des tiers<br>✓ Chiffrement end-to-end disponible<br>✓ Droits RGPD & CCPA garantis</p></div><button onclick="downloadPrivacyReport()" style="width:100%;padding:10px;background:#1e3a8a;color:#fff;border:none;border-radius:8px;cursor:pointer;">📄 Rapport de confidentialité</button></div><div id="tab-updates" class="tab-content" style="display:none;"></div><div id="tab-realtime" class="tab-content" style="display:none;"><h4 style="color:#a78bfa;">📊 Données en temps réel</h4><button onclick="loadRealtime()" style="width:100%;padding:10px;background:#1e3a8a;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:12px;">🔄 Charger données</button><div id="realtimeData" style="background:#0f0f1a;border:1px solid #2d1b69;border-radius:8px;padding:12px;font-size:12px;color:#9ca3af;min-height:100px;"></div></div><div id="tab-about" class="tab-content" style="display:none;"><h4 style="color:#a78bfa;">Guidéon v2.0</h4><p style="color:#9ca3af;font-size:12px;margin-bottom:12px;">📅 Juillet 2026 | 🎯 Production</p><h4 style="color:#a78bfa;">Liens</h4><div style="display:flex;flex-direction:column;gap:6px;"><a href="#" style="color:#7c3aed;text-decoration:none;font-size:12px;">📖 Docs</a><a href="mailto:support@guideon.ai" style="color:#7c3aed;text-decoration:none;font-size:12px;">📧 Support</a><a href="#" style="color:#7c3aed;text-decoration:none;font-size:12px;">📊 Status</a></div></div><div style="display:flex;gap:8px;margin-top:16px;"><button onclick="saveProfile()" style="flex:1;padding:10px;background:#2d1b69;color:#fff;border:none;border-radius:8px;cursor:pointer;">💾 Sauver</button><button onclick="logout()" style="flex:1;padding:10px;background:#7f1d1d;color:#fff;border:none;border-radius:8px;cursor:pointer;">🚪 Quitter</button></div><button onclick="createNewAccount()" style="width:100%;padding:10px;background:#5f0000;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-top:8px;margin-bottom:8px;">❌ Supprimer</button><button onclick="switchToRegistration()" style="width:100%;padding:10px;background:#065f46;color:#fff;border:none;border-radius:8px;cursor:pointer;">➕ Créer compte</button><div id="memview" style="display:none;margin-top:12px;padding:12px;background:#0f0f1a;border-radius:8px;color:#9ca3af;font-size:12px;line-height:1.6;"></div></div></div>
+</select><button onclick="saveToneStyle()" style="width:100%;padding:10px;background:#1e3a8a;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:12px;">💾 Enregistrer Tone/Style</button><label style="color:#9ca3af;font-size:12px;display:flex;align-items:center;gap:8px;margin-bottom:12px;cursor:pointer;"><input type="checkbox" id="tmpChat"> Mode temporaire</label><div style="margin-bottom:12px;"><label style="color:#a78bfa;font-size:12px;">🌙 Thème</label><select id="themeSelect" onchange="applyTheme(this.value)" style="width:100%;padding:8px;background:#0f0f1a;color:#fff;border:1px solid #2d1b69;border-radius:8px;font-size:13px;"><option value="dark">Sombre</option><option value="light">Clair</option></select></div><div style="margin-bottom:12px;"><label style="color:#a78bfa;font-size:12px;">🌍 Langue</label><select id="langSelect" style="width:100%;padding:8px;background:#0f0f1a;color:#fff;border:1px solid #2d1b69;border-radius:8px;font-size:13px;"><option value="auto">Auto</option><option value="fr">Français</option><option value="en">Anglais</option></select></div><div style="margin-bottom:12px;"><label style="color:#a78bfa;font-size:12px;">📏 Longueur</label><select id="lengthSelect" style="width:100%;padding:8px;background:#0f0f1a;color:#fff;border:1px solid #2d1b69;border-radius:8px;font-size:13px;"><option value="normal">Normale</option><option value="short">Courte</option><option value="long">Détaillée</option></select></div><div style="margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;"><label style="color:#a78bfa;font-size:12px;">🔔 Notifications</label><input type="checkbox" id="notifCheck" onchange="localStorage.setItem('gnotif',this.checked)" style="width:18px;height:18px;cursor:pointer;"></div><button onclick="showStats()" style="width:100%;padding:10px;background:#1e3a8a;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:8px;">📊 Statistiques</button><button onclick="viewMemory()" style="width:100%;padding:10px;background:#1e3a8a;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:8px;">🧠 Mémoire</button><button onclick="clearMem()" style="width:100%;padding:10px;background:#374151;color:#fff;border:none;border-radius:8px;cursor:pointer;">🗑️ Effacer mémoire</button></div><div id="tab-privacy" class="tab-content" style="display:none;"><h4 style="color:#a78bfa;">Données</h4><button onclick="downloadData()" style="width:100%;padding:10px;background:#1e3a8a;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:8px;">📥 Télécharger</button><button onclick="deleteData()" style="width:100%;padding:10px;background:#7f1d1d;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:16px;">🗑️ Supprimer</button><h4 style="color:#a78bfa;">Partage</h4><label style="color:#9ca3af;font-size:12px;"><input type="checkbox" id="shareControl"> Autoriser partage</label></div><div id="tab-security" class="tab-content" style="display:none;"><h4 style="color:#a78bfa;">Mot de passe</h4><input id="newPwdSec" type="password" placeholder="Nouveau" style="width:100%;padding:10px;background:#0f0f1a;color:#fff;border:1px solid #2d1b69;border-radius:8px;margin-bottom:8px;box-sizing:border-box;"><input id="confirmPwdSec" type="password" placeholder="Confirmer" style="width:100%;padding:10px;background:#0f0f1a;color:#fff;border:1px solid #2d1b69;border-radius:8px;margin-bottom:8px;box-sizing:border-box;"><button onclick="changePassword()" style="width:100%;padding:10px;background:#2d1b69;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:16px;">Changer</button><h4 style="color:#a78bfa;">Sessions</h4><div id="sessionsList" style="background:#0f0f1a;border:1px solid #2d1b69;border-radius:8px;padding:12px;margin-bottom:8px;font-size:12px;color:#9ca3af;">Chargement...</div><button onclick="logoutOtherSessions()" style="width:100%;padding:10px;background:#7f1d1d;color:#fff;border:none;border-radius:8px;cursor:pointer;">Déconnecter</button></div><div id="tab-accessibility" class="tab-content" style="display:none;"><h4 style="color:#a78bfa;">Thème</h4><select id="advThemeSelect" style="width:100%;padding:8px;background:#0f0f1a;color:#fff;border:1px solid #2d1b69;border-radius:8px;margin-bottom:12px;"><option>Sombre</option><option>Clair</option><option>Contraste</option></select><h4 style="color:#a78bfa;">Police</h4><input type="range" id="fontSizeSlider" min="12" max="18" value="14" onchange="changeFontSize(this.value)" style="width:100%;margin-bottom:8px;"><span id="fontSizeValue" style="color:#9ca3af;">14px</span><h4 style="color:#a78bfa;margin-top:12px;">Contraste</h4><input type="range" id="contrastSlider" min="100" max="150" value="100" onchange="changeContrast(this.value)" style="width:100%;margin-bottom:8px;"><span id="contrastValue" style="color:#9ca3af;">Normal</span></div><div id="tab-shared" class="tab-content" style="display:none;"><h4 style="color:#a78bfa;">📋 Conversations partagées</h4><div id="sharedList" style="background:#0f0f1a;border:1px solid #2d1b69;border-radius:8px;padding:12px;margin-bottom:12px;font-size:12px;color:#9ca3af;min-height:100px;">Chargement...</div><h4 style="color:#a78bfa;">Permissions</h4><label style="color:#9ca3af;font-size:12px;display:flex;align-items:center;gap:8px;margin-bottom:8px;"><input type="checkbox" id="allowPublicShare"> Autoriser partages publics</label><label style="color:#9ca3af;font-size:12px;display:flex;align-items:center;gap:8px;"><input type="checkbox" id="allowCollabShare"> Autoriser collaborations</label></div><div id="tab-privacy-advanced" class="tab-content" style="display:none;"><h4 style="color:#a78bfa;">🛡️ Confidentialité des données</h4><p style="color:#9ca3af;font-size:12px;margin-bottom:12px;">Guidéon s'engage pour la transparence des pratiques en matière de données.</p><label style="color:#9ca3af;font-size:12px;display:flex;align-items:center;gap:8px;margin-bottom:12px;cursor:pointer;"><input type="checkbox" id="analyticsConsent"> Permettre l'analyse des interactions (améliore l'IA)</label><label style="color:#9ca3af;font-size:12px;display:flex;align-items:center;gap:8px;margin-bottom:12px;cursor:pointer;"><input type="checkbox" id="cloudBackup"> Sauvegarder dans le cloud</label><label style="color:#9ca3af;font-size:12px;display:flex;align-items:center;gap:8px;margin-bottom:16px;cursor:pointer;"><input type="checkbox" id="deleteHistoryAuto" checked> Supprimer l'historique après 90 jours inactifs</label><h4 style="color:#a78bfa;">Données tierces</h4><div style="background:#0f0f1a;border-left:3px solid #7c3aed;padding:10px;border-radius:4px;margin-bottom:12px;"><p style="color:#9ca3af;font-size:11px;margin:0;">✓ Aucune donnée personnelle vendue à des tiers<br>✓ Chiffrement end-to-end disponible<br>✓ Droits RGPD & CCPA garantis</p></div><button onclick="downloadPrivacyReport()" style="width:100%;padding:10px;background:#1e3a8a;color:#fff;border:none;border-radius:8px;cursor:pointer;">📄 Rapport de confidentialité</button></div><div id="tab-updates" class="tab-content" style="display:none;"></div><div id="tab-realtime" class="tab-content" style="display:none;"><h4 style="color:#a78bfa;">📊 Données en temps réel</h4><button onclick="loadRealtime()" style="width:100%;padding:10px;background:#1e3a8a;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:12px;">🔄 Charger données</button><div id="realtimeData" style="background:#0f0f1a;border:1px solid #2d1b69;border-radius:8px;padding:12px;font-size:12px;color:#9ca3af;min-height:100px;"></div></div><div id="tab-memories" class="tab-content" style="display:none;"><h4 style="color:#a78bfa;margin-bottom:12px;">🧠 Mes mémoires</h4><div id="memoriesList" style="max-height:300px;overflow-y:auto;margin-bottom:12px;border:1px solid #2d1b69;border-radius:8px;padding:8px;">Chargement...</div><textarea id="newMemory" placeholder="Ajouter une mémoire..." style="width:100%;padding:10px;background:#0f0f1a;color:#fff;border:1px solid #2d1b69;border-radius:8px;margin-bottom:8px;box-sizing:border-box;height:60px;resize:none;font-size:12px;"></textarea><button onclick="addMemory()" style="width:100%;padding:10px;background:#10b981;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:8px;">➕ Ajouter</button><button onclick="loadMemories()" style="width:100%;padding:8px;background:#6b7280;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:12px;">🔄 Rafraîchir</button></div><div id="tab-about" class="tab-content" style="display:none;"><h4 style="color:#a78bfa;">Guidéon v2.0</h4><p style="color:#9ca3af;font-size:12px;margin-bottom:12px;">📅 Juillet 2026 | 🎯 Production</p><h4 style="color:#a78bfa;">Liens</h4><div style="display:flex;flex-direction:column;gap:6px;"><a href="#" style="color:#7c3aed;text-decoration:none;font-size:12px;">📖 Docs</a><a href="mailto:support@guideon.ai" style="color:#7c3aed;text-decoration:none;font-size:12px;">📧 Support</a><a href="#" style="color:#7c3aed;text-decoration:none;font-size:12px;">📊 Status</a></div></div><div style="display:flex;gap:8px;margin-top:16px;"><button onclick="saveProfile()" style="flex:1;padding:10px;background:#2d1b69;color:#fff;border:none;border-radius:8px;cursor:pointer;">💾 Sauver</button><button onclick="logout()" style="flex:1;padding:10px;background:#7f1d1d;color:#fff;border:none;border-radius:8px;cursor:pointer;">🚪 Quitter</button></div><button onclick="createNewAccount()" style="width:100%;padding:10px;background:#5f0000;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-top:8px;margin-bottom:8px;">❌ Supprimer</button><button onclick="switchToRegistration()" style="width:100%;padding:10px;background:#065f46;color:#fff;border:none;border-radius:8px;cursor:pointer;">➕ Créer compte</button><div id="memview" style="display:none;margin-top:12px;padding:12px;background:#0f0f1a;border-radius:8px;color:#9ca3af;font-size:12px;line-height:1.6;"></div></div></div>
 </div></div>
 <div id="sharemod" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9998;align-items:center;justify-content:center;">
 <div style="background:#1a1a2e;padding:24px;border-radius:16px;width:88%;max-width:340px;border:1px solid #2d1b69;">
@@ -848,25 +788,23 @@ function loadStats(){
 <button onclick="copyShare()" style="width:100%;padding:10px;background:#2d1b69;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:8px;">📋 Copier</button>
 <button onclick="document.getElementById('sharemod').style.display='none'" style="width:100%;padding:10px;background:transparent;color:#6b7280;border:1px solid #374151;border-radius:8px;cursor:pointer;">Fermer</button>
 </div></div>
-<script src="functions.js"></script>
-  <script>
+<script src="functions.js"></script><script>
 let amode='login',curModel='llama-70b',curSession=null,curTemp=0.7;
-
 function stab(m){amode=m;document.getElementById('an').style.display=m==='reg'?'block':'none';document.getElementById('tl').style.background=m==='login'?'#2d1b69':'transparent';document.getElementById('tr').style.background=m==='reg'?'#2d1b69':'transparent';document.getElementById('ab').textContent=m==='login'?'Se connecter':'Créer mon compte';}
 function setModel(m){curModel=m;localStorage.setItem('gmodel',m);}
 function setTemp(v){curTemp=parseFloat(v);}
 function showImgModal(){document.getElementById('imgmod').style.display='flex';}
-function showBar(n){const b=document.getElementById('ubar');b.style.display='flex';document.getElementById('uname').textContent='👤 '+n;document.body.style.paddingTop='50px';}
+function showBar(n){const b=document.getElementById('ubar');b.style.display='flex';document.getElementById('uname').textContent='👥 '+n;document.body.style.paddingTop='50px';}
 function openSidebar(){document.getElementById('sidebar').style.display='flex';loadSessions();}
 function closeSidebar(){document.getElementById('sidebar').style.display='none';}
 function showProfile(){
   document.getElementById('prof').style.display='flex';
-  const tok=localStorage.getItem('gtoken');
+  const tok=localStorage.getItem('gtoken');setInterval(()=>{const tok=localStorage.getItem('gtoken');const am=document.getElementById('am');const chat=document.getElementById('chat');if(tok&&am&&am.style.display==='flex'){am.style.display='none';if(chat)chat.style.display='flex';}},200);window.addEventListener('popstate',(e)=>{const tok=localStorage.getItem('gtoken');if(tok){e.preventDefault();const am=document.getElementById('am');const chat=document.getElementById('chat');if(am)am.style.display='none';if(chat)chat.style.display='flex';}});
+window.addEventListener('popstate',()=>{const tok=localStorage.getItem('gtoken');if(tok){const am=document.getElementById('am');const chat=document.getElementById('chat');if(am&&am.style.display==='flex'){am.style.display='none';if(chat)chat.style.display='flex';}}});setTimeout(()=>{const db=document.getElementById('debugStatus');if(!db){const d=document.createElement('div');d.id='debugStatus';d.style.cssText='position:fixed;top:60px;right:10px;background:#0f0f1a;border:2px solid #7c3aed;color:#7c3aed;padding:8px 12px;border-radius:6px;font-size:11px;z-index:9999;max-width:150px;word-wrap:break-word;';d.innerHTML='🔍 gtoken: '+(tok?'✅ OK ('+tok.substring(0,10)+'...)':'❌ VIDE');document.body.appendChild(d);}},100);console.log('🔍 Au démarrage - gtoken:', tok ? '✅ Présent' : '❌ VIDE');if(tok)console.log('Token length:', tok.length);
   const email=localStorage.getItem('gname')||'utilisateur@example.com';
   document.getElementById('userEmail').textContent=localStorage.getItem('gname')||'Email non disponible';
   fetch('/api/memory/view',{headers:{'Authorization':'Bearer '+tok}}).then(r=>r.json()).then(d=>{if(d&&d.instructions)document.getElementById('inst').value=d.instructions;}).catch(()=>{});
 }
-
 async function loadSessions(){
   const tok=localStorage.getItem('gtoken');if(!tok)return;
   try{
@@ -899,7 +837,6 @@ function renderSessionRow(s){
   applyTheme(localStorage.getItem("gtheme"));
   }catch(e){}
 }
-
 function showSessionMenu(id,pinned,btn){
   var was=document.getElementById('sm_'+id);
   document.querySelectorAll('[id^="sm_"]').forEach(function(el){el.remove();});
@@ -940,7 +877,6 @@ function showSessionMenu(id,pinned,btn){
   }
   setTimeout(function(){document.addEventListener('click',closeMenu);},10);
 }
-
 async function searchHist(q){
   const res=document.getElementById('srchres');
   if(!q){res.style.display='none';return;}
@@ -954,40 +890,35 @@ async function searchHist(q){
       const d=document.createElement('div');
       d.style.cssText='padding:5px;background:#1a1a2e;border-radius:5px;margin-bottom:3px;cursor:pointer;';
       const preview=m.content.length>60?m.content.substring(0,60)+'...':m.content;
-      d.innerHTML='<p style="color:#e2e8f0;font-size:11px;">'+(m.role==='user'?'👤':'🧠')+' '+preview.replace(/</g,'&lt;')+'</p>';
+      d.innerHTML='<p style="color:#e2e8f0;font-size:11px;">'+(m.role==='user'?'👥':'🧠')+' '+preview.replace(/</g,'&lt;')+'</p>';
       if(m.session_id)d.onclick=()=>switchSession(m.session_id);
       res.appendChild(d);
     });
   }catch(e){}
 }
-
-
 async function newSession(){
     try {
         const response = await fetch('/api/sessions', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({token: localStorage.getItem('gtoken')})});
         const data = await response.json();
         if(data.success && data.session) {
-            localStorage.setItem('session', data.session.id);
-            location.reload();
-            
+            await switchSession(data.session.id);
         }
     } catch(e) {
         console.error('Error creating session:', e);
-        
     }
 }
-
 async function switchSession(id){
   curSession=id;localStorage.setItem('session',id);
   const chat=document.getElementById('chat');
   if(chat)chat.innerHTML='';
+  chatHistory=[];
   try{history=[];}catch(e){}
   closeSidebar();
   const tok=localStorage.getItem('gtoken');
   try{
     const r=await fetch('/api/history/'+id,{headers:{'Authorization':'Bearer '+tok}});
     const data=await r.json();
-    if(Array.isArray(data)&&data.length>0){data.forEach(m=>am(m.role==='assistant'?'guideon':m.role,m.content,m.image_url,m.created_at));chatHistory=data.filter(m=>m.role==='user'||m.role==='assistant').map(m=>({role:m.role,content:m.content||''}));document.querySelectorAll('.bub').forEach(b=>addCopyButtons(b));applyTheme(localStorage.getItem("gtheme"));}
+    if(Array.isArray(data)&&data.length>0){data.slice(-50).forEach(m=>am(m.role==='assistant'?'guideon':m.role,m.content,m.image_url,m.created_at));chatHistory=data.filter(m=>m.role==='user'||m.role==='assistant').map(m=>({role:m.role,content:m.content||''}));document.querySelectorAll('.bub').forEach(b=>addCopyButtons(b));applyTheme(localStorage.getItem("gtheme"));}
     else{
       const hr=new Date().getHours();
       const moment=hr<12?'matin':hr<18?'après-midi':'soir';
@@ -997,20 +928,17 @@ async function switchSession(id){
     }
   }catch(e){console.error("ERR switchSession:",e);}
 }
-
 async function pinSession(id,pinned){
   const tok=localStorage.getItem('gtoken');
   await fetch('/api/sessions/'+id+'/pin',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:tok,pinned})});
   loadSessions();
 }
-
 async function renameSession(id,title){
   const newTitle=prompt('Nouveau titre:',title);if(!newTitle||newTitle===title)return;
   const tok=localStorage.getItem('gtoken');
   await fetch('/api/sessions/'+id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:tok,title:newTitle})});
   loadSessions();
 }
-
 async function exportSess(id){
   const tok=localStorage.getItem('gtoken');
   try{
@@ -1019,17 +947,14 @@ async function exportSess(id){
     a.href=URL.createObjectURL(blob);a.download='conversation-'+id+'.txt';a.click();
   }catch(e){alert('Erreur export');}
 }
-
 function shareSess(id){
   document.getElementById('sharelink').textContent=window.location.origin+'/api/share/'+id;
   document.getElementById('sharemod').style.display='flex';
 }
-
 function copyShare(){
   const link=document.getElementById('sharelink').textContent;
   navigator.clipboard.writeText(link).then(()=>alert('✅ Lien copié!')).catch(()=>{const ta=document.createElement('textarea');ta.value=link;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);alert('✅ Copié!');});
 }
-
 async function deleteSession(id){
   if(!confirm('Supprimer cette conversation ?'))return;
   const tok=localStorage.getItem('gtoken');
@@ -1037,7 +962,6 @@ async function deleteSession(id){
   if(curSession===id){curSession=null;localStorage.removeItem('session');const chat=document.getElementById('chat');if(chat)chat.innerHTML='';try{history=[];}catch(e){}}
   loadSessions();
 }
-
 async function doAuth(){
   const e=document.getElementById('ae').value.trim(),p=document.getElementById('ap').value,n=document.getElementById('an').value.trim(),er=document.getElementById('ae2');
   if(!e||!p){er.textContent='Remplis tous les champs';er.style.display='block';return;}
@@ -1046,17 +970,15 @@ async function doAuth(){
     const r=await fetch('/api/'+(amode==='login'?'login':'register'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:e,password:p,name:n})});
     const d=await r.json();
     if(d.error){er.textContent=d.error;er.style.display='block';btn.textContent=amode==='login'?'Se connecter':'Créer mon compte';btn.disabled=false;return;}
-    localStorage.setItem('gtoken',d.token);localStorage.setItem('gname',d.name||e.split('@')[0]);
+    localStorage.setItem('gtoken',d.token);localStorage.setItem('gname',d.name||e.split('@')[0]);startTokenRefresh();document.getElementById('am').style.display='none';document.getElementById('chat').style.display='flex';showBar(d.name||e.split('@')[0]);
     document.getElementById('am').style.display='none';
     const lm=document.getElementById('lm');if(lm)lm.classList.remove('show');
-    showBar(localStorage.getItem('gname'));
+    showBar(localStorage.getItem('gname'));startTokenRefresh();
     const saved=localStorage.getItem('session');
     if(saved){curSession=parseInt(saved);await switchSession(curSession);}else await newSession();
   }catch(err){er.textContent='Erreur de connexion';er.style.display='block';btn.textContent='Se connecter';btn.disabled=false;}
 }
-
 function logout(){if(!confirm('Se déconnecter ?'))return;localStorage.removeItem('gtoken');localStorage.removeItem('gname');localStorage.removeItem('session');location.reload();}
-
 function applyTheme(theme){
   localStorage.setItem('gtheme', theme);
   const root = document.documentElement;
@@ -1089,7 +1011,6 @@ function applyTheme(theme){
   const chat=document.getElementById('chat');
   if(chat){const obs=new MutationObserver(()=>{const t3=localStorage.getItem('gtheme');if(t3)applyTheme(t3);});obs.observe(chat,{childList:true,subtree:false});}
 })();
-
 async function showStats(){
   const tok=localStorage.getItem('gtoken');if(!tok)return;
   try{
@@ -1098,38 +1019,33 @@ async function showStats(){
     alert('📊 Vos statistiques\n\n💬 Conversations: '+(d.conversations||0)+'\n✉️ Messages: '+(d.messages||0)+'\n🧠 Mémoires: '+(d.memories||0));
   }catch(e){alert('Erreur lors du chargement des statistiques.');}
 }
-
 async function saveProfile(){
   const n=document.getElementById('pn').value.trim(),p=document.getElementById('pp').value,inst=document.getElementById('inst').value;
   const tok=localStorage.getItem('gtoken');
   try{
-    if(n||p){const r=await fetch('/api/profile',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:tok,name:n,password:p})});const d=await r.json();if(d.success&&n){localStorage.setItem('gname',n);document.getElementById('uname').textContent='👤 '+n;}}
+    if(n||p){const r=await fetch('/api/profile',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:tok,name:n,password:p})});const d=await r.json();if(d.success&&n){localStorage.setItem('gname',n);document.getElementById('uname').textContent='👥 '+n;}}
     await fetch('/api/instructions',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:tok,instructions:inst})});
     confirm('✅ Profil mis à jour!');document.getElementById('prof').style.display='none';
   }catch(e){alert('Erreur sauvegarde');}
 }
-
 async function viewMemory(){
   const tok=localStorage.getItem('gtoken');
   try{
     const r=await fetch('/api/memory/view',{headers:{'Authorization':'Bearer '+tok}});
     const d=await r.json();const mv=document.getElementById('memview');mv.style.display='block';
-    mv.innerHTML='<b style="color:#a78bfa;">🧠 Ta mémoire:</b><br>👤 '+( d.name||'?')+'<br>📧 '+(d.email||'?')+'<br>📝 '+(d.instructions||'Aucune instruction')+'<br>📅 '+(d.created_at?new Date(d.created_at).toLocaleDateString('fr-FR'):'?');
+    mv.innerHTML='<b style="color:#a78bfa;">🧠 Ta mémoire:</b><br>👥 '+( d.name||'?')+'<br>📧 '+(d.email||'?')+'<br>📝 '+(d.instructions||'Aucune instruction')+'<br>📅 '+(d.created_at?new Date(d.created_at).toLocaleDateString('fr-FR'):'?');
   }catch(e){}
 }
-
 async function clearMem(){
   if(!confirm('Effacer toute ta mémoire ?'))return;
   await fetch('/api/memory',{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:localStorage.getItem('gtoken')})});
   alert('✅ Mémoire effacée!');
 }
-
 async function delAccount(){
   if(!confirm('Supprimer définitivement ton compte ?'))return;
   await fetch('/api/account',{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:localStorage.getItem('gtoken')})});
   localStorage.clear();
 }
-
 async function analyzeImg(){
   const url=document.getElementById('imgurl').value.trim(),q=document.getElementById('imgq').value.trim();
   if(!url){alert('Entre une URL');return;}
@@ -1138,11 +1054,9 @@ async function analyzeImg(){
   try{
     const r=await fetch('/api/analyze',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({imageUrl:url,question:q||'Décris cette image en détail.'})});
     const d=await r.json();rty();am('guideon',d.reply||'Impossible d\'analyser.');
-    
   }catch(e){rty();am('guideon','Erreur analyse.');}
   document.getElementById('imgurl').value='';document.getElementById('imgq').value='';
 }
-
 async function regenLast(msg){
   const tok=localStorage.getItem('gtoken');
   try{
@@ -1153,13 +1067,11 @@ async function regenLast(msg){
     document.getElementById('ui').value=msg;sm();
   }catch(e){}
 }
-
 const tok=localStorage.getItem('gtoken');
 const savedModel=localStorage.getItem('gmodel');
 const savedTemp=localStorage.getItem('gtemp');
 if(savedModel){curModel=savedModel;document.getElementById('msel').value=savedModel;}
 if(savedTemp){curTemp=parseFloat(savedTemp);document.getElementById('temp').value=savedTemp;}
-
 if(!tok){
   document.getElementById('am').style.display='flex';
 }else{
@@ -1169,7 +1081,6 @@ if(!tok){
   if(saved){curSession=parseInt(saved);switchSession(curSession);}
   else newSession();
 }
-
 // MutationObservers
 const chatObs=new MutationObserver(mutations=>{
   mutations.forEach(m=>m.addedNodes.forEach(node=>{
@@ -1187,7 +1098,6 @@ const chatObs=new MutationObserver(mutations=>{
     }
   }));
 });
-
 const codeObs=new MutationObserver(mutations=>{
   mutations.forEach(m=>m.addedNodes.forEach(node=>{
     if(node.nodeType===1){
@@ -1206,7 +1116,6 @@ const codeObs=new MutationObserver(mutations=>{
     }
   }));
 });
-
 const editObs=new MutationObserver(mutations=>{
   mutations.forEach(m=>m.addedNodes.forEach(node=>{
     if(node.nodeType===1&&node.classList&&node.classList.contains('msg')&&node.classList.contains('user')){
@@ -1228,7 +1137,6 @@ const editObs=new MutationObserver(mutations=>{
     }
   }));
 });
-
 setTimeout(()=>{
   const c=document.getElementById('chat');
   if(c){
@@ -1237,7 +1145,6 @@ setTimeout(()=>{
     editObs.observe(c,{childList:true,subtree:false});
   }
 },3000);
-
 function addUploadBtn(){
   const mb=document.getElementById('mb');
   if(!mb||document.getElementById('uploadBtn'))return;
@@ -1264,7 +1171,6 @@ function addUploadBtn(){
   mb.parentNode.insertBefore(btn,mb);
 }
 setTimeout(addUploadBtn,1000);
-
 const _of=window.fetch;
 window.fetch=async function(u,o={}){
   if(u==='/api/chat'&&o.body){
@@ -1291,7 +1197,7 @@ window.fetch=async function(u,o={}){
           if(imgData.url){
             const chat=document.getElementById('chat');
             const msgDiv=document.createElement('div');msgDiv.className='msg g';
-            msgDiv.innerHTML='<div class="av g">🧠</div><div class="mc"><div class="bub">🎨 '+(imgData.comment||'Voici votre image !')+'<br><img src="'+imgData.url+'" style="max-width:220px;border-radius:12px;margin-top:8px;"></div><div class="mt">'+gt()+'</div></div>';
+            msgDiv.innerHTML='<div class="av g">🧠</div><div class="mc"><div class="bub">🎨 '+(imgData.comment||'Voici votre image !')+'<br><img src="'+imgData.url+'" loading="lazy" style="max-width:220px;border-radius:12px;margin-top:8px;"></div><div class="mt">'+gt()+'</div></div>';
             chat.appendChild(msgDiv);chat.scrollTop=chat.scrollHeight;applyTheme(localStorage.getItem("gtheme"));
           }else{am('guideon','Erreur: '+(imgData.error||'image non générée'));}
         }catch(e){const ty2=document.getElementById('ty');if(ty2)ty2.remove();am('guideon','Erreur image: '+String(e.message||e));}
@@ -1305,11 +1211,9 @@ window.fetch=async function(u,o={}){
   }
   return _of(u,o);
 };
-
-
 function fb(btn,val){
   const card=btn.closest('.ba');
-  card.querySelectorAll('.cb').forEach(b=>{if(b.textContent==='👍'||b.textContent==='👎')b.style.opacity='0.4';});
+  card.querySelectorAll('.cb').forEach(b=>{if(b.textContent==='✅'||b.textContent==='❌')b.style.opacity='0.4';});
   btn.style.opacity='1';
   try{
     const tok=localStorage.getItem('gtoken');
@@ -1317,10 +1221,7 @@ function fb(btn,val){
     fetch('/api/feedback',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tok},body:JSON.stringify({message:text,rating:val})});
   }catch(e){}
 }
-
 undefined
-
-
 if(document.querySelector('.wl'))addSug();
 function shareMsg(btn){try{const text=btn.closest('.mc').querySelector('.bub').innerText;if(navigator.share){navigator.share({text:text});}else{const ta=document.createElement('textarea');ta.value=text;ta.style.position='fixed';ta.style.top='-9999px';ta.style.left='-9999px';document.body.appendChild(ta);ta.focus();ta.select();try{document.execCommand('copy');}catch(e){}document.body.removeChild(ta);btn.textContent='OK';setTimeout(()=>{btn.textContent='Partager';},2000);}}catch(e){}}
 function addCopyButtons(el){
@@ -1341,7 +1242,6 @@ function addCopyButtons(el){
       el.appendChild(cb);
     }
   }
-
   el.querySelectorAll('pre code').forEach(function(block){
     if(block.parentElement.querySelector('.copy-code-btn'))return;
     var btn=document.createElement('button');
@@ -1364,7 +1264,7 @@ function addCopyButtons(el){
     pre.insertBefore(btn,pre.firstChild);
   });
 }
-
+async function loadSharedConversations(){const tok=localStorage.getItem('gtoken');if(!tok)return;const sl=document.getElementById('sharedList');sl.innerHTML='Chargement...';try{const r=await fetch('/api/shared',{headers:{'Authorization':'Bearer '+tok}});const data=await r.json();if(!Array.isArray(data)||data.length===0){sl.innerHTML='❌ Aucune conversation partagée';}else{sl.innerHTML=data.map(c=>'<div style="padding:8px;background:#1a1a2e;margin:6px 0;border-radius:6px;border-left:3px solid #7c3aed;"><strong>'+c.title+'</strong><br><small style="color:#6b7280;">'+new Date(c.created_at).toLocaleDateString('fr-FR')+'</small></div>').join('');};}catch(e){sl.innerHTML='❌ Erreur: '+e.message;}}
 function switchTab(t){document.querySelectorAll('.tab-content').forEach(e=>e.style.display='none');document.querySelectorAll('.tab-btn').forEach(e=>{e.style.color='#6b7280';e.style.borderBottomColor='transparent'});document.getElementById('tab-'+t).style.display='block';const e=document.querySelector('[data-tab="'+t+'"]');e&&(e.style.color='#a78bfa',e.style.borderBottomColor='#7c3aed')}
 function downloadData(){const t=localStorage.getItem('gtoken');t&&fetch('/api/user/data',{headers:{'Authorization':'Bearer '+t}}).then(t=>t.blob()).then(t=>{const e=URL.createObjectURL(t),a=document.createElement('a');a.href=e,a.download='guideon-data-'+(new Date).toISOString().split('T')[0]+'.json',a.click(),URL.revokeObjectURL(e)}).catch(t=>alert('Erreur: '+t.message))}
 function deleteData(){confirm('⚠️ Données supprimées définitivement?')&&fetch('/api/user/data',{method:'DELETE',headers:{'Authorization':'Bearer '+localStorage.getItem('gtoken')}}).then(t=>t.json()).then(t=>alert(t.success?'✅ Supprimé':'❌ '+t.error)).catch(t=>alert('Erreur'))}
@@ -1374,8 +1274,6 @@ function changeFontSize(t){document.getElementById('fontSizeValue').textContent=
 function changeContrast(t){const e=['Normal','Élevé','Très élevé'],a=Math.min(2,Math.floor((t-100)/25));document.getElementById('contrastValue').textContent=e[a]||'Normal',document.body.style.filter='contrast('+t/100+')',localStorage.setItem('gcontrast',t)}
 function showProfile(){document.getElementById('prof').style.display='flex';const t=localStorage.getItem('gtoken'),e=localStorage.getItem('gname')||'Email';document.getElementById('userEmail').textContent=e;const a=localStorage.getItem('gfontsize')||'14';document.getElementById('fontSizeSlider').value=a,document.getElementById('fontSizeValue').textContent=a+'px';const s=localStorage.getItem('gcontrast')||'100';document.getElementById('contrastSlider').value=s,fetch('/api/memory/view',{headers:{'Authorization':'Bearer '+t}}).then(t=>t.json()).then(t=>{t&&t.instructions&&(document.getElementById('inst').value=t.instructions)}).catch(()=>{}),loadProfileSessions()}
 async function loadProfileSessions(){const t=localStorage.getItem('gtoken');if(!t)return;try{const e=await fetch('/api/sessions',{headers:{'Authorization':'Bearer '+t}}),a=await e.json(),s=document.getElementById('sessionsList');if(s.innerHTML='',Array.isArray(a)&&a.length>0)a.slice(0,5).forEach(t=>{const e=document.createElement('div');e.style.cssText='padding:6px;margin-bottom:4px;background:#1a1a2e;border-radius:4px;border-left:2px solid #7c3aed;';const a=new Date(t.created_at);e.textContent='📱 '+a.toLocaleDateString('fr-FR')+' '+a.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}),s.appendChild(e)});else s.innerHTML='<div style="color:#6b7280;">Aucune session</div>'}catch(t){}}
-
-
 function loadSettings(){
   const fs=localStorage.getItem('gfontsize')||'14';
   document.body.style.fontSize=fs+'px';
@@ -1387,8 +1285,6 @@ function loadSettings(){
 }
 window.addEventListener('DOMContentLoaded',loadSettings);
 loadSettings();
-
-
 function loadRealtime(){
   const el = document.getElementById('realtimeData');
   el.innerHTML = 'Chargement...';
@@ -1400,13 +1296,12 @@ function loadRealtime(){
     el.innerHTML = '<h5>🌤️ Météo: ' + w.weather.temperature + ' - ' + w.weather.condition + '</h5><h5>📰 News: ' + n.articles[0].title + '</h5><h5>📈 Stocks: ' + s.stocks.map(st=>st.symbol+' '+st.price).join(', ') + '</h5>';
   }).catch(e => el.innerHTML = '❌ ' + e.message);
 }
-
 function loadProfile(){
   const tok = localStorage.getItem('gtoken');
   fetch('/api/profile', {headers: {'Authorization': 'Bearer '+tok}})
     .then(r=>r.json())
     .then(d => {
-      document.getElementById('profileData').innerHTML = '👤 ' + d.profile.name + '<br>✉️ ' + d.profile.email;
+      document.getElementById('profileData').innerHTML = '👥 ' + d.profile.name + '<br>✉️ ' + d.profile.email;
       document.getElementById('pn').value = d.profile.name || '';
       document.getElementById('toneInput').value = d.profile.tone || '';
       document.getElementById('styleInput').value = d.profile.style || '';
@@ -1414,7 +1309,6 @@ function loadProfile(){
     })
     .catch(e => document.getElementById('profileData').innerHTML = '❌ ' + e.message);
 }
-
 function updateProfile(){
   const tok = localStorage.getItem('gtoken');
   const tone = document.getElementById('toneInput').value;
@@ -1425,7 +1319,6 @@ function updateProfile(){
     body: JSON.stringify({tone, style})
   }).then(r=>r.json()).then(d => alert(d.message || '✅ Sauvegardé')).catch(e => alert('❌ ' + e.message));
 }
-
 function loadStats(){
   const tok = localStorage.getItem('gtoken');
   fetch('/api/feedback/stats', {headers: {'Authorization': 'Bearer '+tok}})
@@ -1433,117 +1326,26 @@ function loadStats(){
     .then(d => document.getElementById('statsData').innerHTML = '📈 Feedback total: ' + d.total_feedbacks + '<br>😊 Satisfaction: ' + d.satisfaction_rate)
     .catch(e => document.getElementById('statsData').innerHTML = '❌ ' + e.message);
 }
-
-
-</script>
-<!-- MODALE INTERACTIVE CRÉER UN PROJET (STYLE CHATGPT) -->
-<div id="createProjectInterface" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:10000;justify-content:center;align-items:center;">
-  <div style="background:#0f0f1a;border:1px solid #2d1b69;border-radius:16px;padding:24px;width:90%;max-width:500px;max-height:85vh;overflow-y:auto;">
-    
-    <!-- HEADER -->
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
-      <h1 style="color:#a78bfa;margin:0;font-size:20px;">Nouveau projet</h1>
-      <button onclick="closeCreateProjectInterface()" style="background:none;border:none;color:#9ca3af;font-size:24px;cursor:pointer;">✕</button>
-    </div>
-    
-    <!-- INPUT PRINCIPAL -->
-    <input id="projectMainInput" type="text" placeholder="par exemple, planification d'un anniversaire" style="width:100%;padding:12px;background:#1a1a2e;border:1px solid #2d1b69;border-radius:8px;color:#fff;font-size:14px;box-sizing:border-box;margin-bottom:20px;">
-    
-    <!-- CATÉGORIES -->
-    <p style="color:#a78bfa;font-weight:bold;margin:0 0 12px 0;font-size:12px;">Sélectionne une catégorie:</p>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:20px;">
-      <button class="categoryBtn" onclick="selectCategory('devoirs', this)" style="padding:10px;background:#2d1b69;color:#fff;border:1px solid #a78bfa;border-radius:8px;cursor:pointer;font-size:12px;transition:all 0.3s;">🏠 Devoirs</button>
-      <button class="categoryBtn" onclick="selectCategory('investissement', this)" style="padding:10px;background:#2d1b69;color:#fff;border:1px solid #a78bfa;border-radius:8px;cursor:pointer;font-size:12px;transition:all 0.3s;">💰 Investissement</button>
-      <button class="categoryBtn" onclick="selectCategory('ecriture', this)" style="padding:10px;background:#2d1b69;color:#fff;border:1px solid #a78bfa;border-radius:8px;cursor:pointer;font-size:12px;transition:all 0.3s;">✏️ Écriture</button>
-      <button class="categoryBtn" onclick="selectCategory('sante', this)" style="padding:10px;background:#2d1b69;color:#fff;border:1px solid #a78bfa;border-radius:8px;cursor:pointer;font-size:12px;transition:all 0.3s;">🏥 Santé</button>
-      <button class="categoryBtn" onclick="selectCategory('voyages', this)" style="padding:10px;background:#2d1b69;color:#fff;border:1px solid #a78bfa;border-radius:8px;cursor:pointer;font-size:12px;transition:all 0.3s;">✈️ Voyages</button>
-      <button class="categoryBtn" onclick="selectCategory('autre', this)" style="padding:10px;background:#2d1b69;color:#fff;border:1px solid #a78bfa;border-radius:8px;cursor:pointer;font-size:12px;transition:all 0.3s;">🎯 Autre</button>
-    </div>
-    
-    <!-- TEXTAREA DESCRIPTION -->
-    <p style="color:#a78bfa;font-weight:bold;margin:0 0 8px 0;font-size:12px;">Description du projet (optionnel):</p>
-    <textarea id="projectDesc" placeholder="Ajoute plus de détails sur ton projet..." style="width:100%;padding:12px;background:#1a1a2e;border:1px solid #2d1b69;border-radius:8px;color:#fff;font-size:12px;box-sizing:border-box;margin-bottom:20px;height:120px;resize:none;"></textarea>
-    
-    <!-- OPTIONS SUPPLÉMENTAIRES -->
-    <p style="color:#a78bfa;font-weight:bold;margin:0 0 12px 0;font-size:12px;">Options supplémentaires:</p>
-    <label style="display:flex;align-items:center;gap:8px;margin-bottom:10px;color:#9ca3af;font-size:12px;cursor:pointer;">
-      <input type="radio" name="newProjectMode" value="default" id="newModeDef" checked style="cursor:pointer;">
-      <span><strong>Par défaut</strong> - Accès aux éléments d'autres chats</span>
-    </label>
-    <label style="display:flex;align-items:center;gap:8px;margin-bottom:20px;color:#9ca3af;font-size:12px;cursor:pointer;">
-      <input type="radio" name="newProjectMode" value="only" id="newModeOnly" style="cursor:pointer;">
-      <span><strong>Projet seulement</strong> - Éléments visibles seulement ici</span>
-    </label>
-    
-    <!-- BOUTONS ACTION -->
-    <div style="display:flex;gap:10px;">
-      <button onclick="saveNewProject()" style="flex:1;padding:12px;background:#a78bfa;color:#000;border:none;border-radius:8px;font-weight:bold;cursor:pointer;font-size:14px;">✅ Créer un projet</button>
-      <button onclick="closeCreateProjectInterface()" style="flex:1;padding:12px;background:#2d1b69;color:#fff;border:1px solid #a78bfa;border-radius:8px;cursor:pointer;font-size:14px;">❌ Annuler</button>
-    </div>
-  </div>
-</div>
-
-
-<!-- MODALE 1: CONFIRMATION CATÉGORIE -->
-<div id="confirmCategoryModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:10001;justify-content:center;align-items:center;">
-  <div style="background:#0f0f1a;border:1px solid #2d1b69;border-radius:12px;padding:20px;width:85%;max-width:350px;">
-    <h2 style="color:#a78bfa;margin:0 0 15px 0;font-size:16px;">Confirmer la catégorie?</h2>
-    <p id="confirmCategoryText" style="color:#9ca3af;margin:0 0 20px 0;font-size:13px;"></p>
-    <div style="display:flex;gap:10px;">
-      <button onclick="confirmCategory()" style="flex:1;padding:10px;background:#a78bfa;color:#000;border:none;border-radius:8px;font-weight:bold;cursor:pointer;">✅ OK</button>
-      <button onclick="closeConfirmCategory()" style="flex:1;padding:10px;background:#2d1b69;color:#fff;border:1px solid #a78bfa;border-radius:8px;cursor:pointer;">❌ Annuler</button>
-    </div>
-  </div>
-</div>
-
-<!-- MODALE 2: VOIR MES PROJETS -->
-<div id="myProjectsModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:10000;justify-content:center;align-items:center;">
-  <div style="background:#0f0f1a;border:1px solid #2d1b69;border-radius:12px;padding:20px;width:90%;max-width:450px;max-height:80vh;overflow-y:auto;">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;">
-      <h2 style="color:#a78bfa;margin:0;font-size:16px;">📂 Mes Projets</h2>
-      <button onclick="closeMyProjectsModal()" style="background:none;border:none;color:#9ca3af;font-size:20px;cursor:pointer;">✕</button>
-    </div>
-    
-    <div id="projectsListContainer" style="margin-bottom:15px;"></div>
-    
-    <button onclick="closeMyProjectsModal()" style="width:100%;padding:10px;background:#2d1b69;color:#fff;border:1px solid #a78bfa;border-radius:8px;cursor:pointer;font-size:13px;">❌ Fermer</button>
-  </div>
-</div>
-
-
-<!-- MODALE 3: PROJET CRÉÉ AVEC SUCCÈS -->
-<div id="projectCreatedModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:10002;justify-content:center;align-items:center;">
-  <div style="background:#0f0f1a;border:1px solid #2d1b69;border-radius:12px;padding:20px;width:85%;max-width:350px;">
-    <h2 style="color:#65a30d;margin:0 0 15px 0;font-size:16px;">✅ Projet créé avec succès!</h2>
-    <p id="projectCreatedName" style="color:#9ca3af;margin:0 0 20px 0;font-size:13px;"></p>
-    <div style="display:flex;gap:10px;">
-      <button onclick="closeProjectCreatedModal()" style="width:100%;padding:10px;background:#a78bfa;color:#000;border:none;border-radius:8px;font-weight:bold;cursor:pointer;">✅ OK</button>
-    </div>
-  </div>
-</div>
-
-
-<script>
+</script><div id="createProjectInterface" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:10000;justify-content:center;align-items:center;"><div style="background:#0f0f1a;border:1px solid #2d1b69;border-radius:16px;padding:24px;width:90%;max-width:500px;max-height:85vh;overflow-y:auto;"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;"><h1 style="color:#a78bfa;margin:0;font-size:20px;">Nouveau projet</h1><button onclick="closeCreateProjectInterface()" style="background:none;border:none;color:#9ca3af;font-size:24px;cursor:pointer;">✕</button></div><input id="projectMainInput" type="text" placeholder="par exemple, planification d'un anniversaire" style="width:100%;padding:12px;background:#1a1a2e;border:1px solid #2d1b69;border-radius:8px;color:#fff;font-size:14px;box-sizing:border-box;margin-bottom:20px;"><p style="color:#a78bfa;font-weight:bold;margin:0 0 12px 0;font-size:12px;">Sélectionne une catégorie:</p><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:20px;"><button class="categoryBtn" onclick="selectCategory('devoirs', this)" style="padding:10px;background:#2d1b69;color:#fff;border:1px solid #a78bfa;border-radius:8px;cursor:pointer;font-size:12px;transition:all 0.3s;">🏠 Devoirs</button><button class="categoryBtn" onclick="selectCategory('investissement', this)" style="padding:10px;background:#2d1b69;color:#fff;border:1px solid #a78bfa;border-radius:8px;cursor:pointer;font-size:12px;transition:all 0.3s;">💰 Investissement</button><button class="categoryBtn" onclick="selectCategory('ecriture', this)" style="padding:10px;background:#2d1b69;color:#fff;border:1px solid #a78bfa;border-radius:8px;cursor:pointer;font-size:12px;transition:all 0.3s;">✏️ Écriture</button><button class="categoryBtn" onclick="selectCategory('sante', this)" style="padding:10px;background:#2d1b69;color:#fff;border:1px solid #a78bfa;border-radius:8px;cursor:pointer;font-size:12px;transition:all 0.3s;">🏥 Santé</button><button class="categoryBtn" onclick="selectCategory('voyages', this)" style="padding:10px;background:#2d1b69;color:#fff;border:1px solid #a78bfa;border-radius:8px;cursor:pointer;font-size:12px;transition:all 0.3s;">✈️ Voyages</button><button class="categoryBtn" onclick="selectCategory('autre', this)" style="padding:10px;background:#2d1b69;color:#fff;border:1px solid #a78bfa;border-radius:8px;cursor:pointer;font-size:12px;transition:all 0.3s;">🎯 Autre</button></div><p style="color:#a78bfa;font-weight:bold;margin:0 0 8px 0;font-size:12px;">Description du projet (optionnel):</p><textarea id="projectDesc" placeholder="Ajoute plus de détails sur ton projet..." style="width:100%;padding:12px;background:#1a1a2e;border:1px solid #2d1b69;border-radius:8px;color:#fff;font-size:12px;box-sizing:border-box;margin-bottom:20px;height:120px;resize:none;"></textarea><p style="color:#a78bfa;font-weight:bold;margin:0 0 12px 0;font-size:12px;">Options supplémentaires:</p><label style="display:flex;align-items:center;gap:8px;margin-bottom:10px;color:#9ca3af;font-size:12px;cursor:pointer;"><input type="radio" name="newProjectMode" value="default" id="newModeDef" checked style="cursor:pointer;"><span><strong>Par défaut</strong> - Accès aux éléments d'autres chats</span></label><label style="display:flex;align-items:center;gap:8px;margin-bottom:20px;color:#9ca3af;font-size:12px;cursor:pointer;"><input type="radio" name="newProjectMode" value="only" id="newModeOnly" style="cursor:pointer;"><span><strong>Projet seulement</strong> - Éléments visibles seulement ici</span></label><div style="display:flex;gap:10px;"><button onclick="saveNewProject()" style="flex:1;padding:12px;background:#a78bfa;color:#000;border:none;border-radius:8px;font-weight:bold;cursor:pointer;font-size:14px;">✅ Créer un projet</button><button onclick="closeCreateProjectInterface()" style="flex:1;padding:12px;background:#2d1b69;color:#fff;border:1px solid #a78bfa;border-radius:8px;cursor:pointer;font-size:14px;">❌ Annuler</button></div></div>
+</div><div id="confirmCategoryModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:10001;justify-content:center;align-items:center;"><div style="background:#0f0f1a;border:1px solid #2d1b69;border-radius:12px;padding:20px;width:85%;max-width:350px;"><h2 style="color:#a78bfa;margin:0 0 15px 0;font-size:16px;">Confirmer la catégorie?</h2><p id="confirmCategoryText" style="color:#9ca3af;margin:0 0 20px 0;font-size:13px;"></p><div style="display:flex;gap:10px;"><button onclick="confirmCategory()" style="flex:1;padding:10px;background:#a78bfa;color:#000;border:none;border-radius:8px;font-weight:bold;cursor:pointer;">✅ OK</button><button onclick="closeConfirmCategory()" style="flex:1;padding:10px;background:#2d1b69;color:#fff;border:1px solid #a78bfa;border-radius:8px;cursor:pointer;">❌ Annuler</button></div></div>
+</div><div id="myProjectsModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:10000;justify-content:center;align-items:center;"><div style="background:#0f0f1a;border:1px solid #2d1b69;border-radius:12px;padding:20px;width:90%;max-width:450px;max-height:80vh;overflow-y:auto;"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;"><h2 style="color:#a78bfa;margin:0;font-size:16px;">📂 Mes Projets</h2><button onclick="closeMyProjectsModal()" style="background:none;border:none;color:#9ca3af;font-size:20px;cursor:pointer;">✕</button></div><div id="projectsListContainer" style="margin-bottom:15px;"></div><button onclick="closeMyProjectsModal()" style="width:100%;padding:10px;background:#2d1b69;color:#fff;border:1px solid #a78bfa;border-radius:8px;cursor:pointer;font-size:13px;">❌ Fermer</button></div>
+</div><div id="projectCreatedModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:10002;justify-content:center;align-items:center;"><div style="background:#0f0f1a;border:1px solid #2d1b69;border-radius:12px;padding:20px;width:85%;max-width:350px;"><h2 style="color:#65a30d;margin:0 0 15px 0;font-size:16px;">✅ Projet créé avec succès!</h2><p id="projectCreatedName" style="color:#9ca3af;margin:0 0 20px 0;font-size:13px;"></p><div style="display:flex;gap:10px;"><button onclick="closeProjectCreatedModal()" style="width:100%;padding:10px;background:#a78bfa;color:#000;border:none;border-radius:8px;font-weight:bold;cursor:pointer;">✅ OK</button></div></div>
+</div><script>
 (function() {
   const chatDiv = document.getElementById('chat');
   if (!chatDiv) return;
-  
   let touchStartY = 0;
   let touchEndY = 0;
-  
   chatDiv.addEventListener('touchstart', (e) => {
     touchStartY = e.changedTouches[0].screenY;
   }, false);
-  
   chatDiv.addEventListener('touchend', (e) => {
     touchEndY = e.changedTouches[0].screenY;
     handleSwipe();
   }, false);
-  
   function handleSwipe() {
     const diff = touchStartY - touchEndY;
     const threshold = 50;
-    
     if (Math.abs(diff) > threshold) {
       if (diff > 0) {
         // Swipe vers le haut = scroll vers le bas
@@ -1558,129 +1360,49 @@ function loadStats(){
 </script>
 <div id="imgmod" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9999;align-items:center;justify-content:center;"><div style="background:#1a1a2e;padding:24px;border-radius:16px;width:90%;max-width:450px;border:1px solid #2d1b69;"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;"><h3 style="color:#a78bfa;margin:0;">🖼️ Analyser une image</h3><button onclick="document.getElementById('imgmod').style.display='none'" style="background:none;border:none;color:#6b7280;font-size:24px;cursor:pointer;">✕</button></div><div style="display:flex;gap:8px;margin-bottom:16px;border-bottom:1px solid #2d1b69;padding-bottom:8px;"><button onclick="document.getElementById('urlTab').style.display='block';document.getElementById('uploadTab').style.display='none'" style="background:none;border:none;color:#a78bfa;cursor:pointer;font-size:14px;padding:8px;">🔗 URL</button><button onclick="document.getElementById('uploadTab').style.display='block';document.getElementById('urlTab').style.display='none'" style="background:none;border:none;color:#6b7280;cursor:pointer;font-size:14px;padding:8px;">📱 Images</button></div><div id="urlTab" style="display:block;"><input type="url" id="imgUrl" placeholder="https://exemple.com/image.jpg" style="width:100%;padding:10px;background:#0f0f1a;border:1px solid #2d1b69;color:#e0e0e0;border-radius:6px;margin-bottom:12px;font-size:13px;"></div><div id="uploadTab" style="display:none;"><input type="file" id="imgFile" accept="image/*" style="width:100%;padding:8px;background:#0f0f1a;border:1px solid #2d1b69;color:#e0e0e0;border-radius:6px;margin-bottom:12px;font-size:13px;"></div><textarea id="imgDesc" placeholder="Optionnel: Pose une question..." style="width:100%;padding:10px;background:#0f0f1a;border:1px solid #2d1b69;color:#e0e0e0;border-radius:6px;margin-bottom:12px;font-size:13px;resize:vertical;height:80px;"></textarea><button onclick="analyzeImage()" style="width:100%;padding:10px;background:linear-gradient(135deg,#7c3aed,#2563eb);border:none;color:white;border-radius:6px;cursor:pointer;font-weight:bold;">📊 Analyser</button></div></div>
 <script>function analyzeImage(){const url=document.getElementById("imgUrl").value;const file=document.getElementById("imgFile").files[0];const desc=document.getElementById("imgDesc").value||"Décris cette image";if(!url&&!file){am("guideon","Fournis une URL ou upload une image");return;}ve=true;document.getElementById("imgmod").style.display="none";am("guideon","🔍 Analyse en cours, veuillez patienter (5-10 secondes)...");if(url){fetch("/api/analyze",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({imageUrl:url,question:desc})}).then(r=>r.json()).then(d=>{ve=false;am("guideon",d.reply||"Erreur");}).catch(e=>{ve=false;am("guideon","Erreur: "+e.message);});}else if(file){const reader=new FileReader();reader.onload=(e)=>{fetch("/api/analyze",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({imageBase64:e.target.result,question:desc})}).then(r=>r.json()).then(d=>{ve=false;am("guideon",d.reply||"Erreur");}).catch(e=>{ve=false;am("guideon","Erreur: "+e.message);});};reader.readAsDataURL(file);}}</script>
-</body>
+<script>function analyzePdfWithWorker(pdfData){if(!window.pdfWorker){window.pdfWorker=new Worker('pdf-worker.js');}window.pdfWorker.onmessage=(e)=>{if(e.data.success){am('guideon','✅ '+e.data.text);}else{am('guideon','❌ Erreur PDF: '+e.data.error);}};window.pdfWorker.postMessage({pdfData});}</script>
+
 <script>
-// Fonctions pour les nouveaux onglets
-  const el = document.getElementById('realtimeData');
-  el.innerHTML = 'Chargement...';
-  Promise.all([
-    fetch('/api/realtime/weather?city=Paris').then(r=>r.json()),
-    fetch('/api/realtime/news?category=tech').then(r=>r.json()),
-    fetch('/api/realtime/stocks?symbols=AAPL,GOOGL').then(r=>r.json())
-  ]).then(([w,n,s]) => {
-    el.innerHTML = '<h5>🌤️ Météo: ' + w.weather.temperature + ' - ' + w.weather.condition + '</h5><h5>📰 News: ' + n.articles[0].title + '</h5><h5>📈 Stocks: ' + s.stocks.map(st=>st.symbol+' '+st.price).join(', ') + '</h5>';
-  }).catch(e => el.innerHTML = '❌ ' + e.message);
-}
-
-function loadProfile(){
-  const tok = localStorage.getItem('gtoken');
-  fetch('/api/profile', {headers: {'Authorization': 'Bearer '+tok}})
-    .then(r=>r.json())
-    .then(d => {
-      document.getElementById('profileData').innerHTML = '👤 ' + d.profile.name + '<br>✉️ ' + d.profile.email;
-      document.getElementById('pn').value = d.profile.name || '';
-      document.getElementById('toneInput').value = d.profile.tone || '';
-      document.getElementById('styleInput').value = d.profile.style || '';
-      loadStats();
-    })
-    .catch(e => document.getElementById('profileData').innerHTML = '❌ ' + e.message);
-}
-
-function updateProfile(){
-  const tok = localStorage.getItem('gtoken');
-  const tone = document.getElementById('toneInput').value;
-  const style = document.getElementById('styleInput').value;
-  fetch('/api/profile/update', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer '+tok},
-    body: JSON.stringify({tone, style})
-  }).then(r=>r.json()).then(d => alert(d.message || '✅ Sauvegardé')).catch(e => alert('❌ ' + e.message));
-}
-
-function loadStats(){
-  const tok = localStorage.getItem('gtoken');
-  fetch('/api/feedback/stats', {headers: {'Authorization': 'Bearer '+tok}})
-    .then(r=>r.json())
-    .then(d => document.getElementById('statsData').innerHTML = '📈 Feedback total: ' + d.total_feedbacks + '<br>😊 Satisfaction: ' + d.satisfaction_rate)
-    .catch(e => document.getElementById('statsData').innerHTML = '❌ ' + e.message);
-}
-
-
-// Fonction pour afficher l'enregistrement
-function switchToRegistration(){
-  if(!confirm("Aller à l'enregistrement ?")) return;
-  document.getElementById("prof").style.display="none";
-  document.getElementById("authModal").scrollIntoView({behavior:"smooth"});
-  stab("reg");
-  alert("✅ Formulaire d'enregistrement prêt");
-}
-</script>
-<script src="functions.js"></script>
-<!-- Modal Privacy Report -->
-<div id="privacyModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9999;align-items:flex-start;justify-content:center;overflow-y:auto;padding-top:20px;">
-  <div style="background:#1a1a2e;padding:24px;border-radius:16px;width:88%;max-width:600px;border:1px solid #2d1b69;margin-bottom:20px;">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-      <h3 style="color:#a78bfa;margin:0;">📊 Rapport de Confidentialité</h3>
-      <button onclick="document.getElementById('privacyModal').style.display='none'" style="background:none;border:none;color:#6b7280;font-size:24px;cursor:pointer;padding:0;width:24px;height:24px;">✕</button>
-    </div>
-    <div id="privacyContent" style="color:#9ca3af;font-size:12px;line-height:1.8;margin-bottom:16px;"></div>
-    <div style="display:flex;gap:8px;">
-      <button onclick="downloadPrivacyPDF()" style="flex:1;padding:10px;background:#2d1b69;color:#fff;border:none;border-radius:8px;cursor:pointer;">📥 Télécharger PDF</button>
-      <button onclick="document.getElementById('privacyModal').style.display='none'" style="flex:1;padding:10px;background:#374151;color:#fff;border:none;border-radius:8px;cursor:pointer;">✕ Fermer</button>
-    </div>
-  </div>
-</div>
-
-</html><script>
-document.addEventListener('DOMContentLoaded', () => {
-  const tabUpdates = document.getElementById('tab-updates');
-  if (tabUpdates) {
-    const observer = new MutationObserver(() => {
-      if (tabUpdates.style.display !== 'none') {
-        checkUpdates();
-      }
-    });
-    observer.observe(tabUpdates, { attributes: true });
+function initColorPicker(){
+  const colorPicker=document.createElement('input');
+  colorPicker.type='color';
+  colorPicker.id='colorTheme';
+  colorPicker.value='#7c3aed';
+  colorPicker.style.cssText='position:fixed;top:155px;left:20px;width:45px;height:45px;cursor:pointer;border:2px solid #a78bfa;border-radius:50%;z-index:999;';
+  colorPicker.onchange=()=>{
+    const color=colorPicker.value;
+    localStorage.setItem('gthemeColor',color);
+    document.querySelectorAll('button.pb').forEach(b=>b.style.background='linear-gradient(135deg,'+color+','+color+'cc)');
+    document.documentElement.style.setProperty('--primary',color);
+  };
+  document.body.appendChild(colorPicker);
+  const saved=localStorage.getItem('gthemeColor');
+  if(saved) {
+    colorPicker.value=saved;
+    document.querySelectorAll('button.pb').forEach(b=>b.style.background='linear-gradient(135deg,'+saved+','+saved+'cc)');
   }
-});
+}
+window.addEventListener('DOMContentLoaded',initColorPicker);
 </script>
-<!-- MODALE INTERACTIVE CRÉER UN PROJET (STYLE CHATGPT) -->
-</div>
 
 
-<!-- MODALE 3: PROJET CRÉÉ AVEC SUCCÈS -->
-<div  style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:10002;justify-content:center;align-items:center;">
-  <div style="background:#0f0f1a;border:1px solid #2d1b69;border-radius:12px;padding:20px;width:85%;max-width:350px;">
-    <h2 style="color:#65a30d;margin:0 0 15px 0;font-size:16px;">✅ Projet créé avec succès!</h2>
-    <p id="projectCreatedName" style="color:#9ca3af;margin:0 0 20px 0;font-size:13px;"></p>
-    <div style="display:flex;gap:10px;">
-      <button onclick="closeProjectCreatedModal()" style="width:100%;padding:10px;background:#a78bfa;color:#000;border:none;border-radius:8px;font-weight:bold;cursor:pointer;">✅ OK</button>
-    </div>
-  </div>
-</div>
-
-
-<script>
+<div  style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:10002;justify-content:center;align-items:center;"><div style="background:#0f0f1a;border:1px solid #2d1b69;border-radius:12px;padding:20px;width:85%;max-width:350px;"><h2 style="color:#65a30d;margin:0 0 15px 0;font-size:16px;">✅ Projet créé avec succès!</h2><p id="projectCreatedName" style="color:#9ca3af;margin:0 0 20px 0;font-size:13px;"></p><div style="display:flex;gap:10px;"><button onclick="closeProjectCreatedModal()" style="width:100%;padding:10px;background:#a78bfa;color:#000;border:none;border-radius:8px;font-weight:bold;cursor:pointer;">✅ OK</button></div></div>
+</div><script>
 (function() {
   const chatDiv = document.getElementById('chat');
   if (!chatDiv) return;
-  
   let touchStartY = 0;
   let touchEndY = 0;
-  
   chatDiv.addEventListener('touchstart', (e) => {
     touchStartY = e.changedTouches[0].screenY;
   }, false);
-  
   chatDiv.addEventListener('touchend', (e) => {
     touchEndY = e.changedTouches[0].screenY;
     handleSwipe();
   }, false);
-  
   function handleSwipe() {
     const diff = touchStartY - touchEndY;
     const threshold = 50;
-    
     if (Math.abs(diff) > threshold) {
       if (diff > 0) {
         // Swipe vers le haut = scroll vers le bas
@@ -1693,5 +1415,214 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 })();
 </script>
+
+<script>
+function initColorPicker(){
+  const colorPicker=document.createElement('input');
+  colorPicker.type='color';
+  colorPicker.id='colorTheme';
+  colorPicker.value='#7c3aed';
+  colorPicker.style.cssText='position:fixed;top:155px;left:20px;width:45px;height:45px;cursor:pointer;border:2px solid #a78bfa;border-radius:50%;z-index:999;';
+  colorPicker.onchange=()=>{
+    const color=colorPicker.value;
+    localStorage.setItem('gthemeColor',color);
+    document.querySelectorAll('button.pb').forEach(b=>b.style.background='linear-gradient(135deg,'+color+','+color+'cc)');
+    document.documentElement.style.setProperty('--primary',color);
+  };
+  document.body.appendChild(colorPicker);
+  const saved=localStorage.getItem('gthemeColor');
+  if(saved) {
+    colorPicker.value=saved;
+    document.querySelectorAll('button.pb').forEach(b=>b.style.background='linear-gradient(135deg,'+saved+','+saved+'cc)');
+  }
+}
+window.addEventListener('DOMContentLoaded',initColorPicker);
+async function loadMemories(){const tok=localStorage.getItem('gtoken');if(!tok)return;const list=document.getElementById('memoriesList');list.innerHTML='Chargement...';try{const r=await fetch('/api/memories',{headers:{'Authorization':'Bearer '+tok}});const d=await r.json();if(!Array.isArray(d)||d.length===0){list.innerHTML='❌ Aucune mémoire';}else{list.innerHTML=d.map(m=>'<div style="padding:8px;background:#0f0f1a;margin:4px 0;border-radius:6px;border-left:3px solid #a78bfa;"><span style="color:#e5e7eb;font-size:12px;">'+m.content+'</span></div>').join('');};}catch(e){list.innerHTML='❌ '+e.message;}}
+async function addMemory(){const tok=localStorage.getItem('gtoken');const c=document.getElementById('newMemory').value.trim();if(!c){alert('Vide');return;}try{const r=await fetch('/api/memory/add',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tok},body:JSON.stringify({content:c})});const d=await r.json();if(d.success){document.getElementById('newMemory').value='';loadMemories();}else alert('❌ '+d.error);}catch(e){alert('❌ '+e.message);}}function showFooter(){const chat=document.getElementById('chat');let footer=document.getElementById('app-footer');if(!footer){footer=document.createElement('div');footer.id='app-footer';footer.style.cssText='text-align:center;font-size:11px;color:#6b7280;margin:12px 0;line-height:1.4;';footer.textContent='🧠 Guidéon is an AI. Please verify important information.';chat.appendChild(footer);}footer.style.display='block';}function hideFooter(){const footer=document.getElementById('app-footer');if(footer)footer.style.display='none';}</script>
+
+
+<!-- MODAL VOCALE SESSION 35 -->
+<div id="voiceModalOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.9);z-index:9999;align-items:center;justify-content:center;">
+  <div style="background:#1a1a2e;width:95%;max-width:520px;height:85vh;border-radius:16px;padding:24px;border:2px solid #a78bfa;">
+    <!-- HAUT: Voix + Paramètres -->
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;border-bottom:1px solid #2d1b69;padding-bottom:12px;">
+      <div style="display:flex;gap:8px;">
+        <button onclick="toggleCC()" style="background:none;border:none;color:#a78bfa;font-size:18px;cursor:pointer;padding:4px;title='Sous-titres'">🔤</button>
+        <select id="voiceSelect" onchange="changeVoice(this.value)" style="background:#0f0f1a;color:#a78bfa;border:1px solid #2d1b69;border-radius:6px;padding:4px 8px;font-size:11px;">
+          <option value="0">🔊 Voix 1</option>
+          <option value="1">🎙️ Voix 2</option>
+          <option value="2">📢 Voix 3</option>
+        </select>
+      </div>
+      <button onclick="closeVoiceModal()" style="background:none;border:none;color:#6b7280;font-size:24px;cursor:pointer;">✕</button>
+    </div>
+
+    <!-- CENTER: Visualizer pulsant -->
+    <div style="text-align:center;margin:40px 0;">
+      <div id="voiceVisualizer" style="width:120px;height:120px;background:linear-gradient(135deg,#a78bfa,#7c3aed);border-radius:50%;margin:0 auto;display:flex;align-items:center;justify-content:center;font-size:48px;transition:transform 0.1s ease;">🧠</div>
+      <p id="voiceStatus" style="color:#a78bfa;margin-top:16px;font-size:14px;font-weight:bold;">En attente...</p>
+      <p id="voiceText" style="color:#9ca3af;margin-top:8px;font-size:12px;height:20px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></p>
+    </div>
+
+    <!-- Chat box (messages) -->
+
+    <!-- BAS: Boutons -->
+    <div style="display:flex;justify-content:center;gap:12px;">
+      <button onclick="isGuideOnSpeaking ? stopGuideOnSpeaking() : startListening()" id="voiceMicBtn" style="padding:12px 24px;background:linear-gradient(135deg,#a78bfa,#7c3aed);color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:bold;">🎤 Parler</button>
+      <button style="padding:12px 24px;background:#374151;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:14px;">⋯</button>
+      <button onclick="closeVoiceModal()" style="padding:12px 24px;background:#7f1d1d;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:14px;">✕ Fermer</button>
+    </div>
+  </div>
+</div>
+
+
+<script>
+function openVoiceModal() {
+  document.getElementById('voiceModalOverlay').style.display = 'flex';
+  initVoice();
+}
+function closeVoiceModal() {
+  document.getElementById('voiceModalOverlay').style.display = 'none';
+  if (recognition) recognition.stop();
+}
+function toggleCC() {
+  alert('Closed Captions: À implémenter');
+}
+</script>
+
+<!-- MODAL VOCALE SESSION 35 - STYLE CHATGPT -->
+<div id="voiceModalOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.9);z-index:9999;align-items:center;justify-content:center;">
+  <div style="background:#1a1a2e;width:95%;max-width:520px;height:85vh;border-radius:16px;padding:24px;border:2px solid #a78bfa;display:flex;flex-direction:column;gap:20px;">
+    
+    <!-- HAUT: 3 boutons (CC, 🔊, ⚙️) -->
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <div style="display:flex;gap:8px;">
+        <button onclick="toggleCC()" id="ccBtn" style="background:none;border:none;color:#a78bfa;font-size:20px;cursor:pointer;padding:8px;width:40px;height:40px;border-radius:8px;">🔤</button>
+        <button onclick="document.getElementById('audioMenu').style.display=document.getElementById('audioMenu').style.display==='none'?'flex':'none'" id="audioBtn" style="background:none;border:none;color:#a78bfa;font-size:20px;cursor:pointer;padding:8px;width:40px;height:40px;border-radius:8px;">🔊</button>
+        <button onclick="document.getElementById('voiceMenu').style.display=document.getElementById('voiceMenu').style.display==='none'?'flex':'none'" id="voicesBtn" style="background:none;border:none;color:#a78bfa;font-size:20px;cursor:pointer;padding:8px;width:40px;height:40px;border-radius:8px;">⚙️</button>
+      </div>
+      <button onclick="closeVoiceModal()" style="background:none;border:none;color:#6b7280;font-size:24px;cursor:pointer;">✕</button>
+    </div>
+
+    <!-- Menu audio output (caché) -->
+    <div id="audioMenu" style="display:none;flex-direction:column;gap:8px;background:#0f0f1a;padding:12px;border-radius:8px;border:1px solid #2d1b69;">
+      <button onclick="changeAudioOutput('speaker');document.getElementById('audioMenu').style.display='none'" style="width:100%;padding:10px;background:#1e3a8a;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:12px;">🔊 Haut-parleur</button>
+      <button onclick="changeAudioOutput('phone');document.getElementById('audioMenu').style.display='none'" style="width:100%;padding:10px;background:#374151;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:12px;">☎️ Téléphone</button>
+    </div>
+
+    <!-- Menu voix (caché) -->
+    <div id="voiceMenu" style="display:none;flex-direction:column;gap:8px;background:#0f0f1a;padding:12px;border-radius:8px;border:1px solid #2d1b69;max-height:250px;overflow-y:auto;">
+      <button onclick="changeVoiceForm('Cove');document.getElementById('voiceMenu').style.display='none'" style="width:100%;padding:10px;background:#1e3a8a;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:12px;">🔊 Cove</button>
+      <button onclick="changeVoiceForm('Spruce');document.getElementById('voiceMenu').style.display='none'" style="width:100%;padding:10px;background:#374151;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:12px;">🌲 Spruce</button>
+      <button onclick="changeVoiceForm('Breeze');document.getElementById('voiceMenu').style.display='none'" style="width:100%;padding:10px;background:#374151;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:12px;">💨 Breeze</button>
+      <button onclick="changeVoiceForm('Sol');document.getElementById('voiceMenu').style.display='none'" style="width:100%;padding:10px;background:#374151;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:12px;">☀️ Sol</button>
+      <button onclick="changeVoiceForm('Jupiter');document.getElementById('voiceMenu').style.display='none'" style="width:100%;padding:10px;background:#374151;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:12px;">🪐 Jupiter</button>
+      <button onclick="changeVoiceForm('Ember');document.getElementById('voiceMenu').style.display='none'" style="width:100%;padding:10px;background:#374151;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:12px;">🔥 Ember</button>
+      <button onclick="changeVoiceForm('Maple');document.getElementById('voiceMenu').style.display='none'" style="width:100%;padding:10px;background:#374151;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:12px;">🍁 Maple</button>
+      <button onclick="changeVoiceForm('Vale');document.getElementById('voiceMenu').style.display='none'" style="width:100%;padding:10px;background:#374151;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:12px;">🏞️ Vale</button>
+      <button onclick="changeVoiceForm('Arbor');document.getElementById('voiceMenu').style.display='none'" style="width:100%;padding:10px;background:#374151;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:12px;">🌳 Arbor</button>
+    </div>
+
+    <!-- MILIEU: Visualizer pulsant bleu (style ChatGPT) -->
+    <div style="text-align:center;">
+      <div id="voiceVisualizer" style="width:140px;height:140px;background:linear-gradient(135deg,#60a5fa,#3b82f6);border-radius:50%;margin:0 auto;display:flex;align-items:center;justify-content:center;font-size:52px;transition:transform 0.1s ease;box-shadow:0 0 30px rgba(59,130,246,0.4);">🧠</div>
+      <p id="voiceStatus" style="color:#60a5fa;margin-top:16px;font-size:14px;font-weight:bold;">En attente...</p>
+      <p id="voiceText" style="color:#9ca3af;margin-top:8px;font-size:12px;min-height:20px;"></p>
+    </div>
+
+    <!-- Chat box (messages) -->
+    
+
+    <!-- BAS: 3 boutons (🎤, ⋯, ✕) -->
+    <div style="display:flex;justify-content:center;gap:16px;">
+      <button onclick="isGuideOnSpeaking ? stopGuideOnSpeaking() : startListening()" id="stopBtn" style="padding:12px 20px;background:#374151;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:16px;width:50px;height:50px;display:flex;align-items:center;justify-content:center;">🎤</button>
+      <button onclick="showPhotoMenu()" style="padding:12px 20px;background:#374151;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:16px;width:50px;height:50px;display:flex;align-items:center;justify-content:center;">⋯</button>
+      <button onclick="closeVoiceModal()" style="padding:12px 20px;background:#7f1d1d;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:16px;width:50px;height:50px;display:flex;align-items:center;justify-content:center;">✕</button>
+    </div>
+  </div>
+</div>
+
+<script src="voice-modal.js"></script>
+<script>
+function openVoiceModal() {
+  document.getElementById('voiceModalOverlay').style.display = 'flex';
+  initVoice();
+  startListening();
+}
+function closeVoiceModal() {
+  document.getElementById('voiceModalOverlay').style.display = 'none';
+  const synth = window.speechSynthesis;
+  if (synth.speaking) synth.cancel();
+  if (recognition) recognition.stop();
+}
+</script>
+
+<!-- MODAL VOCALE SESSION 35 FINALE -->
+<div id="voiceModalOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.9);z-index:9999;align-items:center;justify-content:center;">
+  <div style="background:#1a1a2e;width:95%;max-width:520px;height:85vh;border-radius:16px;padding:24px;border:2px solid #a78bfa;display:flex;flex-direction:column;gap:20px;">
+    
+    <!-- HAUT: 3 boutons -->
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <div style="display:flex;gap:8px;">
+        <button onclick="toggleCC()" style="background:none;border:none;color:#a78bfa;font-size:20px;cursor:pointer;padding:8px;width:40px;height:40px;">🔤</button>
+        <button onclick="document.getElementById('audioMenu').style.display=document.getElementById('audioMenu').style.display==='none'?'flex':'none'" style="background:none;border:none;color:#a78bfa;font-size:20px;cursor:pointer;padding:8px;width:40px;height:40px;">🔊</button>
+        <button onclick="document.getElementById('voiceMenu').style.display=document.getElementById('voiceMenu').style.display==='none'?'flex':'none'" style="background:none;border:none;color:#a78bfa;font-size:20px;cursor:pointer;padding:8px;width:40px;height:40px;">⚙️</button>
+      </div>
+      <button onclick="closeVoiceModal()" style="background:none;border:none;color:#6b7280;font-size:24px;cursor:pointer;">✕</button>
+    </div>
+
+    <!-- Menu audio -->
+    <div id="audioMenu" style="display:none;flex-direction:column;gap:8px;background:#0f0f1a;padding:12px;border-radius:8px;border:1px solid #2d1b69;">
+      <button onclick="changeAudioOutput('speaker');document.getElementById('audioMenu').style.display='none'" style="width:100%;padding:10px;background:#1e3a8a;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:12px;">🔊 Haut-parleur</button>
+      <button onclick="changeAudioOutput('phone');document.getElementById('audioMenu').style.display='none'" style="width:100%;padding:10px;background:#374151;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:12px;">☎️ Téléphone</button>
+    </div>
+
+    <!-- Menu voix -->
+    <div id="voiceMenu" style="display:none;flex-direction:column;gap:8px;background:#0f0f1a;padding:12px;border-radius:8px;border:1px solid #2d1b69;max-height:250px;overflow-y:auto;">
+      <button onclick="changeVoiceForm('Cove');document.getElementById('voiceMenu').style.display='none'" style="width:100%;padding:10px;background:#1e3a8a;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:12px;">🔊 Cove</button>
+      <button onclick="changeVoiceForm('Spruce');document.getElementById('voiceMenu').style.display='none'" style="width:100%;padding:10px;background:#374151;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:12px;">🌲 Spruce</button>
+      <button onclick="changeVoiceForm('Breeze');document.getElementById('voiceMenu').style.display='none'" style="width:100%;padding:10px;background:#374151;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:12px;">💨 Breeze</button>
+      <button onclick="changeVoiceForm('Sol');document.getElementById('voiceMenu').style.display='none'" style="width:100%;padding:10px;background:#374151;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:12px;">☀️ Sol</button>
+      <button onclick="changeVoiceForm('Jupiter');document.getElementById('voiceMenu').style.display='none'" style="width:100%;padding:10px;background:#374151;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:12px;">🪐 Jupiter</button>
+      <button onclick="changeVoiceForm('Ember');document.getElementById('voiceMenu').style.display='none'" style="width:100%;padding:10px;background:#374151;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:12px;">🔥 Ember</button>
+      <button onclick="changeVoiceForm('Maple');document.getElementById('voiceMenu').style.display='none'" style="width:100%;padding:10px;background:#374151;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:12px;">🍁 Maple</button>
+      <button onclick="changeVoiceForm('Vale');document.getElementById('voiceMenu').style.display='none'" style="width:100%;padding:10px;background:#374151;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:12px;">🏞️ Vale</button>
+      <button onclick="changeVoiceForm('Arbor');document.getElementById('voiceMenu').style.display='none'" style="width:100%;padding:10px;background:#374151;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:12px;">🌳 Arbor</button>
+    </div>
+
+    <!-- MILIEU: Visualizer -->
+    <div style="text-align:center;">
+      <div id="voiceVisualizer" style="width:140px;height:140px;background:linear-gradient(135deg,#a78bfa,#7c3aed);border-radius:50%;margin:0 auto;display:flex;align-items:center;justify-content:center;font-size:52px;transition:transform 0.1s ease;">🧠</div>
+      <p id="voiceStatus" style="color:#a78bfa;margin-top:16px;font-size:14px;font-weight:bold;">En attente...</p>
+      <p id="voiceText" style="color:#9ca3af;margin-top:8px;font-size:12px;min-height:20px;"></p>
+    </div>
+
+    <!-- Chat box -->
+    <div id="voiceChatBox" style="background:#0f0f1a;border:2px solid #a78bfa;border-radius:8px;padding:12px;height:200px;overflow-y:auto;font-size:12px;color:#fff;margin:12px 0;display:block;min-height:150px;"></div>
+
+    <!-- BAS: 3 boutons -->
+    <div style="display:flex;justify-content:center;gap:16px;">
+      <button onclick="isGuideOnSpeaking ? stopGuideOnSpeaking() : startListening()" id="voiceMicBtn" style="padding:12px 20px;background:#374151;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:16px;width:50px;height:50px;display:flex;align-items:center;justify-content:center;">🎤</button>
+      <button onclick="showPhotoMenu()" style="padding:12px 20px;background:#374151;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:16px;width:50px;height:50px;display:flex;align-items:center;justify-content:center;">⋯</button>
+      <button onclick="closeVoiceModal()" style="padding:12px 20px;background:#7f1d1d;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:16px;width:50px;height:50px;display:flex;align-items:center;justify-content:center;">✕</button>
+    </div>
+  </div>
+</div>
+
+<script src="voice-modal.js"></script>
+<script>
+function openVoiceModal() {
+  document.getElementById('voiceModalOverlay').style.display = 'flex';
+  initVoice();
+  startListening();
+}
+function closeVoiceModal() {
+  document.getElementById('voiceModalOverlay').style.display = 'none';
+  const synth = window.speechSynthesis;
+  if (synth.speaking) synth.cancel();
+  if (recognition) recognition.stop();
+}
+</script>
+
 </body>
 </html>
