@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Guidéon - Modal Vocale Session 37</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0a0a0f;
+      color: #e0e0e0;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    /* MODAL VOCALE */
+    .voice-modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: linear-gradient(135deg, #1a0533, #0d1f4d);
+      z-index: 10000;
+      flex-direction: column;
+    }
+    
+    .voice-modal.show {
+      display: flex;
+    }
+    
+    /* HEADER - 3 boutons haut */
+    .voice-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px;
+      border-bottom: 1px solid #2d1b69;
+    }
+    
+    .voice-header-left {
+      font-size: 24px;
+      font-weight: 700;
+      color: #c084fc;
+    }
+    
+    .voice-header-buttons {
+      display: flex;
+      gap: 12px;
+    }
+    
+    .voice-btn-header {
+      background: none;
+      border: none;
+      color: #a78bfa;
+      font-size: 20px;
+      cursor: pointer;
+      padding: 8px 12px;
+      border-radius: 8px;
+      transition: all 0.2s ease;
+    }
+    
+    .voice-btn-header:hover {
+      background: rgba(167, 139, 250, 0.1);
+      transform: scale(1.1);
+    }
+    
+    /* CONTENT - Chat + Sticker */
+    .voice-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 32px 16px;
+      gap: 24px;
+      overflow-y: auto;
+    }
+    
+    /* STICKER CERVEAU - ANIMATION PULSATION */
+    .brain-sticker {
+      width: 120px;
+      height: 120px;
+      font-size: 100px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      animation: brainPulse 1.5s infinite;
+    }
+    
+    @keyframes brainPulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.15); }
+      100% { transform: scale(1); }
+    }
+    
+    /* CHAT INTERNE */
+    .voice-chat {
+      width: 100%;
+      max-width: 500px;
+      height: 300px;
+      background: rgba(15, 15, 26, 0.6);
+      border: 1px solid #2d1b69;
+      border-radius: 16px;
+      padding: 16px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    
+    .voice-msg {
+      display: flex;
+      gap: 8px;
+      max-width: 90%;
+      animation: msgSlide 0.3s ease;
+    }
+    
+    @keyframes msgSlide {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .voice-msg.user {
+      margin-left: auto;
+      flex-direction: row-reverse;
+    }
+    
+    .voice-msg.user .voice-bubble {
+      background: linear-gradient(135deg, #7c3aed, #2563eb);
+      color: white;
+    }
+    
+    .voice-msg.assistant .voice-bubble {
+      background: rgba(167, 139, 250, 0.15);
+      color: #a78bfa;
+    }
+    
+    .voice-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      font-size: 16px;
+    }
+    
+    .voice-bubble {
+      padding: 10px 14px;
+      border-radius: 16px;
+      font-size: 14px;
+      line-height: 1.5;
+      word-break: break-word;
+      max-width: 100%;
+    }
+    
+    /* FEEDBACK TEXT */
+    .voice-feedback {
+      font-size: 14px;
+      color: #7c6fa0;
+      text-align: center;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    /* FOOTER - 3 boutons bas */
+    .voice-footer {
+      display: flex;
+      justify-content: center;
+      gap: 16px;
+      padding: 20px 16px;
+      border-top: 1px solid #2d1b69;
+    }
+    
+    .voice-btn-footer {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      border: none;
+      font-size: 20px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+    }
+    
+    .voice-btn-speak {
+      background: linear-gradient(135deg, #7c3aed, #2563eb);
+      color: white;
+    }
+    
+    .voice-btn-speak.active {
+      background: linear-gradient(135deg, #ec4899, #f59e0b);
+      animation: recordPulse 1s infinite;
+    }
+    
+    @keyframes recordPulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.1); }
+    }
+    
+    .voice-btn-menu {
+      background: rgba(167, 139, 250, 0.1);
+      color: #a78bfa;
+      border: 1px solid #2d1b69;
+    }
+    
+    .voice-btn-menu:hover {
+      background: rgba(167, 139, 250, 0.2);
+    }
+    
+    .voice-btn-close {
+      background: rgba(167, 139, 250, 0.1);
+      color: #a78bfa;
+      border: 1px solid #2d1b69;
+    }
+    
+    .voice-btn-close:hover {
+      background: rgba(248, 113, 113, 0.2);
+      color: #f87171;
+    }
+    
+    /* BOUTON DE TEST - Ouvrir la modal */
+    .test-btn {
+      padding: 12px 24px;
+      background: linear-gradient(135deg, #7c3aed, #2563eb);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.2s ease;
+    }
+    
+    .test-btn:hover {
+      transform: scale(1.05);
+    }
+    
+    .test-btn:active {
+      transform: scale(0.95);
+    }
+  </style>
+</head>
+<body>
+
+<!-- BOUTON DE TEST -->
+<button class="test-btn" onclick="openVoiceModal()">🎤 Ouvrir Modal Vocale</button>
+
+<!-- MODAL VOCALE -->
+<div id="voiceModal" class="voice-modal">
+  
+  <!-- HEADER -->
+  <div class="voice-header">
+    <div class="voice-header-left">🧠 Guidéon Vocal</div>
+    <div class="voice-header-buttons">
+      <button class="voice-btn-header" title="Captions" onclick="toggleCaptions()">CC</button>
+      <button class="voice-btn-header" title="Micro" onclick="toggleMicrophone()">🎤</button>
+      <button class="voice-btn-header" title="Paramètres" onclick="openVoiceSettings()">⚙️</button>
+    </div>
+  </div>
+  
+  <!-- CONTENT -->
+  <div class="voice-content">
+    <div class="brain-sticker">🧠</div>
+    <div class="voice-chat" id="voiceChat"></div>
+    <div class="voice-feedback" id="voiceFeedback">En attente...</div>
+  </div>
+  
+  <!-- FOOTER -->
+  <div class="voice-footer">
+    <button class="voice-btn-footer voice-btn-speak" id="speakBtn" onclick="toggleSpeechRecognition()">🎤</button>
+    <button class="voice-btn-footer voice-btn-menu" onclick="openVoiceMenu()">⋯</button>
+    <button class="voice-btn-footer voice-btn-close" onclick="closeVoiceModal()">✕</button>
+  </div>
+  
+</div>
+
+<script>
+  // État global
+  let voiceState = {
+    isListening: false,
+    isProcessing: false,
+    history: [],
+    recognition: null
+  };
+  
+  // INITIALISATION STT
+  function initSpeechRecognition() {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert('❌ Micro non supporté par ce navigateur');
+      return;
+    }
+    
+    voiceState.recognition = new SpeechRecognition();
+    voiceState.recognition.lang = 'fr-FR';
+    voiceState.recognition.continuous = false;
+    voiceState.recognition.interimResults = true;
+    
+    voiceState.recognition.onstart = () => {
+      voiceState.isListening = true;
+      document.getElementById('speakBtn').classList.add('active');
+      updateFeedback('🎤 En écoute...');
+    };
+    
+    voiceState.recognition.onresult = (e) => {
+      let transcript = '';
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        transcript += e.results[i][0].transcript;
+      }
+      
+      if (e.isFinal) {
+        updateFeedback('✅ Traitement...');
+        sendVoiceMessage(transcript);
+      } else {
+        updateFeedback(`Entendre: "${transcript}"`);
+      }
+    };
+    
+    voiceState.recognition.onend = () => {
+      voiceState.isListening = false;
+      document.getElementById('speakBtn').classList.remove('active');
+    };
+    
+    voiceState.recognition.onerror = (e) => {
+      updateFeedback(`❌ Erreur: ${e.error}`);
+      voiceState.isListening = false;
+      document.getElementById('speakBtn').classList.remove('active');
+    };
+  }
+  
+  // TOGGLE STT
+  function toggleSpeechRecognition() {
+    if (!voiceState.recognition) initSpeechRecognition();
+    
+    if (voiceState.isListening) {
+      voiceState.recognition.stop();
+    } else {
+      if (voiceState.isProcessing) {
+        updateFeedback('⏳ Attente réponse...');
+        return;
+      }
+      voiceState.recognition.start();
+    }
+  }
+  
+  // ENVOYER MESSAGE VOCAL
+  async function sendVoiceMessage(text) {
+    voiceState.isProcessing = true;
+    
+    // Afficher le message utilisateur
+    addMessageToChat('user', text);
+    
+    try {
+      const response = await fetch('/api/voice-chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: text,
+          history: voiceState.history
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      
+      const data = await response.json();
+      const reply = data.reply;
+      
+      // Ajouter réponse Guidéon au chat
+      addMessageToChat('assistant', reply);
+      
+      // Ajouter à l'historique
+      voiceState.history.push({ role: 'user', content: text });
+      voiceState.history.push({ role: 'assistant', content: reply });
+      
+      // Parler la réponse
+      speakResponse(reply);
+      updateFeedback('✅ Prêt à écouter');
+    } catch (error) {
+      updateFeedback(`❌ Erreur: ${error.message}`);
+    } finally {
+      voiceState.isProcessing = false;
+    }
+  }
+  
+  // AFFICHER MESSAGE DANS LE CHAT
+  function addMessageToChat(role, content) {
+    const chat = document.getElementById('voiceChat');
+    const msg = document.createElement('div');
+    msg.className = `voice-msg ${role}`;
+    
+    const avatar = document.createElement('div');
+    avatar.className = 'voice-avatar';
+    avatar.textContent = role === 'user' ? '👤' : '🧠';
+    
+    const bubble = document.createElement('div');
+    bubble.className = 'voice-bubble';
+    bubble.textContent = content;
+    
+    msg.appendChild(avatar);
+    msg.appendChild(bubble);
+    chat.appendChild(msg);
+    
+    // Auto-scroll vers le bas
+    chat.scrollTop = chat.scrollHeight;
+  }
+  
+  // TEXT-TO-SPEECH
+  function speakResponse(text) {
+    if (!('speechSynthesis' in window)) {
+      updateFeedback('❌ TTS non supporté');
+      return;
+    }
+    
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'fr-FR';
+    utterance.rate = 1;
+    utterance.pitch = 1;
+    utterance.volume = 1;
+    
+    utterance.onstart = () => {
+      updateFeedback('🔊 Guidéon parle...');
+    };
+    
+    utterance.onend = () => {
+      updateFeedback('✅ Prêt à écouter');
+    };
+    
+    window.speechSynthesis.speak(utterance);
+  }
+  
+  // UPDATE FEEDBACK TEXT
+  function updateFeedback(text) {
+    document.getElementById('voiceFeedback').textContent = text;
+  }
+  
+  // BOUTONS HEADER
+  function toggleCaptions() {
+    alert('📝 Captions - À implémenter');
+  }
+  
+  function toggleMicrophone() {
+    alert('🎤 Paramètres micro - À implémenter');
+  }
+  
+  function openVoiceSettings() {
+    alert('⚙️ Paramètres vocaux - À implémenter');
+  }
+  
+  // BOUTONS FOOTER
+  function openVoiceMenu() {
+    alert('⋯ Menu - À implémenter');
+  }
+  
+  // OUVRIR/FERMER MODAL
+  function openVoiceModal() {
+    document.getElementById('voiceModal').classList.add('show');
+    if (!voiceState.recognition) initSpeechRecognition();
+    updateFeedback('✅ Prêt à écouter');
+  }
+  
+  function closeVoiceModal() {
+    if (voiceState.recognition) voiceState.recognition.stop();
+    document.getElementById('voiceModal').classList.remove('show');
+  }
+</script>
+
+</body>
+</html>

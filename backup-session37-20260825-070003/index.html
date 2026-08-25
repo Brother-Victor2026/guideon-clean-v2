@@ -81,26 +81,6 @@ header{background:linear-gradient(135deg,#1a0533,#0d1f4d);padding:14px 16px;disp
 .typing-dots span:nth-child(2){animation-delay:0.2s;}
 .typing-dots span:nth-child(3){animation-delay:0.4s;}
 @keyframes typing-blink{0%,80%,100%{opacity:0.3;}40%{opacity:1;}}
-@keyframes wavePulse {
-  0% { opacity: 1; transform: scale(1); }
-  100% { opacity: 0; transform: scale(1.3); }
-}
-.voice-wave-1 { animation: wavePulse 1.5s infinite; }
-.voice-wave-2 { animation: wavePulse 1.5s infinite 0.3s; }
-.voice-wave-3 { animation: wavePulse 1.5s infinite 0.6s; }
-#voiceModalBtn:hover { background: rgba(167, 139, 250, 0.2); transform: scale(1.05); }
-#voiceModalBtn.active .voice-wave-1, 
-#voiceModalBtn.active .voice-wave-2, 
-#voiceModalBtn.active .voice-wave-3 { animation-play-state: running; }
-
-@keyframes barPulse1 { 0%, 100% { height: 8px; } 50% { height: 14px; } }
-@keyframes barPulse2 { 0%, 100% { height: 12px; } 50% { height: 20px; } }
-@keyframes barPulse3 { 0%, 100% { height: 16px; } 50% { height: 24px; } }
-@keyframes barPulse4 { 0%, 100% { height: 10px; } 50% { height: 18px; } }
-
-@keyframes msgSlide { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-@keyframes brainPulse { 0% { transform: scale(1); } 50% { transform: scale(1.15); } 100% { transform: scale(1); } }
-
 </style>
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js">
 function loadRealtime(){
@@ -446,12 +426,6 @@ function loadStats(){
 <div class="ia" style="padding-bottom:70px;">
 <div id="app-footer" style="text-align:center;font-size:9px;color:#6b7280;pointer-events:none;display:none;margin-top:8px;margin-bottom:8px;">🧠 Guidéon is an AI. Please verify important information.</div><textarea id="ui" placeholder="Ecrivez votre message..." rows="1"></textarea>
 <button class="mb" id="mb" onclick="tm()">🎤</button>
-<div id="voiceModalBtn" onclick="openVoiceModal()" style="width:44px;height:44px;display:flex;align-items:center;justify-content:center;background:#1a1a2e;border:1px solid #2a2a4a;color:#a78bfa;border-radius:50%;cursor:pointer;flex-shrink:0;gap:3px;">
-  <div style="width:2px;background:#4b5563;border-radius:1px;animation:barPulse1 0.8s infinite;"></div>
-  <div style="width:2px;background:#4b5563;border-radius:1px;animation:barPulse2 0.8s infinite;"></div>
-  <div style="width:2px;background:#4b5563;border-radius:1px;animation:barPulse3 0.8s infinite;"></div>
-  <div style="width:2px;background:#4b5563;border-radius:1px;animation:barPulse4 0.8s infinite;"></div>
-</div>
 <button class="sb" onclick="sm()">➤</button>
 </div>
 <script src="functions.js"></script>
@@ -1410,198 +1384,124 @@ function initColorPicker(){
 window.addEventListener('DOMContentLoaded',initColorPicker);
 </script>
 
+</body>
 <script>
-// État modal vocale
-let voiceModalState = {
-  isListening: false,
-  isProcessing: false,
-  history: [],
-  recognition: null,
-  voiceModal: null
-};
-
-function openVoiceModal() {
-  if (!voiceModalState.voiceModal) {
-    createVoiceModal();
-  }
-  voiceModalState.voiceModal.style.display = 'flex';
-  initSpeechRecognition();
+// Fonctions pour les nouveaux onglets
+  const el = document.getElementById('realtimeData');
+  el.innerHTML = 'Chargement...';
+  Promise.all([
+    fetch('/api/realtime/weather?city=Paris').then(r=>r.json()),
+    fetch('/api/realtime/news?category=tech').then(r=>r.json()),
+    fetch('/api/realtime/stocks?symbols=AAPL,GOOGL').then(r=>r.json())
+  ]).then(([w,n,s]) => {
+    el.innerHTML = '<h5>🌤️ Météo: ' + w.weather.temperature + ' - ' + w.weather.condition + '</h5><h5>📰 News: ' + n.articles[0].title + '</h5><h5>📈 Stocks: ' + s.stocks.map(st=>st.symbol+' '+st.price).join(', ') + '</h5>';
+  }).catch(e => el.innerHTML = '❌ ' + e.message);
 }
-
-function closeVoiceModal() {
-  if (voiceModalState.recognition) voiceModalState.recognition.stop();
-  if (voiceModalState.voiceModal) voiceModalState.voiceModal.style.display = 'none';
+function loadProfile(){
+  const tok = localStorage.getItem('gtoken');
+  fetch('/api/profile', {headers: {'Authorization': 'Bearer '+tok}})
+    .then(r=>r.json())
+    .then(d => {
+      document.getElementById('profileData').innerHTML = '👥 ' + d.profile.name + '<br>✉️ ' + d.profile.email;
+      document.getElementById('pn').value = d.profile.name || '';
+      document.getElementById('toneInput').value = d.profile.tone || '';
+      document.getElementById('styleInput').value = d.profile.style || '';
+      loadStats();
+    })
+    .catch(e => document.getElementById('profileData').innerHTML = '❌ ' + e.message);
 }
-
-function createVoiceModal() {
-  const modal = document.createElement('div');
-  modal.id = 'voiceModal';
-  modal.style.cssText = 'display:none;position:fixed;inset:0;background:linear-gradient(135deg,#1a0533,#0d1f4d);z-index:10000;flex-direction:column;';
-  
-  modal.innerHTML = `
-    <div style="display:flex;justify-content:space-between;align-items:center;padding:16px;border-bottom:1px solid #2d1b69;">
-      <div style="font-size:24px;font-weight:700;color:#c084fc;">🧠 Guidéon Vocal</div>
-      <div style="display:flex;gap:12px;">
-        <button onclick="toggleCaptions()" style="background:none;border:none;color:#a78bfa;font-size:20px;cursor:pointer;padding:8px 12px;">CC</button>
-        <button onclick="toggleMicrophone()" style="background:none;border:none;color:#a78bfa;font-size:20px;cursor:pointer;padding:8px 12px;">🎤</button>
-        <button onclick="openVoiceSettings()" style="background:none;border:none;color:#a78bfa;font-size:20px;cursor:pointer;padding:8px 12px;">⚙️</button>
-      </div>
-    </div>
-    
-    <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 16px;gap:24px;overflow-y:auto;">
-      <div style="width:120px;height:120px;font-size:100px;display:flex;align-items:center;justify-content:center;animation:brainPulse 1.5s infinite;">🧠</div>
-      
-      <div id="voiceChat" style="width:100%;max-width:500px;height:300px;background:rgba(15,15,26,0.6);border:1px solid #2d1b69;border-radius:16px;padding:16px;overflow-y:auto;display:flex;flex-direction:column;gap:12px;"></div>
-      
-      <div id="voiceFeedback" style="font-size:14px;color:#7c6fa0;text-align:center;height:40px;display:flex;align-items:center;justify-content:center;">En attente...</div>
-    </div>
-    
-    <div style="display:flex;justify-content:center;gap:16px;padding:20px 16px;border-top:1px solid #2d1b69;">
-      <button id="speakBtn" onclick="toggleSpeechRecognition()" style="width:56px;height:56px;border-radius:50%;border:none;background:linear-gradient(135deg,#7c3aed,#2563eb);color:white;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;">🎤</button>
-      <button onclick="openVoiceMenu()" style="width:56px;height:56px;border-radius:50%;border:1px solid #2a2a4a;background:rgba(167,139,250,0.1);color:#a78bfa;font-size:20px;cursor:pointer;">⋯</button>
-      <button onclick="closeVoiceModal()" style="width:56px;height:56px;border-radius:50%;border:1px solid #2a2a4a;background:rgba(167,139,250,0.1);color:#a78bfa;font-size:20px;cursor:pointer;">✕</button>
-    </div>
-  `;
-  
-  document.body.appendChild(modal);
-  voiceModalState.voiceModal = modal;
+function updateProfile(){
+  const tok = localStorage.getItem('gtoken');
+  const tone = document.getElementById('toneInput').value;
+  const style = document.getElementById('styleInput').value;
+  fetch('/api/profile/update', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer '+tok},
+    body: JSON.stringify({tone, style})
+  }).then(r=>r.json()).then(d => alert(d.message || '✅ Sauvegardé')).catch(e => alert('❌ ' + e.message));
 }
-
-function initSpeechRecognition() {
-  if (voiceModalState.recognition) return;
-  
-  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SpeechRecognition) {
-    alert('❌ Micro non supporté');
-    return;
-  }
-  
-  voiceModalState.recognition = new SpeechRecognition();
-  voiceModalState.recognition.lang = 'fr-FR';
-  voiceModalState.recognition.continuous = false;
-  voiceModalState.recognition.interimResults = true;
-  
-  voiceModalState.recognition.onstart = () => {
-    voiceModalState.isListening = true;
-    document.getElementById('speakBtn').style.background = 'linear-gradient(135deg,#ec4899,#f59e0b)';
-    updateVoiceFeedback('🎤 En écoute...');
-  };
-  
-  voiceModalState.recognition.onresult = (e) => {
-    let transcript = '';
-    for (let i = e.resultIndex; i < e.results.length; i++) {
-      transcript += e.results[i][0].transcript;
-    }
-    if (e.isFinal) {
-      updateVoiceFeedback('✅ Traitement...');
-      sendVoiceMessage(transcript);
-    } else {
-      updateVoiceFeedback(`Entendre: "${transcript}"`);
-    }
-  };
-  
-  voiceModalState.recognition.onend = () => {
-    voiceModalState.isListening = false;
-    document.getElementById('speakBtn').style.background = 'linear-gradient(135deg,#7c3aed,#2563eb)';
-  };
-  
-  voiceModalState.recognition.onerror = (e) => {
-    updateVoiceFeedback(`❌ Erreur: ${e.error}`);
-  };
+function loadStats(){
+  const tok = localStorage.getItem('gtoken');
+  fetch('/api/feedback/stats', {headers: {'Authorization': 'Bearer '+tok}})
+    .then(r=>r.json())
+    .then(d => document.getElementById('statsData').innerHTML = '📈 Feedback total: ' + d.total_feedbacks + '<br>😊 Satisfaction: ' + d.satisfaction_rate)
+    .catch(e => document.getElementById('statsData').innerHTML = '❌ ' + e.message);
 }
-
-function toggleSpeechRecognition() {
-  if (!voiceModalState.recognition) initSpeechRecognition();
-  
-  if (voiceModalState.isListening) {
-    voiceModalState.recognition.stop();
-  } else {
-    if (voiceModalState.isProcessing) {
-      updateVoiceFeedback('⏳ Attente réponse...');
-      return;
-    }
-    voiceModalState.recognition.start();
-  }
+// Fonction pour afficher l'enregistrement
+function switchToRegistration(){
+  if(!confirm("Aller à l'enregistrement ?")) return;
+  document.getElementById("prof").style.display="none";
+  document.getElementById("authModal").scrollIntoView({behavior:"smooth"});
+  stab("reg");
+  alert("✅ Formulaire d'enregistrement prêt");
 }
-
-async function sendVoiceMessage(text) {
-  voiceModalState.isProcessing = true;
-  addVoiceMessage('user', text);
-  
-  try {
-    const response = await fetch('/api/voice-chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        message: text,
-        history: voiceModalState.history
-      })
-    });
-    
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    
-    const data = await response.json();
-    const reply = data.reply;
-    
-    addVoiceMessage('assistant', reply);
-    voiceModalState.history.push({ role: 'user', content: text });
-    voiceModalState.history.push({ role: 'assistant', content: reply });
-    
-    speakVoiceResponse(reply);
-    updateVoiceFeedback('✅ Prêt à écouter');
-  } catch (error) {
-    updateVoiceFeedback(`❌ Erreur: ${error.message}`);
-  } finally {
-    voiceModalState.isProcessing = false;
-  }
-}
-
-function addVoiceMessage(role, content) {
-  const chat = document.getElementById('voiceChat');
-  const msg = document.createElement('div');
-  msg.style.cssText = `display:flex;gap:8px;max-width:90%;animation:msgSlide 0.3s ease;${role === 'user' ? 'margin-left:auto;flex-direction:row-reverse;' : ''}`;
-  
-  const avatar = document.createElement('div');
-  avatar.style.cssText = 'width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px;';
-  avatar.textContent = role === 'user' ? '👤' : '🧠';
-  
-  const bubble = document.createElement('div');
-  bubble.style.cssText = `padding:10px 14px;border-radius:16px;font-size:14px;line-height:1.5;word-break:break-word;${role === 'user' ? 'background:linear-gradient(135deg,#7c3aed,#2563eb);color:white;' : 'background:rgba(167,139,250,0.15);color:#a78bfa;'}`;
-  bubble.textContent = content;
-  
-  msg.appendChild(avatar);
-  msg.appendChild(bubble);
-  chat.appendChild(msg);
-  chat.scrollTop = chat.scrollHeight;
-}
-
-function speakVoiceResponse(text) {
-  if (!('speechSynthesis' in window)) {
-    updateVoiceFeedback('❌ TTS non supporté');
-    return;
-  }
-  
-  const utterance = new SpeechSynthesisUtterance(text);
-  utterance.lang = 'fr-FR';
-  utterance.rate = 1;
-  utterance.pitch = 1;
-  utterance.volume = 1;
-  
-  utterance.onstart = () => updateVoiceFeedback('🔊 Guidéon parle...');
-  utterance.onend = () => updateVoiceFeedback('✅ Prêt à écouter');
-  
-  window.speechSynthesis.speak(utterance);
-}
-
-function updateVoiceFeedback(text) {
-  const feedback = document.getElementById('voiceFeedback');
-  if (feedback) feedback.textContent = text;
-}
-
-function toggleCaptions() { alert('📝 Captions - À implémenter'); }
-function toggleMicrophone() { alert('🎤 Paramètres micro - À implémenter'); }
-function openVoiceSettings() { alert('⚙️ Paramètres vocaux - À implémenter'); }
-function openVoiceMenu() { alert('⋯ Menu - À implémenter'); }
 </script>
+<script src="functions.js"></script><div id="privacyModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9999;align-items:flex-start;justify-content:center;overflow-y:auto;padding-top:20px;"><div style="background:#1a1a2e;padding:24px;border-radius:16px;width:88%;max-width:600px;border:1px solid #2d1b69;margin-bottom:20px;"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;"><h3 style="color:#a78bfa;margin:0;">📊 Rapport de Confidentialité</h3><button onclick="document.getElementById('privacyModal').style.display='none'" style="background:none;border:none;color:#6b7280;font-size:24px;cursor:pointer;padding:0;width:24px;height:24px;">✕</button></div><div id="privacyContent" style="color:#9ca3af;font-size:12px;line-height:1.8;margin-bottom:16px;"></div><div style="display:flex;gap:8px;"><button onclick="downloadPrivacyPDF()" style="flex:1;padding:10px;background:#2d1b69;color:#fff;border:none;border-radius:8px;cursor:pointer;">📥 Télécharger PDF</button><button onclick="document.getElementById('privacyModal').style.display='none'" style="flex:1;padding:10px;background:#374151;color:#fff;border:none;border-radius:8px;cursor:pointer;">✕ Fermer</button></div></div>
+</div></html><script>
+document.addEventListener('DOMContentLoaded', () => {
+  const tabUpdates = document.getElementById('tab-updates');
+  if (tabUpdates) {
+    const observer = new MutationObserver(() => {
+      if (tabUpdates.style.display !== 'none') {
+        checkUpdates();
+      }
+    });
+    observer.observe(tabUpdates, { attributes: true });
+  }
+});
+</script></div><div  style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:10002;justify-content:center;align-items:center;"><div style="background:#0f0f1a;border:1px solid #2d1b69;border-radius:12px;padding:20px;width:85%;max-width:350px;"><h2 style="color:#65a30d;margin:0 0 15px 0;font-size:16px;">✅ Projet créé avec succès!</h2><p id="projectCreatedName" style="color:#9ca3af;margin:0 0 20px 0;font-size:13px;"></p><div style="display:flex;gap:10px;"><button onclick="closeProjectCreatedModal()" style="width:100%;padding:10px;background:#a78bfa;color:#000;border:none;border-radius:8px;font-weight:bold;cursor:pointer;">✅ OK</button></div></div>
+</div><script>
+(function() {
+  const chatDiv = document.getElementById('chat');
+  if (!chatDiv) return;
+  let touchStartY = 0;
+  let touchEndY = 0;
+  chatDiv.addEventListener('touchstart', (e) => {
+    touchStartY = e.changedTouches[0].screenY;
+  }, false);
+  chatDiv.addEventListener('touchend', (e) => {
+    touchEndY = e.changedTouches[0].screenY;
+    handleSwipe();
+  }, false);
+  function handleSwipe() {
+    const diff = touchStartY - touchEndY;
+    const threshold = 50;
+    if (Math.abs(diff) > threshold) {
+      if (diff > 0) {
+        // Swipe vers le haut = scroll vers le bas
+        chatDiv.scrollTop += 100;
+      } else {
+        // Swipe vers le bas = scroll vers le haut
+        chatDiv.scrollTop -= 100;
+      }
+    }
+  }
+})();
+</script>
+
+<script>
+function initColorPicker(){
+  const colorPicker=document.createElement('input');
+  colorPicker.type='color';
+  colorPicker.id='colorTheme';
+  colorPicker.value='#7c3aed';
+  colorPicker.style.cssText='position:fixed;top:155px;left:20px;width:45px;height:45px;cursor:pointer;border:2px solid #a78bfa;border-radius:50%;z-index:999;';
+  colorPicker.onchange=()=>{
+    const color=colorPicker.value;
+    localStorage.setItem('gthemeColor',color);
+    document.querySelectorAll('button.pb').forEach(b=>b.style.background='linear-gradient(135deg,'+color+','+color+'cc)');
+    document.documentElement.style.setProperty('--primary',color);
+  };
+  document.body.appendChild(colorPicker);
+  const saved=localStorage.getItem('gthemeColor');
+  if(saved) {
+    colorPicker.value=saved;
+    document.querySelectorAll('button.pb').forEach(b=>b.style.background='linear-gradient(135deg,'+saved+','+saved+'cc)');
+  }
+}
+window.addEventListener('DOMContentLoaded',initColorPicker);
+async function loadMemories(){const tok=localStorage.getItem('gtoken');if(!tok)return;const list=document.getElementById('memoriesList');list.innerHTML='Chargement...';try{const r=await fetch('/api/memories',{headers:{'Authorization':'Bearer '+tok}});const d=await r.json();if(!Array.isArray(d)||d.length===0){list.innerHTML='❌ Aucune mémoire';}else{list.innerHTML=d.map(m=>'<div style="padding:8px;background:#0f0f1a;margin:4px 0;border-radius:6px;border-left:3px solid #a78bfa;"><span style="color:#e5e7eb;font-size:12px;">'+m.content+'</span></div>').join('');};}catch(e){list.innerHTML='❌ '+e.message;}}
+async function addMemory(){const tok=localStorage.getItem('gtoken');const c=document.getElementById('newMemory').value.trim();if(!c){alert('Vide');return;}try{const r=await fetch('/api/memory/add',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tok},body:JSON.stringify({content:c})});const d=await r.json();if(d.success){document.getElementById('newMemory').value='';loadMemories();}else alert('❌ '+d.error);}catch(e){alert('❌ '+e.message);}}function showFooter(){const chat=document.getElementById('chat');let footer=document.getElementById('app-footer');if(!footer){footer=document.createElement('div');footer.id='app-footer';footer.style.cssText='text-align:center;font-size:11px;color:#6b7280;margin:12px 0;line-height:1.4;';footer.textContent='🧠 Guidéon is an AI. Please verify important information.';chat.appendChild(footer);}footer.style.display='block';}function hideFooter(){const footer=document.getElementById('app-footer');if(footer)footer.style.display='none';}</script>
+
 </body>
 </html>
