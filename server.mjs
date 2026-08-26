@@ -228,6 +228,7 @@ Réponds brièvement (2-3 phrases max) avec bienveillance. Utilise le nom de l\'
                 }
                 const reply = data.choices[0].message.content;
     
+    console.log('🎙️ VOICE - Token:', !!token, 'DB:', !!DB, 'SessionID:', session_id);
     // SAUVEGARDER EN SUPABASE
     if (token && DB && session_id) {
       try {
