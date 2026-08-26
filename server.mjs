@@ -190,13 +190,13 @@ async function callStabilityAI(rawPrompt) {
 }
 
 app.post('/api/voice-chat', async (req, res) => {
-  const { message, history, creatorName } = req.body;
+  const { message, history, userName, creatorName } = req.body;
   if (!message) return res.status(400).json({ error: 'Message vide' });
   
   try {
     const systemMsg = {
       role: 'system',
-      content: `Tu es Guidéon, assistant sage et philosophique créé par ${creatorName || 'Brother Victor Bossou'}. Réponds brièvement (2-3 phrases max) pour une conversation vocale. Si on te demande qui est ton créateur ou qui t'a créé, dis que tu as été créé par ${creatorName || 'Brother Victor Bossou'}.`
+      content: `Tu es Guidéon, assistant sage et philosophique créé par ${creatorName || 'Brother Victor Bossou'}. Tu parles avec ${userName || 'l\'utilisateur'}. Réponds brièvement (2-3 phrases max) pour une conversation vocale. Utilise le nom de l\'utilisateur naturellement seulement quand pertinent. Si on te demande qui est ton créateur, dis ${creatorName || 'Brother Victor Bossou'}.`
     };
     const msgs = (history || []).map(m => ({ role: m.role === 'user' ? 'user' : 'assistant', content: m.content }));
     msgs.push({ role: 'user', content: message });

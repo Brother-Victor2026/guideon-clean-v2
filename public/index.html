@@ -1867,6 +1867,7 @@ function toggleMicroBtn37() {
   if (voice37.isSpeaking) {
     window.speechSynthesis.cancel();
     voice37.isSpeaking = false;
+    voice37.isProcessing = false;
     updateSpeakBtn37();
     updateFeedback37('En écoute...');
     if (voice37.recognition && voice37.modal.style.display !== 'none') {
