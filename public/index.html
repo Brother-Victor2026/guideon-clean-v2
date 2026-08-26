@@ -1652,6 +1652,14 @@ function openVoiceMenu() { alert('⋯ Menu - À implémenter'); }
     <div id="voiceChat37" style="width:100%;max-width:550px;height:260px;background:rgba(15,15,26,0.8);border:1px solid #2d1b69;border-radius:14px;padding:14px;overflow-y:auto;display:flex;flex-direction:column;gap:10px;"></div>
   </div>
   
+  <!-- BOUTONS RAPIDES -->
+  <div id="quickBtns37" style="display:none;width:100%;max-width:550px;padding:12px;border-top:1px solid #2d1b69;display:flex;flex-wrap:wrap;gap:8px;justify-content:center;">
+    <button onclick="sendQuickMsg37('Oui')" style="padding:6px 12px;border-radius:8px;border:1px solid #2d1b69;background:rgba(124,58,237,0.2);color:#a78bfa;font-size:12px;cursor:pointer;">Oui</button>
+    <button onclick="sendQuickMsg37('Non')" style="padding:6px 12px;border-radius:8px;border:1px solid #2d1b69;background:rgba(124,58,237,0.2);color:#a78bfa;font-size:12px;cursor:pointer;">Non</button>
+    <button onclick="sendQuickMsg37('Continuer')" style="padding:6px 12px;border-radius:8px;border:1px solid #2d1b69;background:rgba(124,58,237,0.2);color:#a78bfa;font-size:12px;cursor:pointer;">Continuer</button>
+    <button onclick="sendQuickMsg37('Répète')" style="padding:6px 12px;border-radius:8px;border:1px solid #2d1b69;background:rgba(124,58,237,0.2);color:#a78bfa;font-size:12px;cursor:pointer;">Répète</button>
+  </div>
+
   <!-- FOOTER: 3 boutons rectangulaires -->
   <div style="display:flex;justify-content:center;gap:12px;padding:16px;border-top:1px solid #2d1b69;">
     <button id="speakBtn37" onclick="toggleMicroBtn37()" style="flex:1;max-width:140px;height:44px;border-radius:10px;border:none;background:linear-gradient(135deg,#7c3aed,#2563eb);color:white;font-size:14px;cursor:pointer;font-weight:600;transition:all 0.2s;"><span id="speakBtnText">🎤 En écoute...</span></button>
@@ -1688,6 +1696,13 @@ function openVoiceModal() {
   }
   
   initVoiceRec37();
+}
+
+
+function sendQuickMsg37(msg) {
+  if (voice37.isProcessing) return;
+  addVoiceMsg37('user', msg);
+  sendVoiceMsg37(msg);
 }
 
 function closeVoiceModal37() {
@@ -1862,6 +1877,8 @@ function speakVoice37(text) {
   }
   
   window.speechSynthesis.cancel();
+  // ARRÊTER STT pendant TTS
+  if (voice37.recognition) voice37.recognition.stop();
   voice37.isSpeaking = true;
   updateSpeakBtn37();
   
@@ -1880,7 +1897,7 @@ function speakVoice37(text) {
     updateFeedback37('En écoute...');
     
     if (voice37.recognition && voice37.modal.style.display !== 'none') {
-      setTimeout(() => voice37.recognition.start(), 300);
+      setTimeout(() => voice37.recognition.start(), 800);
     }
   };
   
