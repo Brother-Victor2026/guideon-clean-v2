@@ -1676,10 +1676,12 @@ function closeVoiceModal37() {
     voice37.recognition = null;
   }
   if (voice37.utterance) window.speechSynthesis.cancel();
+  document.getElementById('voiceChat37').innerHTML = '';
   voice37.modal.style.display = 'none';
   voice37.isListening = false;
   voice37.isSpeaking = false;
   voice37.isProcessing = false;
+  voice37.history = [];
 }
 
 function initVoiceRec37() {
@@ -1707,6 +1709,12 @@ function initVoiceRec37() {
     }
     
     if (transcript) {
+      // ARRÊTER Guidéon s'il parle
+      if (voice37.isSpeaking) {
+        window.speechSynthesis.cancel();
+        voice37.isSpeaking = false;
+        updateSpeakBtn37();
+      }
       addVoiceMsg37('user', transcript);
       sendVoiceMsg37(transcript);
     }
@@ -1762,6 +1770,24 @@ async function sendVoiceMsg37(text) {
     
     addVoiceMsg37('assistant', reply);
     
+    // AJOUTER AU CHAT PRINCIPAL
+    try {
+      const chatMain = document.getElementById('chat');
+      if (chatMain) {
+        const userDiv = document.createElement('div');
+        userDiv.style.cssText = 'margin:12px 0;padding:12px;background:rgba(124,58,237,0.1);border-radius:8px;color:#e0e0e0;';
+        userDiv.textContent = voice37.userName + ': ' + text;
+        chatMain.appendChild(userDiv);
+        
+        const botDiv = document.createElement('div');
+        botDiv.style.cssText = 'margin:12px 0;padding:12px;background:rgba(167,139,250,0.1);border-radius:8px;color:#c084fc;';
+        botDiv.textContent = 'Guidéon: ' + reply;
+        chatMain.appendChild(botDiv);
+        
+        chatMain.scrollTop = chatMain.scrollHeight;
+      }
+    } catch (e) {}
+    
     voice37.history.push({ role: 'user', content: text });
     voice37.history.push({ role: 'assistant', content: reply });
     
@@ -1781,6 +1807,7 @@ async function sendVoiceMsg37(text) {
 
 function addVoiceMsg37(role, text) {
   const chat = document.getElementById('voiceChat37');
+  if (!chat) return;
   const msg = document.createElement('div');
   msg.style.cssText = `display:flex;gap:8px;max-width:90%;${role === 'user' ? 'margin-left:auto;flex-direction:row-reverse;' : ''}`;
   
