@@ -101,6 +101,15 @@ header{background:linear-gradient(135deg,#1a0533,#0d1f4d);padding:14px 16px;disp
 @keyframes msgSlide { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes brainPulse { 0% { transform: scale(1); } 50% { transform: scale(1.15); } 100% { transform: scale(1); } }
 
+
+@keyframes listening { 0%, 100% { opacity: 0.7; } 50% { opacity: 1; } }
+@keyframes processing { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+@keyframes speaking { 0%, 100% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+.listening37 { animation: listening 1.5s infinite !important; }
+.processing37 { animation: processing 1s infinite !important; }
+.speaking37 { animation: speaking 2s linear infinite !important; }
+
 </style>
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js">
 function loadRealtime(){
@@ -1937,8 +1946,30 @@ function updateSpeakBtn37() {
 }
 
 function updateFeedback37(t) { 
-  const f = document.getElementById('voiceFeedback37'); 
-  if (f) f.textContent = t; 
+  const f = document.getElementById('voiceFeedback37');
+  const circle = document.querySelector('[style*="brainCirclePulse"]');
+  const sticker = document.querySelector('[style*="brainPulse"]');
+  
+  if (f) {
+    f.textContent = t;
+    // Changer couleur selon état
+    if (t.includes('Traitement') || t.includes('attendre')) {
+      f.style.color = '#fbbf24';
+      if (circle) circle.style.animation = 'brainCirclePulse 1s infinite';
+      if (sticker) sticker.style.animation = 'brainPulse 0.8s infinite';
+    } else if (t.includes('parle')) {
+      f.style.color = '#34d399';
+      if (circle) circle.style.animation = 'brainCirclePulse 0.5s infinite';
+      if (sticker) sticker.style.animation = 'speaking 2s linear infinite';
+    } else if (t.includes('écoute') || t.includes('Parlez')) {
+      f.style.color = '#7c6fa0';
+      if (circle) circle.style.animation = 'brainCirclePulse 2s infinite';
+      if (sticker) sticker.style.animation = 'brainPulse 1.5s infinite';
+    } else {
+      f.style.color = '#7c6fa0';
+      if (sticker) sticker.style.animation = 'brainPulse 1.5s infinite';
+    }
+  }
 }
 
 function toggleCaptions37() { alert('📝 À implémenter'); }
@@ -1950,6 +1981,15 @@ function openVoiceMenu37() { alert('⋯ À implémenter'); }
 <style>
 @keyframes brainPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.12); } }
 @keyframes brainCirclePulse { 0%, 100% { transform: scale(1); opacity: 0.8; } 50% { transform: scale(1.08); opacity: 1; } }
+
+@keyframes listening { 0%, 100% { opacity: 0.7; } 50% { opacity: 1; } }
+@keyframes processing { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+@keyframes speaking { 0%, 100% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+.listening37 { animation: listening 1.5s infinite !important; }
+.processing37 { animation: processing 1s infinite !important; }
+.speaking37 { animation: speaking 2s linear infinite !important; }
+
 </style>
 
 </body>
