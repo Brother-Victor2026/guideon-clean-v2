@@ -1420,6 +1420,26 @@ let voiceModalState = {
   voiceModal: null
 };
 
+
+function getTimeInfo37() {
+  const now = new Date();
+  const hours = String(now.getHours()).padStart(2, '0');
+  const minutes = String(now.getMinutes()).padStart(2, '0');
+  const days = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
+  const months = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
+  
+  const dayName = days[now.getDay()];
+  const date = now.getDate();
+  const month = months[now.getMonth()];
+  const year = now.getFullYear();
+  
+  return {
+    time: `${hours}:${minutes}`,
+    day: dayName,
+    date: `${date} ${month} ${year}`
+  };
+}
+
 function openVoiceModal() {
   if (!voiceModalState.voiceModal) {
     createVoiceModal();
@@ -1758,6 +1778,7 @@ async function sendVoiceMsg37(text) {
   updateFeedback37('✅ Traitement...');
   
   try {
+    const timeInfo = getTimeInfo37();
     const r = await fetch('/api/voice-chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -1765,7 +1786,10 @@ async function sendVoiceMsg37(text) {
         message: text, 
         history: voice37.history,
         userName: voice37.userName,
-        creatorName: voice37.creatorName
+        creatorName: voice37.creatorName,
+        currentTime: timeInfo.time,
+        currentDay: timeInfo.day,
+        currentDate: timeInfo.date
       })
     });
     
