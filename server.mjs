@@ -190,7 +190,7 @@ async function callStabilityAI(rawPrompt) {
 }
 
 app.post('/api/voice-chat', async (req, res) => {
-  const { message, history, userName, creatorName, currentTime, currentDay, currentDate } = req.body;
+  const { message, history, userName, creatorName, currentTime, currentDay, currentDate, token, session_id } = req.body;
   if (!message) return res.status(400).json({ error: 'Message vide' });
   
   try {
@@ -227,6 +227,31 @@ Réponds brièvement (2-3 phrases max) avec bienveillance. Utilise le nom de l\'
                   return res.status(500).json({ error: 'Invalid GROQ response', response: data });
                 }
                 const reply = data.choices[0].message.content;
+    
+    // SAUVEGARDER EN SUPABASE
+    if (token && DB && session_id) {
+      try {
+        const user = checkToken(token);
+        if (user) {
+          const userId = String(user.id);
+          // Sauvegarder message utilisateur
+          await fetch(`${DB}/conversations`, {
+            method: 'POST',
+            headers: { ...SB, 'Prefer': 'return=minimal' },
+            body: JSON.stringify([{ user_id: userId, role: 'user', content: message, session_id, image_url: null }])
+          });
+          // Sauvegarder réponse Guidéon
+          await fetch(`${DB}/conversations`, {
+            method: 'POST',
+            headers: { ...SB, 'Prefer': 'return=minimal' },
+            body: JSON.stringify([{ user_id: userId, role: 'assistant', content: reply, session_id, image_url: null }])
+          });
+        }
+      } catch (e) {
+        console.error('Erreur sauvegarde vocal BD:', e.message);
+      }
+    }
+    
     res.json({ reply });
   } catch (e) {
     res.status(500).json({ error: e.message });

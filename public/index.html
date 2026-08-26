@@ -1663,6 +1663,7 @@ function openVoiceMenu() { alert('⋯ Menu - À implémenter'); }
   
   <!-- BOUTONS RAPIDES -->
   <div id="quickBtns37" style="display:none;width:100%;max-width:550px;padding:12px;border-top:1px solid #2d1b69;display:flex;flex-wrap:wrap;gap:8px;justify-content:center;">
+    <button onclick="sendQuickMsg37('Salut')" style="padding:6px 12px;border-radius:8px;border:1px solid #2d1b69;background:rgba(124,58,237,0.2);color:#a78bfa;font-size:12px;cursor:pointer;">Salut</button>
     <button onclick="sendQuickMsg37('Oui')" style="padding:6px 12px;border-radius:8px;border:1px solid #2d1b69;background:rgba(124,58,237,0.2);color:#a78bfa;font-size:12px;cursor:pointer;">Oui</button>
     <button onclick="sendQuickMsg37('Non')" style="padding:6px 12px;border-radius:8px;border:1px solid #2d1b69;background:rgba(124,58,237,0.2);color:#a78bfa;font-size:12px;cursor:pointer;">Non</button>
     <button onclick="sendQuickMsg37('Continuer')" style="padding:6px 12px;border-radius:8px;border:1px solid #2d1b69;background:rgba(124,58,237,0.2);color:#a78bfa;font-size:12px;cursor:pointer;">Continuer</button>
@@ -1692,7 +1693,7 @@ let voice37 = {
   lastReply: null
 };
 
-function openVoiceModal() {
+async function openVoiceModal() {
   voice37.modal = document.getElementById('voiceModal');
   voice37.modal.style.display = 'flex';
   voice37.userName = localStorage.getItem('gname') || 'Utilisateur';
@@ -1704,6 +1705,32 @@ function openVoiceModal() {
   if (voice37.recognition) {
     voice37.recognition.abort();
     voice37.recognition = null;
+  }
+  
+  // CHARGER messages vocaux depuis Supabase
+  const token = localStorage.getItem('gtoken');
+  const sessionId = localStorage.getItem('voiceSessionId');
+  if (token && sessionId) {
+    try {
+      const r = await fetch('/api/history/' + sessionId, {
+        headers: { 'Authorization': 'Bearer ' + token }
+      });
+      if (r.ok) {
+        const messages = await r.json();
+        document.getElementById('voiceChat37').innerHTML = '';
+        voice37.history = [];
+        
+        messages.forEach(msg => {
+          addVoiceMsg37(msg.role === 'assistant' ? 'assistant' : 'user', msg.content);
+          voice37.history.push({ role: msg.role === 'assistant' ? 'assistant' : 'user', content: msg.content });
+        });
+      }
+    } catch (e) {
+      console.error('Erreur chargement vocal BD:', e);
+    }
+  } else {
+    document.getElementById('voiceChat37').innerHTML = '';
+    voice37.history = [];
   }
   
   initVoiceRec37();
@@ -1811,6 +1838,16 @@ async function sendVoiceMsg37(text) {
   
   try {
     const timeInfo = getTimeInfo37();
+    const token = localStorage.getItem('gtoken');
+    let sessionId = localStorage.getItem('voiceSessionId');
+    
+    // Créer nouvelle session vocale si elle n'existe pas
+    if (!sessionId && voice37.history.length === 0) {
+      sessionId = 'voice-' + Date.now();
+      localStorage.setItem('voiceSessionId', sessionId);
+    }
+    
+    sessionId = sessionId || 'voice-' + Date.now();
     const r = await fetch('/api/voice-chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -1821,7 +1858,9 @@ async function sendVoiceMsg37(text) {
         creatorName: voice37.creatorName,
         currentTime: timeInfo.time,
         currentDay: timeInfo.day,
-        currentDate: timeInfo.date
+        currentDate: timeInfo.date,
+        token: token,
+        session_id: sessionId
       })
     });
     
