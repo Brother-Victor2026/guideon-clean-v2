@@ -230,8 +230,10 @@ Réponds brièvement (2-3 phrases max) avec bienveillance. Utilise le nom de l\'
     
     console.log('🎙️ VOICE - Token:', !!token, 'DB:', !!DB, 'SessionID:', session_id);
     // SAUVEGARDER EN SUPABASE
+    console.log('🎙️ VOICE SAVE - Token:', !!token, 'DB:', !!DB, 'SessionID:', session_id);
     if (token && DB && session_id) {
       try {
+        console.log('💾 Tentative sauvegarde Supabase...');
         const user = checkToken(token);
         if (user) {
           const userId = String(user.id);
@@ -247,9 +249,10 @@ Réponds brièvement (2-3 phrases max) avec bienveillance. Utilise le nom de l\'
             headers: { ...SB, 'Prefer': 'return=minimal' },
             body: JSON.stringify([{ user_id: userId, role: 'assistant', content: reply, session_id, image_url: null }])
           });
+        console.log('✅ Sauvegarde réussie!');
         }
       } catch (e) {
-        console.error('Erreur sauvegarde vocal BD:', e.message);
+        console.error('❌ Erreur sauvegarde vocal BD:', e.message);
       }
     }
     
