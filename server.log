@@ -1,12 +1,20 @@
 ◇ injected env (8) from .env // tip: ◈ secrets for agents [www.dotenvx.com]
 Guideon actif !
-🔑 Token: eyJpZCI6MTQsImVtYWlsIjoidmJvc3NvdTI3MEBnbWFpbC5jb20iLCJleHAiOjE3OTU4NTQxNjYyNTF9.d652ce76fe83076a76b8cebe3a7f22b9539af6a8b0c0bf45c533e78bce7290ab
-👤 User: { id: 14, email: 'vbossou270@gmail.com', exp: 1795854166251 }
-🔑 Token: eyJpZCI6MTQsImVtYWlsIjoidmJvc3NvdTI3MEBnbWFpbC5jb20iLCJleHAiOjE3OTU4NTQxNjYyNTF9.d652ce76fe83076a76b8cebe3a7f22b9539af6a8b0c0bf45c533e78bce7290ab
-👤 User: { id: 14, email: 'vbossou270@gmail.com', exp: 1795854166251 }
-🔑 Token: eyJpZCI6MTQsImVtYWlsIjoidmJvc3NvdTI3MEBnbWFpbC5jb20iLCJleHAiOjE3OTU4NTQxNjYyNTF9.d652ce76fe83076a76b8cebe3a7f22b9539af6a8b0c0bf45c533e78bce7290ab
-👤 User: { id: 14, email: 'vbossou270@gmail.com', exp: 1795854166251 }
-🔑 Token: eyJpZCI6MTQsImVtYWlsIjoidmJvc3NvdTI3MEBnbWFpbC5jb20iLCJleHAiOjE3OTU4NTQxNjYyNTF9.d652ce76fe83076a76b8cebe3a7f22b9539af6a8b0c0bf45c533e78bce7290ab
-👤 User: { id: 14, email: 'vbossou270@gmail.com', exp: 1795854166251 }
-🔑 Token: eyJpZCI6MTQsImVtYWlsIjoidmJvc3NvdTI3MEBnbWFpbC5jb20iLCJleHAiOjE3OTU4NTQxNjYyNTF9.d652ce76fe83076a76b8cebe3a7f22b9539af6a8b0c0bf45c533e78bce7290ab
-👤 User: { id: 14, email: 'vbossou270@gmail.com', exp: 1795854166251 }
+📞 POST /api/sessions reçu
+🔑 Token: eyJpZCI6MTQsImVtYWlsIjoidmJvc3NvdTI3MEBnbWFpbC5jb20iLCJleHAiOjE3OTU5NzY0ODUyMDl9.de4a21c228acdee35b4166b1402780fcbd8355ada085e2946ab001b535f98a2f
+👤 User: { id: 14, email: 'vbossou270@gmail.com', exp: 1795976485209 }
+📊 Session créée: [
+  {
+    id: 1788200485512,
+    user_id: '14',
+    title: 'Nouvelle conversation',
+    created_at: '2026-08-31T18:21:27.630328+00:00',
+    pinned: false
+  }
+]
+🔑 Token: eyJpZCI6MTQsImVtYWlsIjoidmJvc3NvdTI3MEBnbWFpbC5jb20iLCJleHAiOjE3OTU5NzY0ODUyMDl9.de4a21c228acdee35b4166b1402780fcbd8355ada085e2946ab001b535f98a2f
+👤 User: { id: 14, email: 'vbossou270@gmail.com', exp: 1795976485209 }
+🔑 Token: eyJpZCI6MTQsImVtYWlsIjoidmJvc3NvdTI3MEBnbWFpbC5jb20iLCJleHAiOjE3OTU5NzY0ODUyMDl9.de4a21c228acdee35b4166b1402780fcbd8355ada085e2946ab001b535f98a2f
+👤 User: { id: 14, email: 'vbossou270@gmail.com', exp: 1795976485209 }
+🔑 Token: eyJpZCI6MTQsImVtYWlsIjoidmJvc3NvdTI3MEBnbWFpbC5jb20iLCJleHAiOjE3OTU5NzY0ODUyMDl9.de4a21c228acdee35b4166b1402780fcbd8355ada085e2946ab001b535f98a2f
+👤 User: { id: 14, email: 'vbossou270@gmail.com', exp: 1795976485209 }
