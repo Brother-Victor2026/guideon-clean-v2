@@ -10,11 +10,7 @@ try {
   const [major, minor, patch] = pkg.version.split('.').map(Number);
   let newVersion;
   
-  if (additions > deletions * 2) {
-    newVersion = `${major}.${minor + 1}.0`;
-  } else {
-    newVersion = `${major}.${minor}.${patch + 1}`;
-  }
+  newVersion = `${major}.${minor}.${patch + 1}`;
   
   pkg.version = newVersion;
   fs.writeFileSync('./package.json', JSON.stringify(pkg, null, 2) + '\n');
