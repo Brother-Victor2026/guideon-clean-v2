@@ -33,9 +33,9 @@ try {
   const dateStr = new Date().toLocaleString('fr-FR');
   const [datePart, timePart] = dateStr.split(' ');
   
-  html = html.replace(/id="latestVersion">\d+\.\d+\.\d+</g, `id="latestVersion">${newVersion}</`);
-  html = html.replace(/id="updateDate">[^<]+</g, `id="updateDate">${datePart}</`);
-  html = html.replace(/id="updateTime">[^<]+</g, `id="updateTime">${timePart}</`);
+  html = html.replace(/id="latestVersion">\d+\.\d+\.\d+<\/span>/g, `id="latestVersion">${newVersion}</span>`);
+  html = html.replace(/id="updateDate">[^<]+<\/span>/g, `id="updateDate">${datePart}</span>`);
+  html = html.replace(/id="updateTime">[^<]+<\/span>/g, `id="updateTime">${timePart}</span>`);
   
   fs.writeFileSync(htmlPath, html, 'utf-8');
   console.log(`✅ HTML version updated to ${newVersion}`);
