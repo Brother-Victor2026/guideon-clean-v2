@@ -1108,7 +1108,12 @@ app.get('/api/version', (req, res) => {
       "🔐 Nouvelles options de confidentialité",
       "📊 Statistiques détaillées"
     ],
-        releaseDate: new Date().toLocaleDateString("fr-FR", { year: "numeric", month: "long", day: "numeric" }),
+        releaseDate: (() => {
+    try {
+      const history = JSON.parse(fs.readFileSync('version-history.json', 'utf-8'));
+      return history.history[0]?.date || "N/A";
+    } catch(e) { return "N/A"; }
+  })(),
     updateAvailable: false
   });
 });
