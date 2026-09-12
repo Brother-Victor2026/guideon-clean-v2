@@ -5,3 +5,4 @@
 // test5
 // final-test
 // auto-restart-test
+// final-auto-test
