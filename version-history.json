@@ -1,0 +1,24 @@
+{
+  "current_version": "1.0.177",
+  "last_update": "12/09/2026 17:20:59",
+  "history": [
+    {
+      "version": "1.0.177",
+      "date": "12/09/2026 17:21:02",
+      "type": "auto",
+      "changes": "Auto-update"
+    },
+    {
+      "version": "1.0.178",
+      "date": "11/09/2026 22:44:45",
+      "type": "auto",
+      "changes": "Auto-update"
+    },
+    {
+      "version": "1.0.177",
+      "date": "09 September 2026 à 22:32",
+      "type": "minor",
+      "changes": "Microphone FIXÉ (arrêt reconnaissance vocale + 15sec + localStorage)"
+    }
+  ]
+}
