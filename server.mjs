@@ -352,7 +352,7 @@ if (lang && lang !== 'auto') langInstructions = lang === 'fr' ? '\n\nRéponds UN
 let lengthInstructions = '';
 const lengthGuides = { 'short': 'Réponds très brièvement (1-2 lignes).', 'normal': 'Réponds avec une longueur normale.', 'long': 'Réponds de manière détaillée et approfondie.' };
 if (length && lengthGuides[length]) lengthInstructions = `\n\nLONGUEUR: ${lengthGuides[length]}`;
-const sysContent = SYSTEM.content + (userInstructions ? `\n\nInstructions: ${userInstructions}` : '') + (userTime && asksTime ? `\n\nL heure exacte est ${userTime}.` : '') + visualBoost + memoriesText + toneInstructions + styleInstructions + langInstructions + lengthInstructions;
+const sysContent = (userInstructions ? `Directives importantes de l'utilisateur:\n${userInstructions}\n\n` : '') + SYSTEM.content + (userTime && asksTime ? `\n\nL heure exacte est ${userTime}.` : '') + visualBoost + memoriesText + toneInstructions + styleInstructions + langInstructions + lengthInstructions;
     const SYSTEM_MSG = { role: 'system', content: sysContent };
     const hist = dbHistory.length > 0 ? dbHistory : (history || []);
     const messages = [SYSTEM_MSG, ...hist.filter(h=>h&&h.role&&h.content).map(h => ({ role: h.role, content: h.content })), { role: 'user', content: message }];
