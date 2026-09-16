@@ -264,7 +264,7 @@ Réponds brièvement (2-3 phrases max) avec bienveillance. Utilise le nom de l\'
 
 app.post('/api/chat', async (req, res) => {
   try {
-    const { message, history, token, model, temperature, session_id, userTime } = req.body;
+    const { message, history, token, model, temperature, session_id, userTime, tone, style, lang, length } = req.body;
   console.log('📥 token exists:', !!token);let userId = 'default';
     let dbHistory = [];
     let userInstructions = '';
@@ -341,7 +341,18 @@ app.post('/api/chat', async (req, res) => {
     } catch(e) { console.error('memories load error:', e.message); }
   }
 
-  const sysContent = SYSTEM.content + (userInstructions ? `\n\nInstructions: ${userInstructions}` : '') + (userTime && asksTime ? `\n\nL heure exacte est ${userTime}.` : '') + visualBoost + memoriesText;
+  let toneInstructions = '';
+const toneGuides = { 'formel': 'Réponds de manière officielle et structurée, sans émojis.', 'decontracte': 'Réponds de façon relaxe et amicale, avec émojis. Ton cool et naturel.', 'professionnel': 'Réponds clairement et précisément, ton business.', 'amical': 'Réponds comme un ami, chaleureux et encourageant.', 'neutre': 'Réponds factuellement, objectif, sans émotions.' };
+if (tone && toneGuides[tone]) toneInstructions = `\n\nTONE: ${toneGuides[tone]}`;
+let styleInstructions = '';
+const styleGuides = { 'court': 'Réponses brèves et concises.', 'detaille': 'Réponses détaillées et complètes.', 'creatif': 'Réponses créatives et imaginatives.' };
+if (style && styleGuides[style]) styleInstructions = `\n\nSTYLE: ${styleGuides[style]}`;
+let langInstructions = '';
+if (lang && lang !== 'auto') langInstructions = lang === 'fr' ? '\n\nRéponds UNIQUEMENT EN FRANÇAIS.' : '\n\nRéponds UNIQUEMENT EN ANGLAIS.';
+let lengthInstructions = '';
+const lengthGuides = { 'short': 'Réponds très brièvement (1-2 lignes).', 'normal': 'Réponds avec une longueur normale.', 'long': 'Réponds de manière détaillée et approfondie.' };
+if (length && lengthGuides[length]) lengthInstructions = `\n\nLONGUEUR: ${lengthGuides[length]}`;
+const sysContent = SYSTEM.content + (userInstructions ? `\n\nInstructions: ${userInstructions}` : '') + (userTime && asksTime ? `\n\nL heure exacte est ${userTime}.` : '') + visualBoost + memoriesText + toneInstructions + styleInstructions + langInstructions + lengthInstructions;
     const SYSTEM_MSG = { role: 'system', content: sysContent };
     const hist = dbHistory.length > 0 ? dbHistory : (history || []);
     const messages = [SYSTEM_MSG, ...hist.filter(h=>h&&h.role&&h.content).map(h => ({ role: h.role, content: h.content })), { role: 'user', content: message }];
@@ -1045,11 +1056,14 @@ app.post('/api/profile/update', async (req, res) => {
     if (!token) return res.status(401).json({ error: 'Token manquant' });
     const user = checkToken(token);
     if (!user) return res.status(401).json({ error: 'Token invalide' });
-    const { name, tone, style } = req.body;
+    const { name, tone, style, lang, length, instructions } = req.body;
     const updates = {};
     if (name) updates.name = name;
     if (tone) updates.tone = tone;
     if (style) updates.style = style;
+    if (lang) updates.lang = lang;
+    if (length) updates.length = length;
+    if (instructions) updates.instructions = instructions;
     await fetch(`${DB}/users?id=eq.${user.id}`, { method: 'PATCH', headers: { ...SB, 'Prefer': 'return=minimal' }, body: JSON.stringify(updates) });
     res.json({ success: true, message: '✅ Profil mis à jour' });
   } catch(e) { res.status(500).json({ error: e.message }); }
