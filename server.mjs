@@ -753,7 +753,7 @@ app.put('/api/profile', async (req, res) => {
     const updates = {};
     if (name) updates.name = name;
     if (password) updates.password = hashPwd(password);
-    await fetch(`${DB}/users?id=eq.${user.id}`, { method: 'PATCH', headers: { ...SB, 'Prefer': 'return=minimal' }, body: JSON.stringify(updates) });
+    console.log('📤 Envoi PATCH avec updates:', updates);try{const patchRes = await fetch(`${DB}/users?id=eq.${user.id}`, { method: 'PATCH', headers: { ...SB, 'Prefer': 'return=minimal' }, body: JSON.stringify(updates) });const patchBody = await patchRes.text();console.log('📊 PATCH status:', patchRes.status, 'body:', patchBody);}catch(patchErr){console.error('❌ PATCH échoué:', patchErr);}
     res.json({ success: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
@@ -1056,15 +1056,11 @@ app.post('/api/profile/update', async (req, res) => {
     if (!token) return res.status(401).json({ error: 'Token manquant' });
     const user = checkToken(token);
     if (!user) return res.status(401).json({ error: 'Token invalide' });
-    const { name, tone, style, lang, length, instructions } = req.body;
+    const { name, tone, style, lang, length, instructions } = req.body;console.log('📨 /api/profile/update reçu:', {name, tone, style, lang, length, instructions});
     const updates = {};
     if (name) updates.name = name;
-    if (tone) updates.tone = tone;
-    if (style) updates.style = style;
-    if (lang) updates.lang = lang;
-    if (length) updates.length = length;
-    if (instructions) updates.instructions = instructions;
-    await fetch(`${DB}/users?id=eq.${user.id}`, { method: 'PATCH', headers: { ...SB, 'Prefer': 'return=minimal' }, body: JSON.stringify(updates) });
+    if (instructions !== undefined) updates.instructions = instructions;
+    console.log('📤 Envoi PATCH avec updates:', updates);try{const patchRes = await fetch(`${DB}/users?id=eq.${user.id}`, { method: 'PATCH', headers: { ...SB, 'Prefer': 'return=minimal' }, body: JSON.stringify(updates) });const patchBody = await patchRes.text();console.log('📊 PATCH status:', patchRes.status, 'body:', patchBody);}catch(patchErr){console.error('❌ PATCH échoué:', patchErr);}
     res.json({ success: true, message: '✅ Profil mis à jour' });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
