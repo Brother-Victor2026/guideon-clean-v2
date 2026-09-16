@@ -294,3 +294,25 @@ function cancelProjectCreation() {
   document.getElementById('projectCreatedModal').style.display = 'none';
 }
 
+
+
+
+// Charger les paramètres sauvegardés au démarrage
+document.addEventListener('DOMContentLoaded', () => {
+  const savedTone = localStorage.getItem('gtone');
+  const savedStyle = localStorage.getItem('gstyle');
+  const savedLang = localStorage.getItem('glang') || 'auto';
+  const savedLength = localStorage.getItem('glength') || 'normal';
+
+  const toneEl = document.getElementById('toneInput');
+  const styleEl = document.getElementById('styleInput');
+  const langEl = document.getElementById('langSelect');
+  const lengthEl = document.getElementById('lengthSelect');
+
+  if (toneEl && savedTone) toneEl.value = savedTone;
+  if (styleEl && savedStyle) styleEl.value = savedStyle;
+  if (langEl) langEl.value = savedLang;
+  if (lengthEl) lengthEl.value = savedLength;
+
+  console.log('📥 Paramètres chargés:', { savedTone, savedStyle, savedLang, savedLength });
+});
