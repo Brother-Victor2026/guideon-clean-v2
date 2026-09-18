@@ -87,6 +87,7 @@ app.post('/api/register', async (req, res) => {
     const SB_SERVICE = { 'apikey': process.env.SUPABASE_KEY, 'Authorization': `Bearer ${process.env.SUPABASE_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=representation' };
     const r = await fetch(`${DB}/users`, { method: 'POST', headers: SB_SERVICE, body: JSON.stringify({ email, password: hashPwd(password), name }) });
     const data = await r.json();
+    console.log("✅ Checkboxes chargés de la BD:", data);
     if (!Array.isArray(data) || !data[0]) return res.status(400).json({ error: data.message || 'Erreur inscription' });
     res.json({ token: makeToken(data[0].id, email), name: data[0].name, email });
   } catch(e) { res.status(500).json({ error: e.message }); }
@@ -633,6 +634,7 @@ app.get('/api/sessions', async (req, res) => {
     if (!user) return res.status(401).json({ error: 'Non autorise' });
     const r = await fetch(`${DB}/sessions?user_id=eq.${String(user.id)}&order=created_at.desc`, { headers: SB });
     const data = await r.json();
+    console.log("✅ Checkboxes chargés de la BD:", data);
     res.json(Array.isArray(data) ? data : []);
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
@@ -660,6 +662,7 @@ app.post('/api/sessions', async (req, res) => {
     const sessionId = Date.now().toString();
     const r = await fetch(`${DB}/sessions`, { method: 'POST', headers: { ...SB, 'Prefer': 'return=representation' }, body: JSON.stringify({ id: sessionId, user_id: String(user.id), title: 'Nouvelle conversation' }) });
     const data = await r.json();
+    console.log("✅ Checkboxes chargés de la BD:", data);
     console.log('📊 Session créée:', data);
     if (!data || !data[0]) return res.status(500).json({ error: 'Erreur création session' });
     res.json({ success: true, session: { id: data[0].id } });
@@ -712,6 +715,7 @@ app.get('/api/history/:sessionId', async (req, res) => {
     if (!user) return res.status(401).json({ error: 'Non autorise' });
     const r = await fetch(`${DB}/conversations?user_id=eq.${String(user.id)}&session_id=eq.${req.params.sessionId}&order=id.asc&limit=500`, { headers: SB });
     const data = await r.json();
+    console.log("✅ Checkboxes chargés de la BD:", data);
     res.json(Array.isArray(data) ? data : []);
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
@@ -737,6 +741,7 @@ app.get('/api/memory/view', async (req, res) => {
     if (!user) return res.status(401).json({ error: 'Non autorise' });
     const r = await fetch(`${DB}/users?id=eq.${user.id}&select=name,email,instructions,created_at`, { headers: SB });
     const data = await r.json();
+    console.log("✅ Checkboxes chargés de la BD:", data);
     res.json(Array.isArray(data) ? data[0] : {});
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
@@ -829,6 +834,7 @@ app.get('/api/export/:sessionId', async (req, res) => {
     if (!user) return res.status(401).json({ error: 'Non autorise' });
     const r = await fetch(`${DB}/conversations?user_id=eq.${String(user.id)}&session_id=eq.${req.params.sessionId}&order=id.asc`, { headers: SB });
     const data = await r.json();
+    console.log("✅ Checkboxes chargés de la BD:", data);
     let text = 'Conversation Guideon\n\n';
     if (Array.isArray(data)) data.forEach(m => { text += (m.role === 'user' ? 'Vous: ' : 'Guideon: ') + m.content + '\n\n'; });
     res.setHeader('Content-Type', 'text/plain');
@@ -841,6 +847,7 @@ app.get('/api/share/:sessionId', async (req, res) => {
   try {
     const r = await fetch(`${DB}/conversations?session_id=eq.${req.params.sessionId}&order=id.asc`, { headers: SB });
     const data = await r.json();
+    console.log("✅ Checkboxes chargés de la BD:", data);
     res.json(Array.isArray(data) ? data : []);
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
@@ -855,6 +862,7 @@ app.get('/api/search/history', async (req, res) => {
     const q = req.query.q;
     const r = await fetch(`${DB}/conversations?user_id=eq.${String(user.id)}&content=ilike.*${encodeURIComponent(q)}*&order=pinned.desc,created_at.desc&limit=20`, { headers: SB });
     const data = await r.json();
+    console.log("✅ Checkboxes chargés de la BD:", data);
     res.json(Array.isArray(data) ? data : []);
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
@@ -868,6 +876,7 @@ app.delete('/api/regenerate', async (req, res) => {
     if (!user) return res.status(401).json({ error: 'Non autorise' });
     const r = await fetch(`${DB}/conversations?user_id=eq.${String(user.id)}&session_id=eq.${session_id}&order=pinned.desc,created_at.desc&limit=2`, { headers: SB });
     const data = await r.json();
+    console.log("✅ Checkboxes chargés de la BD:", data);
     if (Array.isArray(data)) for (const msg of data) await fetch(`${DB}/conversations?id=eq.${msg.id}`, { method: 'DELETE', headers: SB });
     res.json({ success: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
@@ -1300,6 +1309,46 @@ app.post('/api/analyze', async (req, res) => {
   }
 });
 
+app.post('/api/checkboxes/save', async (req, res) => {
+  try {
+    console.log('📮 /api/checkboxes/save appelée');
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    if (!token) return res.status(401).json({ error: 'Token manquant' });
+    const user = checkToken(token);
+    if (!user) return res.status(401).json({ error: 'Token invalide' });
+
+    const checkboxData = req.body;
+    console.log("✅ Checkbox reçu:", checkboxData);
+    
+    const currentResp = await fetch(`${DB}/users?id=eq.${user.id}`, { headers: SB });
+    const currentData = await currentResp.json();
+    const existing = currentData[0]?.checkboxes || {};
+    const updated = { ...existing, ...checkboxData };
+
+    await fetch(`${DB}/users?id=eq.${user.id}`, {
+      method: 'PATCH',
+      headers: { ...SB, 'Prefer': 'return=minimal' },
+      body: JSON.stringify({ checkboxes: updated })
+    });
+
+    res.json({ success: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/api/checkboxes/load', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) return res.status(401).json({ error: 'Token manquant' });
+    const user = checkToken(token);
+    if (!user) return res.status(401).json({ error: 'Token invalide' });
+
+    const r = await fetch(`${DB}/users?id=eq.${user.id}`, { headers: SB });
+    const data = await r.json();
+    console.log("✅ Checkboxes BD:", data[0]?.checkboxes || {});
+    res.json(data[0]?.checkboxes || {});
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 app.listen(process.env.PORT || 8080, () => console.log("Guideon actif !"));
 
 
@@ -1327,6 +1376,7 @@ app.get('/api/shared', async (req, res) => {
     // Retourner les sessions de l'utilisateur (qui peuvent être partagées)
     const r = await fetch(`${DB}/sessions?user_id=eq.${String(user.id)}&order=created_at.desc`, { headers: SB });
     const data = await r.json();
+    console.log("✅ Checkboxes chargés de la BD:", data);
     res.json(Array.isArray(data) ? data : []);
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
@@ -1341,6 +1391,7 @@ app.get('/api/memories', async (req, res) => {
     
     const r = await fetch(`${DB}/memories?user_id=eq.${String(user.id)}&order=updated_at.desc&limit=100`, { headers: SB });
     const data = await r.json();
+    console.log("✅ Checkboxes chargés de la BD:", data);
     res.json(Array.isArray(data) ? data : []);
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
