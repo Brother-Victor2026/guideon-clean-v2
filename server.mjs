@@ -1311,14 +1311,12 @@ app.post('/api/analyze', async (req, res) => {
 
 app.post('/api/checkboxes/save', async (req, res) => {
   try {
-    console.log('📮 /api/checkboxes/save appelée');
     const token = req.headers.authorization?.replace('Bearer ', '');
     if (!token) return res.status(401).json({ error: 'Token manquant' });
     const user = checkToken(token);
     if (!user) return res.status(401).json({ error: 'Token invalide' });
 
     const checkboxData = req.body;
-    console.log("✅ Checkbox reçu:", checkboxData);
     
     const currentResp = await fetch(`${DB}/users?id=eq.${user.id}`, { headers: SB });
     const currentData = await currentResp.json();
@@ -1344,7 +1342,6 @@ app.get('/api/checkboxes/load', async (req, res) => {
 
     const r = await fetch(`${DB}/users?id=eq.${user.id}`, { headers: SB });
     const data = await r.json();
-    console.log("✅ Checkboxes BD:", data[0]?.checkboxes || {});
     res.json(data[0]?.checkboxes || {});
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
