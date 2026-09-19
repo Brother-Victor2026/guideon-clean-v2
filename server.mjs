@@ -41,6 +41,10 @@ function checkToken(t) {
     return d.exp > Date.now() ? d : null;
   } catch { return null; }
 }
+function generateUserId(id) {
+  return (Math.random().toString(36).substring(2, 8) + String(id).padStart(4, '0')).toUpperCase();
+}
+
 function isSearchQuery(message) {
   const searchWords = ['qui est', 'cherche', 'recherche', "c'est quoi", 'qui a', 'quel est', 'donne-moi', 'explique', 'raconte', 'comment', 'pourquoi'];
   return searchWords.some(w => message.toLowerCase().includes(w));
@@ -87,9 +91,10 @@ app.post('/api/register', async (req, res) => {
     const SB_SERVICE = { 'apikey': process.env.SUPABASE_KEY, 'Authorization': `Bearer ${process.env.SUPABASE_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=representation' };
     const r = await fetch(`${DB}/users`, { method: 'POST', headers: SB_SERVICE, body: JSON.stringify({ email, password: hashPwd(password), name }) });
     const data = await r.json();
-    console.log("✅ Checkboxes chargés de la BD:", data);
     if (!Array.isArray(data) || !data[0]) return res.status(400).json({ error: data.message || 'Erreur inscription' });
-    res.json({ token: makeToken(data[0].id, email), name: data[0].name, email });
+    const newUserid = generateUserId(data[0].id);
+    await fetch(`${DB}/users?id=eq.${data[0].id}`, { method: 'PATCH', headers: SB_SERVICE, body: JSON.stringify({ userid: newUserid }) });
+    res.json({ token: makeToken(data[0].id, email), name: data[0].name, email, userid: newUserid });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -103,7 +108,7 @@ app.post('/api/login', async (req, res) => {
       const r = await fetch(`${DB}/users?email=eq.${encodeURIComponent(email)}`, { headers: SB });
       const users = await r.json();
       if (Array.isArray(users) && users[0]) {
-        return res.json({ token: makeToken(users[0].id, email), name: users[0].name, email });
+        return res.json({ token: makeToken(users[0].id, email), name: users[0].name, email, userid: users[0].userid || generateUserId(users[0].id) });
       }
     }
     
@@ -114,7 +119,7 @@ app.post('/api/login', async (req, res) => {
     const hashedPwd = hashPwd(password);
     const isMatch = storedPwd === password || storedPwd === hashedPwd;
     if (!isMatch) return res.status(401).json({ error: 'Identifiants incorrects' });
-    res.json({ token: makeToken(users[0].id, email), name: users[0].name, email });
+    res.json({ token: makeToken(users[0].id, email), name: users[0].name, email, userid: users[0].userid || generateUserId(users[0].id) });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -901,7 +906,7 @@ app.get('/api/stats', async (req, res) => {
     const convs = await convRes.json();
     const msgs = await msgRes.json();
     const mems = await memRes.json();
-    res.json({ conversations: Array.isArray(convs) ? convs.length : 0, messages: Array.isArray(msgs) ? msgs.length : 0, memories: Array.isArray(mems) ? mems.length : 0 });
+    const convCount = Array.isArray(convs) ? convs.length : 0;const size = Math.round(convCount * 2.5) + ' KB';res.json({ conversations: convCount, messages: Array.isArray(msgs) ? msgs.length : 0, memories: Array.isArray(mems) ? mems.length : 0, size });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
