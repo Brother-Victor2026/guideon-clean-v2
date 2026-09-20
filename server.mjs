@@ -552,6 +552,13 @@ const sysContent = (userInstructions ? `Directives importantes de l'utilisateur:
 
 app.post('/api/chat/temp', async (req, res) => {
   try {
+    // Vérifier que c'est localhost (ADMIN ONLY)
+    const host = req.headers.host || '';
+    const isLocalhost = host.includes('127.0.0.1') || host.includes('localhost') || host.startsWith('localhost:');
+    if (!isLocalhost) {
+      return res.status(403).json({ error: 'Mode temporaire disponible uniquement en local' });
+    }
+    
     const { message, history = [], model, temperature = 0.7 } = req.body;
     const messages = [SYSTEM, ...history, { role: 'user', content: message }];
     const response = await fetch("https://api.groq.com/openai/v1/chat/completions", { method: "POST", headers: { "Authorization": `Bearer ${API_KEY}`, "Content-Type": "application/json" }, body: JSON.stringify({ model: MODELS[model] || "openai/gpt-oss-120b", messages, temperature: parseFloat(temperature) }) });
@@ -1358,6 +1365,32 @@ app.get('/api/checkboxes/load', async (req, res) => {
   try {
     const token = req.headers.authorization?.split(' ')[1];
     if (!token) return res.status(401).json({ error: 'Token manquant' });
+app.get('/api/status/temp-mode', async (req, res) => {
+  try {
+    // Récupère l'état tmpChat global depuis Victor (admin)
+    const adminResp = await fetch(`${DB}/users?email=eq.victorbossou59@gmail.com`, { headers: SB });
+app.get('/api/is-admin', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    if (!token) return res.json({ isAdmin: false });
+    
+    const user = checkToken(token);
+    if (!user) return res.json({ isAdmin: false });
+    
+    // Victor est admin
+    const isAdmin = user.email === 'victorbossou59@gmail.com';
+    res.json({ isAdmin });
+  } catch(e) { res.json({ isAdmin: false }); }
+});
+
+    const adminData = await adminResp.json();
+    if (!adminData[0]) return res.json({ tmpChat: false });
+    
+    const adminCheckboxes = adminData[0].checkboxes || {};
+    res.json({ tmpChat: adminCheckboxes.tmpChat === true });
+  } catch(e) { res.json({ tmpChat: false }); }
+});
+
     const user = checkToken(token);
     if (!user) return res.status(401).json({ error: 'Token invalide' });
 
