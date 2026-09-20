@@ -640,7 +640,11 @@ app.get('/api/sessions', async (req, res) => {
     const r = await fetch(`${DB}/sessions?user_id=eq.${String(user.id)}&order=created_at.desc`, { headers: SB });
     const data = await r.json();
     console.log("✅ Checkboxes chargés de la BD:", data);
-    res.json(Array.isArray(data) ? data : []);
+    const userR = await fetch(`${DB}/users?id=eq.${String(user.id)}`, { headers: SB });
+    const userData = await userR.json();
+    const userName = Array.isArray(userData) && userData[0] ? userData[0].name : 'Utilisateur';
+    const formatted = Array.isArray(data) ? data.map(s => ({ id: s.id, title: s.title || 'Sans titre', sharedBy: userName, sharedAt: s.created_at })) : [];
+    res.json(formatted);
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -721,7 +725,11 @@ app.get('/api/history/:sessionId', async (req, res) => {
     const r = await fetch(`${DB}/conversations?user_id=eq.${String(user.id)}&session_id=eq.${req.params.sessionId}&order=id.asc&limit=500`, { headers: SB });
     const data = await r.json();
     console.log("✅ Checkboxes chargés de la BD:", data);
-    res.json(Array.isArray(data) ? data : []);
+    const userR = await fetch(`${DB}/users?id=eq.${String(user.id)}`, { headers: SB });
+    const userData = await userR.json();
+    const userName = Array.isArray(userData) && userData[0] ? userData[0].name : 'Utilisateur';
+    const formatted = Array.isArray(data) ? data.map(s => ({ id: s.id, title: s.title || 'Sans titre', sharedBy: userName, sharedAt: s.created_at })) : [];
+    res.json(formatted);
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -853,7 +861,11 @@ app.get('/api/share/:sessionId', async (req, res) => {
     const r = await fetch(`${DB}/conversations?session_id=eq.${req.params.sessionId}&order=id.asc`, { headers: SB });
     const data = await r.json();
     console.log("✅ Checkboxes chargés de la BD:", data);
-    res.json(Array.isArray(data) ? data : []);
+    const userR = await fetch(`${DB}/users?id=eq.${String(user.id)}`, { headers: SB });
+    const userData = await userR.json();
+    const userName = Array.isArray(userData) && userData[0] ? userData[0].name : 'Utilisateur';
+    const formatted = Array.isArray(data) ? data.map(s => ({ id: s.id, title: s.title || 'Sans titre', sharedBy: userName, sharedAt: s.created_at })) : [];
+    res.json(formatted);
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -868,7 +880,11 @@ app.get('/api/search/history', async (req, res) => {
     const r = await fetch(`${DB}/conversations?user_id=eq.${String(user.id)}&content=ilike.*${encodeURIComponent(q)}*&order=pinned.desc,created_at.desc&limit=20`, { headers: SB });
     const data = await r.json();
     console.log("✅ Checkboxes chargés de la BD:", data);
-    res.json(Array.isArray(data) ? data : []);
+    const userR = await fetch(`${DB}/users?id=eq.${String(user.id)}`, { headers: SB });
+    const userData = await userR.json();
+    const userName = Array.isArray(userData) && userData[0] ? userData[0].name : 'Utilisateur';
+    const formatted = Array.isArray(data) ? data.map(s => ({ id: s.id, title: s.title || 'Sans titre', sharedBy: userName, sharedAt: s.created_at })) : [];
+    res.json(formatted);
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -1379,7 +1395,11 @@ app.get('/api/shared', async (req, res) => {
     const r = await fetch(`${DB}/sessions?user_id=eq.${String(user.id)}&order=created_at.desc`, { headers: SB });
     const data = await r.json();
     console.log("✅ Checkboxes chargés de la BD:", data);
-    res.json(Array.isArray(data) ? data : []);
+    const userR = await fetch(`${DB}/users?id=eq.${String(user.id)}`, { headers: SB });
+    const userData = await userR.json();
+    const userName = Array.isArray(userData) && userData[0] ? userData[0].name : 'Utilisateur';
+    const formatted = Array.isArray(data) ? data.map(s => ({ id: s.id, title: s.title || 'Sans titre', sharedBy: userName, sharedAt: s.created_at })) : [];
+    res.json(formatted);
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -1394,7 +1414,11 @@ app.get('/api/memories', async (req, res) => {
     const r = await fetch(`${DB}/memories?user_id=eq.${String(user.id)}&order=updated_at.desc&limit=100`, { headers: SB });
     const data = await r.json();
     console.log("✅ Checkboxes chargés de la BD:", data);
-    res.json(Array.isArray(data) ? data : []);
+    const userR = await fetch(`${DB}/users?id=eq.${String(user.id)}`, { headers: SB });
+    const userData = await userR.json();
+    const userName = Array.isArray(userData) && userData[0] ? userData[0].name : 'Utilisateur';
+    const formatted = Array.isArray(data) ? data.map(s => ({ id: s.id, title: s.title || 'Sans titre', sharedBy: userName, sharedAt: s.created_at })) : [];
+    res.json(formatted);
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
