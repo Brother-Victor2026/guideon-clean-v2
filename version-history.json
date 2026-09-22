@@ -1,7 +1,13 @@
 {
-  "current_version": "1.0.228",
-  "last_update": "22/09/2026 22:17:00",
+  "current_version": "1.0.229",
+  "last_update": "22/09/2026 22:24:02",
   "history": [
+    {
+      "version": "1.0.229",
+      "date": "22/09/2026 22:24:02",
+      "type": "auto",
+      "changes": "Auto-update"
+    },
     {
       "version": "1.0.228",
       "date": "22/09/2026 22:17:00",

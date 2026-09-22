@@ -665,6 +665,104 @@ app.get('/api/analytics/security', async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+app.get('/api/analytics/dashboard', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    const user = checkToken(token);
+    if (!user) return res.status(401).json({ error: 'Non autorisé' });
+
+    const userRes = await fetch(`${DB}/users?id=eq.${String(user.id)}`, { headers: SB });
+    const userData = await userRes.json();
+    if (!Array.isArray(userData) || !userData[0]) return res.status(404).json({ error: 'User not found' });
+    
+    const checkboxes = userData[0].checkboxes || {};
+    if (!checkboxes.analyticsConsent) {
+      return res.json({ dashboard: null, reason: 'analyticsConsent disabled' });
+    }
+
+    const analyticsRes = await fetch(`${DB}/analytics?user_id=eq.${String(user.id)}&order=created_at.desc&limit=500`, { headers: SB });
+    const logs = await analyticsRes.json();
+    
+    if (!Array.isArray(logs) || logs.length === 0) {
+      return res.json({ dashboard: { totalInteractions: 0, avgPerDay: 0, topTopics: [], activityTrend: [] } });
+    }
+
+    // Calcul stats
+    const dayGroups = {};
+    const topics = {};
+    
+    logs.forEach(log => {
+      const date = new Date(log.created_at).toISOString().split('T')[0];
+      dayGroups[date] = (dayGroups[date] || 0) + 1;
+      
+      try {
+        const data = log.event_data ? JSON.parse(log.event_data) : {};
+        const msg = (data.message || '').toLowerCase();
+        const words = msg.split(/\s+/).filter(w => w.length > 5);
+        words.forEach(w => { topics[w] = (topics[w] || 0) + 1; });
+      } catch(e) {}
+    });
+
+    const topTopics = Object.entries(topics).sort((a,b) => b[1]-a[1]).slice(0,5).map(t => ({ topic: t[0], count: t[1] }));
+    const avgPerDay = Math.round(logs.length / Object.keys(dayGroups).length);
+
+    res.json({
+      dashboard: {
+        totalInteractions: logs.length,
+        avgPerDay: avgPerDay,
+        activeDays: Object.keys(dayGroups).length,
+        topTopics: topTopics,
+        userLevel: logs.length > 100 ? 'Expert' : logs.length > 50 ? 'Avancé' : 'Débutant'
+      }
+    });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/analytics/curation', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    const user = checkToken(token);
+    if (!user) return res.status(401).json({ error: 'Non autorisé' });
+
+    const userRes = await fetch(`${DB}/users?id=eq.${String(user.id)}`, { headers: SB });
+    const userData = await userRes.json();
+    if (!Array.isArray(userData) || !userData[0]) return res.status(404).json({ error: 'User not found' });
+    
+    const checkboxes = userData[0].checkboxes || {};
+    if (!checkboxes.analyticsConsent) {
+      return res.json({ curation: null, reason: 'analyticsConsent disabled' });
+    }
+
+    const patternsRes = await fetch('http://localhost:9000/api/analytics/patterns', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({})
+    });
+    const patternsData = await patternsRes.json();
+    const patterns = patternsData.patterns || {};
+
+    let contentTypes = [];
+    
+    if (patterns.prefersCode) contentTypes.push({ type: 'code', priority: 'high' });
+    if (patterns.usesExamples) contentTypes.push({ type: 'examples', priority: 'high' });
+    if (patterns.style === 'detailed') contentTypes.push({ type: 'explanations', priority: 'high' });
+    if (patterns.style === 'concise') contentTypes.push({ type: 'summaries', priority: 'high' });
+    
+    if (contentTypes.length === 0) contentTypes.push({ type: 'balanced', priority: 'medium' });
+
+    const curatedGuide = `Pour ${userData[0].name || 'vous'}, le contenu optimal est:\n` +
+      contentTypes.map(ct => `- ${ct.type} (priorité: ${ct.priority})`).join('\n');
+
+    res.json({
+      curation: {
+        contentTypes: contentTypes,
+        curatedGuide: curatedGuide,
+        personalizationScore: Math.round((patterns.topics?.length || 0) / 10 * 100)
+      }
+    });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 app.post('/api/chat', async (req, res) => {
   try {
     const { message, history, token, model, temperature, session_id, userTime, tone, style, lang, length } = req.body;
@@ -750,6 +848,21 @@ if (tone && toneGuides[tone]) toneInstructions = `\n\nTONE: ${toneGuides[tone]}`
 let styleInstructions = '';
 const styleGuides = { 'court': 'Réponses brèves et concises.', 'detaille': 'Réponses détaillées et complètes.', 'creatif': 'Réponses créatives et imaginatives.' };
 if (style && styleGuides[style]) styleInstructions = `\n\nSTYLE: ${styleGuides[style]}`;
+// Récupérer l'auto-optimization pour adapter Claude automatiquement
+let autoOptSettings = { length: 'normal', tone: 'neutre', temperature: 0.5, includeExamples: false, includeCode: false };
+if (user && DB) {
+  try {
+    const aoRes = await fetch('http://localhost:9000/api/analytics/autooptimize', {
+      method: 'GET',
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const aoData = await aoRes.json();
+    if (aoData.optimization && aoData.optimization.autoSettings) {
+      autoOptSettings = aoData.optimization.autoSettings;
+    }
+  } catch(e) { console.log('Auto-optimize fetch failed:', e.message); }
+}
+
 // Récupérer les patterns d'analytics pour adapter la réponse
 let patternsInstructions = '';
 if (user && DB) {
@@ -784,7 +897,7 @@ const sysContent = (userInstructions ? `Directives importantes de l'utilisateur:
     const SYSTEM_MSG = { role: 'system', content: sysContent };
     const hist = dbHistory.length > 0 ? dbHistory : (history || []);
     const messages = [SYSTEM_MSG, ...hist.filter(h=>h&&h.role&&h.content).map(h => ({ role: h.role, content: h.content })), { role: 'user', content: message }];
-    const geminiBody = JSON.stringify({ model: MODELS[model] || "openai/gpt-oss-120b", messages, temperature: parseFloat(temperature) || 0.5, stream: true });
+    const geminiBody = JSON.stringify({ model: MODELS[model] || "openai/gpt-oss-120b", messages, temperature: autoOptSettings.temperature || parseFloat(temperature) || 0.5, stream: true });
     let response;
     for (let attempt = 0; attempt < 2; attempt++) {
       if (attempt > 0) await new Promise(r => setTimeout(r, 2000));
