@@ -338,6 +338,135 @@ app.post('/api/analytics/patterns', async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+app.get('/api/analytics/bugs', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    const user = checkToken(token);
+    if (!user) return res.status(401).json({ error: 'Non autorisé' });
+
+    const userRes = await fetch(`${DB}/users?id=eq.${String(user.id)}`, { headers: SB });
+    const userData = await userRes.json();
+    if (!Array.isArray(userData) || !userData[0]) return res.status(404).json({ error: 'User not found' });
+    
+    const checkboxes = userData[0].checkboxes || {};
+    if (!checkboxes.analyticsConsent) {
+      return res.json({ bugs: null, reason: 'analyticsConsent disabled' });
+    }
+
+    const analyticsRes = await fetch(`${DB}/analytics?user_id=eq.${String(user.id)}&error_message=not.null&limit=100`, { headers: SB });
+    const errorLogs = await analyticsRes.json();
+    
+    if (!Array.isArray(errorLogs) || errorLogs.length === 0) {
+      return res.json({ bugs: { totalErrors: 0, errorPatterns: [], criticalErrors: [] } });
+    }
+
+    const errorPatterns = {};
+    let criticalCount = 0;
+
+    errorLogs.forEach(log => {
+      const error = log.error_message || 'Unknown';
+      errorPatterns[error] = (errorPatterns[error] || 0) + 1;
+      if (error.includes('500') || error.includes('timeout') || error.includes('crash')) criticalCount++;
+    });
+
+    const sortedErrors = Object.entries(errorPatterns).sort((a,b) => b[1]-a[1]);
+
+    res.json({
+      bugs: {
+        totalErrors: errorLogs.length,
+        criticalErrors: criticalCount,
+        errorPatterns: sortedErrors.slice(0,5).map(e => ({ error: e[0], count: e[1] }))
+      }
+    });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/api/analytics/performance', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    const user = checkToken(token);
+    if (!user) return res.status(401).json({ error: 'Non autorisé' });
+
+    const userRes = await fetch(`${DB}/users?id=eq.${String(user.id)}`, { headers: SB });
+    const userData = await userRes.json();
+    if (!Array.isArray(userData) || !userData[0]) return res.status(404).json({ error: 'User not found' });
+    
+    const checkboxes = userData[0].checkboxes || {};
+    if (!checkboxes.analyticsConsent) {
+      return res.json({ performance: null, reason: 'analyticsConsent disabled' });
+    }
+
+    const analyticsRes = await fetch(`${DB}/analytics?user_id=eq.${String(user.id)}&order=created_at.desc&limit=100`, { headers: SB });
+    const logs = await analyticsRes.json();
+    
+    if (!Array.isArray(logs) || logs.length === 0) {
+      return res.json({ performance: { avgTime: 0, slowRequests: 0, suggestions: [] } });
+    }
+
+    let totalTime = 0, slowCount = 0;
+    logs.forEach(log => {
+      totalTime += log.response_time_ms || 0;
+      if (log.response_time_ms > 5000) slowCount++;
+    });
+
+    const avgTime = Math.round(totalTime / logs.length);
+    const suggestions = [];
+    if (avgTime > 3000) suggestions.push('Vos requêtes sont lentes - envisagez de réduire le contexte');
+    if (slowCount > logs.length * 0.3) suggestions.push('Plus de 30% de requêtes lentes - optimisation recommandée');
+
+    res.json({
+      performance: {
+        avgTime: avgTime,
+        slowRequests: slowCount,
+        totalRequests: logs.length,
+        suggestions: suggestions
+      }
+    });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/api/analytics/recommendations', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    const user = checkToken(token);
+    if (!user) return res.status(401).json({ error: 'Non autorisé' });
+
+    const userRes = await fetch(`${DB}/users?id=eq.${String(user.id)}`, { headers: SB });
+    const userData = await userRes.json();
+    if (!Array.isArray(userData) || !userData[0]) return res.status(404).json({ error: 'User not found' });
+    
+    const checkboxes = userData[0].checkboxes || {};
+    if (!checkboxes.analyticsConsent) {
+      return res.json({ recommendations: null, reason: 'analyticsConsent disabled' });
+    }
+
+    const analyticsRes = await fetch(`${DB}/analytics?user_id=eq.${String(user.id)}&order=created_at.desc&limit=100`, { headers: SB });
+    const logs = await analyticsRes.json();
+    
+    const recommendations = [];
+    let codeCount = 0, analysisCount = 0, creativeCount = 0;
+
+    if (Array.isArray(logs)) {
+      logs.forEach(log => {
+        try {
+          const data = log.event_data ? JSON.parse(log.event_data) : {};
+          const msg = (data.message || '').toLowerCase();
+          if (msg.includes('code') || msg.includes('javascript') || msg.includes('python')) codeCount++;
+          if (msg.includes('analyse') || msg.includes('data') || msg.includes('statistique')) analysisCount++;
+          if (msg.includes('créa') || msg.includes('histoire') || msg.includes('histoire')) creativeCount++;
+        } catch(e) {}
+      });
+    }
+
+    if (codeCount > logs.length * 0.4) recommendations.push('💡 Essayez la génération de code avancée - vous en demandez souvent');
+    if (analysisCount > logs.length * 0.3) recommendations.push('📊 Activez le mode analyse de données pour mieux traiter vos requêtes');
+    if (creativeCount > logs.length * 0.3) recommendations.push('✨ Mode créatif disponible pour vos besoins artistiques');
+    if (recommendations.length === 0) recommendations.push('Vous utilisez Guidéon de manière équilibrée !');
+
+    res.json({ recommendations: recommendations });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 app.post('/api/chat', async (req, res) => {
   try {
     const { message, history, token, model, temperature, session_id, userTime, tone, style, lang, length } = req.body;
