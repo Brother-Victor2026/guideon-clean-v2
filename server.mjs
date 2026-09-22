@@ -1013,7 +1013,11 @@ const sysContent = (userInstructions ? `Directives importantes de l'utilisateur:
         console.log('👤 User:', user);
       if (user) {
         const isFirst = dbHistory.length === 0;
-        await fetch(`${DB}/conversations`, { method: 'POST', headers: { ...SB, 'Prefer': 'return=minimal' }, body: JSON.stringify([{ user_id: String(user.id), role: 'user', content: message, session_id, image_url: null }])});
+        // Vérifier cloudBackup avant sauvegarde
+    const userCheckboxes = userData[0]?.checkboxes || {};
+    if (userCheckboxes.cloudBackup !== false) {
+      await fetch(`${DB}/conversations`, { method: 'POST', headers: { ...SB, 'Prefer': 'return=minimal' }, body: JSON.stringify([{ user_id: String(user.id), role: 'user', content: message, session_id, image_url: null }])});
+    }
         const convRes = await fetch(`${DB}/conversations`, { method: 'POST', headers: { ...SB, 'Prefer': 'return=minimal' }, body: JSON.stringify([{ user_id: String(user.id), role: 'assistant', content: reply, session_id, image_url: savedImageUrl }])});
     if (!convRes.ok) { console.error('ERREUR insertion conversations:', convRes.status, await convRes.text()); }
         if (isFirst && session_id) {
