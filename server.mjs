@@ -467,6 +467,204 @@ app.get('/api/analytics/recommendations', async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+app.get('/api/analytics/sessions', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    const user = checkToken(token);
+    if (!user) return res.status(401).json({ error: 'Non autorisé' });
+
+    const userRes = await fetch(`${DB}/users?id=eq.${String(user.id)}`, { headers: SB });
+    const userData = await userRes.json();
+    if (!Array.isArray(userData) || !userData[0]) return res.status(404).json({ error: 'User not found' });
+    
+    const checkboxes = userData[0].checkboxes || {};
+    if (!checkboxes.analyticsConsent) {
+      return res.json({ sessions: null, reason: 'analyticsConsent disabled' });
+    }
+
+    const analyticsRes = await fetch(`${DB}/analytics?user_id=eq.${String(user.id)}&order=created_at.desc&limit=500`, { headers: SB });
+    const logs = await analyticsRes.json();
+    
+    if (!Array.isArray(logs) || logs.length === 0) {
+      return res.json({ sessions: { avgDuration: 0, sessionsPerDay: 0, peakHour: 'N/A', peakDay: 'N/A' } });
+    }
+
+    // Grouper par jour
+    const dayGroups = {};
+    const hourCounts = {};
+    const dayCounts = {};
+
+    logs.forEach(log => {
+      const date = new Date(log.created_at);
+      const dayKey = date.toISOString().split('T')[0];
+      const hour = date.getHours();
+      const day = date.toLocaleDateString('fr-FR', { weekday: 'long' });
+
+      dayGroups[dayKey] = (dayGroups[dayKey] || 0) + 1;
+      hourCounts[hour] = (hourCounts[hour] || 0) + 1;
+      dayCounts[day] = (dayCounts[day] || 0) + 1;
+    });
+
+    const peakHour = Object.entries(hourCounts).sort((a,b) => b[1]-a[1])[0][0];
+    const peakDay = Object.entries(dayCounts).sort((a,b) => b[1]-a[1])[0][0];
+    const sessionsPerDay = (Object.keys(dayGroups).length > 0) ? Math.round(logs.length / Object.keys(dayGroups).length) : 0;
+
+    res.json({
+      sessions: {
+        totalInteractions: logs.length,
+        sessionsPerDay: sessionsPerDay,
+        peakHour: peakHour + 'h',
+        peakDay: peakDay,
+        activeDays: Object.keys(dayGroups).length
+      }
+    });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/api/analytics/predict', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    const user = checkToken(token);
+    if (!user) return res.status(401).json({ error: 'Non autorisé' });
+
+    const userRes = await fetch(`${DB}/users?id=eq.${String(user.id)}`, { headers: SB });
+    const userData = await userRes.json();
+    if (!Array.isArray(userData) || !userData[0]) return res.status(404).json({ error: 'User not found' });
+    
+    const checkboxes = userData[0].checkboxes || {};
+    if (!checkboxes.analyticsConsent) {
+      return res.json({ predictions: null, reason: 'analyticsConsent disabled' });
+    }
+
+    const analyticsRes = await fetch(`${DB}/analytics?user_id=eq.${String(user.id)}&order=created_at.desc&limit=50`, { headers: SB });
+    const logs = await analyticsRes.json();
+    
+    const predictions = [];
+    const topicWeights = {};
+
+    if (Array.isArray(logs)) {
+      logs.forEach(log => {
+        try {
+          const data = log.event_data ? JSON.parse(log.event_data) : {};
+          const msg = (data.message || '').toLowerCase();
+          const keywords = msg.split(/\s+/).filter(w => w.length > 5);
+          keywords.forEach(kw => {
+            topicWeights[kw] = (topicWeights[kw] || 0) + 1;
+          });
+        } catch(e) {}
+      });
+    }
+
+    const topKeywords = Object.entries(topicWeights).sort((a,b) => b[1]-a[1]).slice(0,3);
+    
+    if (topKeywords.length > 0) {
+      predictions.push(`Vous posez souvent des questions sur: ${topKeywords.map(k => k[0]).join(', ')}`);
+    }
+    
+    if (logs.length > 10) predictions.push('Vous êtes un utilisateur très actif - explorez nos fonctionnalités avancées');
+    if (logs.length < 5) predictions.push('Bienvenue ! Continuez à explorer Guidéon pour découvrir plus de features');
+
+    res.json({ predictions: predictions });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/api/analytics/finetuning', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    const user = checkToken(token);
+    if (!user) return res.status(401).json({ error: 'Non autorisé' });
+
+    const userRes = await fetch(`${DB}/users?id=eq.${String(user.id)}`, { headers: SB });
+    const userData = await userRes.json();
+    if (!Array.isArray(userData) || !userData[0]) return res.status(404).json({ error: 'User not found' });
+    
+    const checkboxes = userData[0].checkboxes || {};
+    if (!checkboxes.analyticsConsent) {
+      return res.json({ finetuning: null, reason: 'analyticsConsent disabled' });
+    }
+
+    const patternsRes = await fetch('http://localhost:9000/api/analytics/patterns', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({})
+    });
+    const patternsData = await patternsRes.json();
+    const patterns = patternsData.patterns || {};
+
+    let finetuningPrompt = 'Directives pour adapter Claude à cet utilisateur:\n\n';
+    
+    if (patterns.style === 'concise') {
+      finetuningPrompt += '- Réponds TRÈS brièvement et directement\n';
+    } else if (patterns.style === 'detailed') {
+      finetuningPrompt += '- Fournis des réponses détaillées et complètes\n';
+    }
+    
+    if (patterns.usesExamples) finetuningPrompt += '- Inclus toujours des exemples concrets\n';
+    if (patterns.prefersCode) finetuningPrompt += `- Fournis du code quand c'est pertinent\n`;
+    if (patterns.formalTone) finetuningPrompt += '- Utilise un ton professionnel et formel\n';
+    
+    const topics = patterns.topics ? patterns.topics.slice(0, 3).map(t => t[0]).join(', ') : '';
+    if (topics) finetuningPrompt += `- Sujets favoris: ${topics}\n`;
+
+    res.json({
+      finetuning: {
+        prompt: finetuningPrompt,
+        stylingActive: true,
+        personalizationLevel: 'high'
+      }
+    });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/api/analytics/security', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    const user = checkToken(token);
+    if (!user) return res.status(401).json({ error: 'Non autorisé' });
+
+    const userRes = await fetch(`${DB}/users?id=eq.${String(user.id)}`, { headers: SB });
+    const userData = await userRes.json();
+    if (!Array.isArray(userData) || !userData[0]) return res.status(404).json({ error: 'User not found' });
+    
+    const checkboxes = userData[0].checkboxes || {};
+    if (!checkboxes.analyticsConsent) {
+      return res.json({ security: null, reason: 'analyticsConsent disabled' });
+    }
+
+    const analyticsRes = await fetch(`${DB}/analytics?user_id=eq.${String(user.id)}&order=created_at.desc&limit=100`, { headers: SB });
+    const logs = await analyticsRes.json();
+    
+    const ips = {};
+    let anomalies = [];
+
+    if (Array.isArray(logs)) {
+      logs.forEach(log => {
+        const ip = log.ip_address || 'unknown';
+        ips[ip] = (ips[ip] || 0) + 1;
+      });
+    }
+
+    const ipEntries = Object.entries(ips).sort((a,b) => b[1]-a[1]);
+    const mainIp = ipEntries[0] ? ipEntries[0][0] : 'unknown';
+
+    ipEntries.forEach((entry, idx) => {
+      if (idx > 0 && entry[1] > 5) {
+        anomalies.push(`IP suspecte détectée: ${entry[0]} (${entry[1]} requêtes)`);
+      }
+    });
+
+    if (anomalies.length === 0) anomalies.push('✅ Accès normal - aucune anomalie détectée');
+
+    res.json({
+      security: {
+        primaryIp: mainIp,
+        anomalies: anomalies,
+        securityStatus: anomalies.length === 1 ? 'safe' : 'alert'
+      }
+    });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 app.post('/api/chat', async (req, res) => {
   try {
     const { message, history, token, model, temperature, session_id, userTime, tone, style, lang, length } = req.body;
