@@ -268,6 +268,76 @@ Réponds brièvement (2-3 phrases max) avec bienveillance. Utilise le nom de l\'
   }
 });
 
+app.post('/api/analytics/patterns', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    const user = checkToken(token);
+    if (!user) return res.status(401).json({ error: 'Non autorisé' });
+
+    const userRes = await fetch(`${DB}/users?id=eq.${String(user.id)}`, { headers: SB });
+    const userData = await userRes.json();
+    if (!Array.isArray(userData) || !userData[0]) return res.status(404).json({ error: 'User not found' });
+    
+    const checkboxes = userData[0].checkboxes || {};
+    if (!checkboxes.analyticsConsent) {
+      return res.json({ patterns: null, reason: 'analyticsConsent disabled' });
+    }
+
+    const analyticsRes = await fetch(`${DB}/analytics?user_id=eq.${String(user.id)}&limit=50&order=created_at.desc`, { headers: SB });
+    const analytics = await analyticsRes.json();
+    
+    if (!Array.isArray(analytics) || analytics.length === 0) {
+      return res.json({ patterns: { topics: [], style: 'neutral', avgLength: 0 } });
+    }
+
+    const topics = {};
+    let totalLength = 0, totalQuestions = 0;
+
+    analytics.forEach(a => {
+      try {
+        const data = a.event_data ? JSON.parse(a.event_data) : {};
+        if (data.message) {
+          totalLength += data.message.length;
+          totalQuestions++;
+          const words = data.message.toLowerCase().split(/\s+/);
+          words.forEach(w => {
+            if (w.length > 4) topics[w] = (topics[w] || 0) + 1;
+          });
+        }
+      } catch(e) {}
+    });
+
+    const avgLength = totalLength / (totalQuestions || 1);
+    const style = avgLength > 100 ? 'detailed' : avgLength > 50 ? 'normal' : 'concise';
+    const topTopics = Object.entries(topics).sort((a,b) => b[1]-a[1]).slice(0,10);
+
+    let usesExamples = 0, prefersCode = 0, formalTone = 0;
+    analytics.forEach(a => {
+      try {
+        const data = a.event_data ? JSON.parse(a.event_data) : {};
+        if (data.message) {
+          const msg = data.message.toLowerCase();
+          if (msg.includes('exemple') || msg.includes('example')) usesExamples++;
+          if (msg.includes('code') || msg.includes('javascript') || msg.includes('python')) prefersCode++;
+          if (msg.includes('monsieur') || msg.includes('formellement') || msg.includes('officiellement')) formalTone++;
+        }
+      } catch(e) {}
+    });
+    
+    const preferredStyle = {
+      topics: topTopics,
+      style: style,
+      avgLength: Math.round(avgLength),
+      totalInteractions: totalQuestions,
+      responseStyle: avgLength > 80 ? 'detailed' : 'concise',
+      usesExamples: usesExamples > totalQuestions/3,
+      prefersCode: prefersCode > totalQuestions/3,
+      formalTone: formalTone > 0
+    };
+    res.json({ patterns: preferredStyle });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 app.post('/api/chat', async (req, res) => {
   try {
     const { message, history, token, model, temperature, session_id, userTime, tone, style, lang, length } = req.body;
@@ -353,12 +423,37 @@ if (tone && toneGuides[tone]) toneInstructions = `\n\nTONE: ${toneGuides[tone]}`
 let styleInstructions = '';
 const styleGuides = { 'court': 'Réponses brèves et concises.', 'detaille': 'Réponses détaillées et complètes.', 'creatif': 'Réponses créatives et imaginatives.' };
 if (style && styleGuides[style]) styleInstructions = `\n\nSTYLE: ${styleGuides[style]}`;
+// Récupérer les patterns d'analytics pour adapter la réponse
+let patternsInstructions = '';
+if (user && DB) {
+  try {
+    const pRes = await fetch('http://localhost:9000/api/analytics/patterns', {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({})
+    });
+    const pData = await pRes.json();
+    if (pData.patterns && pData.patterns.style) {
+      const style = pData.patterns.style;
+      if (style === 'concise') patternsInstructions = `\n\nSTYLE ADAPTÉ: L'utilisateur préfère les réponses très courtes et directes.`;
+      else if (style === 'detailed') patternsInstructions = `\n\nSTYLE ADAPTÉ: L'utilisateur préfère les réponses détaillées et complètes.`;
+      const topics = pData.patterns.topics.map(t => t[0]).join(', ');
+      if (pData.patterns.usesExamples) patternsInstructions += `\nPRÉFÉRENCE: Ajoute des exemples.`;
+      if (pData.patterns.prefersCode) patternsInstructions += `\nPRÉFÉRENCE: Inclus du code.`;
+      if (topics) patternsInstructions += `\nSUJETS FAVORIS: ${topics}`;
+    }
+  } catch(e) { console.log('Analytics patterns fetch failed:', e.message); }
+}
+
 let langInstructions = '';
 if (lang && lang !== 'auto') langInstructions = lang === 'fr' ? '\n\nRéponds UNIQUEMENT EN FRANÇAIS.' : '\n\nRéponds UNIQUEMENT EN ANGLAIS.';
 let lengthInstructions = '';
 const lengthGuides = { 'short': 'Réponds très brièvement (1-2 lignes).', 'normal': 'Réponds avec une longueur normale.', 'long': 'Réponds de manière détaillée et approfondie.' };
 if (length && lengthGuides[length]) lengthInstructions = `\n\nLONGUEUR: ${lengthGuides[length]}`;
-const sysContent = (userInstructions ? `Directives importantes de l'utilisateur:\n${userInstructions}\n\n` : '') + SYSTEM.content + (userTime && asksTime ? `\n\nL heure exacte est ${userTime}.` : '') + visualBoost + memoriesText + toneInstructions + styleInstructions + langInstructions + lengthInstructions;
+const sysContent = (userInstructions ? `Directives importantes de l'utilisateur:\n${userInstructions}\n\n` : '') + SYSTEM.content + (userTime && asksTime ? `\n\nL heure exacte est ${userTime}.` : '') + visualBoost + memoriesText + toneInstructions + styleInstructions + langInstructions + lengthInstructions + patternsInstructions;
     const SYSTEM_MSG = { role: 'system', content: sysContent };
     const hist = dbHistory.length > 0 ? dbHistory : (history || []);
     const messages = [SYSTEM_MSG, ...hist.filter(h=>h&&h.role&&h.content).map(h => ({ role: h.role, content: h.content })), { role: 'user', content: message }];
@@ -1397,6 +1492,45 @@ app.get('/api/is-admin', async (req, res) => {
     const r = await fetch(`${DB}/users?id=eq.${user.id}`, { headers: SB });
     const data = await r.json();
     res.json(data[0]?.checkboxes || {});
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ===== ANALYTICS LOGGING =====
+app.post('/api/analytics/log', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    const user = checkToken(token);
+    if (!user) return res.status(401).json({ error: 'Non autorisé' });
+
+    // Vérifier si analyticsConsent est coché
+    const userRes = await fetch(`${DB}/users?id=eq.${String(user.id)}`, { headers: SB });
+    const userData = await userRes.json();
+    if (!Array.isArray(userData) || !userData[0]) return res.status(404).json({ error: 'User not found' });
+    
+    const checkboxes = userData[0].checkboxes || {};
+    if (!checkboxes.analyticsConsent) {
+      return res.json({ logged: false, reason: 'analyticsConsent disabled' });
+    }
+
+    // Logger l'interaction
+    const { event_type, event_data, response_time_ms, tokens_used, error_message } = req.body;
+    const ip_address = req.headers['x-forwarded-for'] || req.ip || 'unknown';
+
+    await fetch(`${DB}/analytics`, {
+      method: 'POST',
+      headers: { ...SB, 'Prefer': 'return=minimal' },
+      body: JSON.stringify({
+        user_id: user.id,
+        event_type: event_type || 'interaction',
+        event_data: JSON.stringify(event_data || {}),
+        response_time_ms: response_time_ms || 0,
+        tokens_used: tokens_used || 0,
+        error_message: error_message || null,
+        ip_address: ip_address
+      })
+    });
+
+    res.json({ logged: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
