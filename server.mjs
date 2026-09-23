@@ -2063,6 +2063,119 @@ app.post('/api/notifications/send', async (req, res) => {
   }
 });
 
+// Trigger: Vérifier nouvelle version et notifier utilisateurs
+setInterval(async () => {
+  try {
+    const latestVersion = pkg.version;
+    const { data: users, error } = await sb.from('users').select('id, checkboxes');
+    
+    if (error || !users) return;
+    
+    users.forEach(async (user) => {
+      if (user.checkboxes?.notifCheck === true) {
+        await sb.from('notifications').insert([{
+          user_id: user.id,
+          type: 'update',
+          title: '📦 Nouvelle version disponible',
+          message: `Guidéon ${latestVersion} est maintenant disponible. Rafraîchissez pour mettre à jour.`,
+          is_read: false
+        }]);
+      }
+    });
+  } catch (e) {
+    console.error('Erreur trigger notifications:', e.message);
+  }
+}, 24 * 60 * 60 * 1000); // Quotidien
+
+// Triggers: Notifications importantes automatiques
+// 1. Vérifier inactivité (7 jours)
+setInterval(async () => {
+  try {
+    const sevenDaysAgo = new Date(Date.now() - 7*24*60*60*1000).toISOString();
+    const { data: users } = await sb.from('users').select('id, checkboxes');
+    
+    users?.forEach(async (user) => {
+      if (user.checkboxes?.notifCheck === true) {
+        const { data: lastConv } = await sb.from('conversations').select('created_at').eq('user_id', user.id).order('created_at', { ascending: false }).limit(1).single();
+        if (lastConv?.created_at < sevenDaysAgo) {
+          await sb.from('notifications').insert([{
+            user_id: user.id,
+            type: 'info',
+            title: '👋 On vous a manqué!',
+            message: 'Vous n\'avez pas utilisé Guidéon depuis 7 jours. Revenez discuter!',
+            is_read: false
+          }]);
+        }
+      }
+    });
+  } catch (e) {}
+}, 24*60*60*1000);
+
+// 2. Alerte stockage limite (90%)
+setInterval(async () => {
+  try {
+    const { data: users } = await sb.from('users').select('id, checkboxes');
+    users?.forEach(async (user) => {
+      if (user.checkboxes?.notifCheck === true) {
+        const { data: convs } = await sb.from('conversations').select('content').eq('user_id', user.id);
+        const totalSize = convs?.reduce((acc, c) => acc + (c.content?.length || 0), 0) || 0;
+        if (totalSize > 1.2 * 1024 * 1024) { // 1.2 MB
+          await sb.from('notifications').insert([{
+            user_id: user.id,
+            type: 'error',
+            title: '💾 Stockage limite atteint',
+            message: 'Vous avez utilisé 90% de votre espace. Supprimez d\'anciennes conversations.',
+            is_read: false
+          }]);
+        }
+      }
+    });
+  } catch (e) {}
+}, 24*60*60*1000);
+
+// 3. Rapport analytics hebdomadaire
+setInterval(async () => {
+  try {
+    const { data: users } = await sb.from('users').select('id, checkboxes');
+    users?.forEach(async (user) => {
+      if (user.checkboxes?.notifCheck === true && user.checkboxes?.analyticsConsent === true) {
+        const weekAgo = new Date(Date.now() - 7*24*60*60*1000).toISOString();
+        const { data: events } = await sb.from('analytics').select('*').eq('user_id', user.id).gt('created_at', weekAgo);
+        if (events?.length > 0) {
+          await sb.from('notifications').insert([{
+            user_id: user.id,
+            type: 'info',
+            title: '📊 Rapport hebdomadaire',
+            message: `Vous avez eu ${events.length} interactions cette semaine. Consultez votre rapport d'analytics!`,
+            is_read: false
+          }]);
+        }
+      }
+    });
+  } catch (e) {}
+}, 7*24*60*60*1000);
+
+// 4. Nouvelle fonctionnalité disponible
+setInterval(async () => {
+  try {
+    const { data: users } = await sb.from('users').select('id, checkboxes');
+    const newFeatures = ['Partage collaboratif amélioré', 'Mode vocale optimisé', 'Analytics avancées'];
+    const randomFeature = newFeatures[Math.floor(Math.random() * newFeatures.length)];
+    
+    users?.forEach(async (user) => {
+      if (user.checkboxes?.notifCheck === true) {
+        await sb.from('notifications').insert([{
+          user_id: user.id,
+          type: 'info',
+          title: '✨ Nouvelle fonctionnalité',
+          message: 'Découvrez: ' + randomFeature,
+          is_read: false
+        }]);
+      }
+    });
+  } catch (e) {}
+}, 30*24*60*60*1000); // Mensuel
+
 app.listen(process.env.PORT || 8080, () => console.log("Guideon actif !"));
 
 
