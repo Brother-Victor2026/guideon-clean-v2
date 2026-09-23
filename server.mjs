@@ -2174,7 +2174,7 @@ setInterval(async () => {
       }
     });
   } catch (e) {}
-}, 30*24*60*60*1000); // Mensuel
+}, 24*24*60*60*1000); // Tous les 24 jours
 
 app.listen(process.env.PORT || 8080, () => console.log("Guideon actif !"));
 
