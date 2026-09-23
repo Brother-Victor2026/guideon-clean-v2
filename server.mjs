@@ -81,6 +81,20 @@ app.use(express.static(path.join(__dirname, 'public')));
 // Initialiser Resend
 const resend = new Resend(process.env.RESEND_API_KEY);
 
+// Supprimer automatiquement conversations après 15 jours inactivité
+setInterval(async () => {
+  const fifteenDaysAgo = new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString();
+  try {
+    const { data, error } = await sb
+      .from('conversations')
+      .delete()
+      .lt('updated_at', fifteenDaysAgo);
+    if (!error) console.log('✅ Conversations supprimées (15 jours+)');
+  } catch (e) {
+    console.error('❌ Erreur suppression:', e.message);
+  }
+}, 24 * 60 * 60 * 1000); // Quotidien
+
 app.post('/api/register', async (req, res) => {
   try {
     const { email, password, name } = req.body;
