@@ -1992,6 +1992,77 @@ app.post('/api/analytics/log', async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+// Télécharger données utilisateur (JSON)
+app.get('/api/user/data', async (req, res) => {
+  const token = req.headers.authorization?.replace('Bearer ', '');
+  if (!token) return res.status(401).json({ error: 'Token manquant' });
+  const user = checkToken(token);
+  if (!user) return res.status(401).json({ error: 'Token invalide' });
+  try {
+    const { data: userData, error } = await sb.from('users').select('*').eq('id', user.id).single();
+    if (error) throw error;
+    const { data: conversations } = await sb.from('conversations').select('*').eq('user_id', String(user.id));
+    const exportData = { user: userData, conversations: conversations || [], exportDate: new Date().toISOString() };
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Content-Disposition', `attachment; filename="guideon-data-${new Date().toISOString().split('T')[0]}.json"`);
+    res.send(JSON.stringify(exportData, null, 2));
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Récupérer notifications utilisateur
+app.get('/api/notifications', async (req, res) => {
+  const token = req.headers.authorization?.replace('Bearer ', '');
+  if (!token) return res.status(401).json({ error: 'Token manquant' });
+  const user = checkToken(token);
+  if (!user) return res.status(401).json({ error: 'Token invalide' });
+  
+  try {
+    const { data: notifications, error } = await sb
+      .from('notifications')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('is_read', false)
+      .order('created_at', { ascending: false });
+    
+    if (error) throw error;
+    res.json({ notifications: notifications || [] });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Créer notification (si notifCheck coché)
+app.post('/api/notifications/send', async (req, res) => {
+  const token = req.headers.authorization?.replace('Bearer ', '');
+  if (!token) return res.status(401).json({ error: 'Token manquant' });
+  const user = checkToken(token);
+  if (!user) return res.status(401).json({ error: 'Token invalide' });
+  
+  const { type, title, message } = req.body;
+  
+  try {
+    const { data: userData } = await sb.from('users').select('checkboxes').eq('id', user.id).single();
+    if (userData?.checkboxes?.notifCheck !== true) {
+      return res.json({ sent: false, reason: 'Notifications désactivées' });
+    }
+    
+    const { data, error } = await sb.from('notifications').insert([{
+      user_id: user.id,
+      type: type || 'info',
+      title: title || 'Notification',
+      message: message || '',
+      is_read: false
+    }]);
+    
+    if (error) throw error;
+    res.json({ sent: true, notification: data });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 app.listen(process.env.PORT || 8080, () => console.log("Guideon actif !"));
 
 
