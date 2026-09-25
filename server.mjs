@@ -1994,14 +1994,17 @@ app.post('/api/analytics/log', async (req, res) => {
 
 // Télécharger données utilisateur (JSON)
 app.get('/api/user/data', async (req, res) => {
+  console.log('📋 /api/user/data appelé');
   const token = req.headers.authorization?.replace('Bearer ', '');
+  console.log('Token reçu:', token?.substring(0, 20) + '...');
   if (!token) return res.status(401).json({ error: 'Token manquant' });
   const user = checkToken(token);
+  console.log('User:', user);
   if (!user) return res.status(401).json({ error: 'Token invalide' });
   try {
-    const { data: userData, error } = await sb.from('users').select('*').eq('id', user.id).single();
+    const { data: userData, error } = await sb.from('users').select('*').eq('email', user.email).single();
     if (error) throw error;
-    const { data: conversations } = await sb.from('conversations').select('*').eq('user_id', String(user.id));
+    const { data: conversations } = await sb.from('conversations').select('*').eq('user_id', String(userData.id));
     const exportData = { user: userData, conversations: conversations || [], exportDate: new Date().toISOString() };
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Content-Disposition', `attachment; filename="guideon-data-${new Date().toISOString().split('T')[0]}.json"`);
@@ -2175,6 +2178,34 @@ setInterval(async () => {
     });
   } catch (e) {}
 }, 24*24*60*60*1000); // Tous les 24 jours
+
+// Demander suppression données utilisateur (RGPD)
+app.post('/api/user/delete', async (req, res) => {
+  const token = req.headers.authorization?.replace('Bearer ', '');
+  if (!token) return res.status(401).json({ error: 'Token manquant' });
+  const user = checkToken(token);
+  if (!user) return res.status(401).json({ error: 'Token invalide' });
+  
+  try {
+    const deleteDate = new Date(Date.now() + 30*24*60*60*1000).toISOString();
+    const { data, error } = await sb.from('users').update({ deletion_requested: deleteDate }).eq('id', user.id);
+    if (error) throw error;
+    
+    res.json({ 
+      message: 'Suppression demandée',
+      deleteDate: deleteDate,
+      note: 'Vos données seront supprimées définitivement dans 30 jours.'
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// TEST endpoint
+app.get('/api/test', (req, res) => {
+  console.log('✅ TEST ENDPOINT APPELÉ!');
+  res.json({ test: 'OK', time: new Date().toISOString() });
+});
 
 app.listen(process.env.PORT || 8080, () => console.log("Guideon actif !"));
 

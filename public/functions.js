@@ -3,12 +3,7 @@ async function createNewAccount(){if(!confirm("Vous allez être déconnecté(e).
 function switchToRegistration(){if(!confirm("Créer un nouveau compte ? Vous allez être déconnecté(e)."))return;const tok=localStorage.getItem("gtoken");try{fetch("/api/auth/logout",{method:"POST",headers:{"Authorization":"Bearer "+tok}});}catch(e){}localStorage.removeItem("gtoken");localStorage.removeItem("gname");document.getElementById("prof").style.display="none";document.getElementById("authModal").scrollIntoView({behavior:"smooth"});stab("reg");location.reload();}
 
 // Afficher le rapport de confidentialité dans un modal
-async function downloadPrivacyReport() {
-  try {
-    const tok = localStorage.getItem("gtoken");
-    const res = await fetch('/api/privacy-report', {
-      method: 'GET',
-      headers: { "Authorization": "Bearer " + tok }
+
     });
     
     if (!res.ok) {
