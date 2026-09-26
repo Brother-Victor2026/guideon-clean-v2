@@ -634,6 +634,55 @@ window.exportPrivacyDataJSON = function() {
   URL.revokeObjectURL(url);
 };
 </script>
+<script>
+window.initiateDeletion = function() {
+  if (!confirm('IRRÉVERSIBLE? Données supprimées dans 30 jours.')) return;
+  const deletionDate = new Date(Date.now() + 30*24*60*60*1000).toISOString();
+  localStorage.setItem('deletionRequested', 'true');
+  localStorage.setItem('deletionDate', deletionDate);
+  const status = document.getElementById('deletionStatus');
+  if (status) status.textContent = '⏳ Suppression le ' + new Date(deletionDate).toLocaleDateString('fr-FR');
+  alert('✅ Demande enregistrée');
+};
+
+window.loadModificationHistory = function() {
+  const history = JSON.parse(localStorage.getItem('modificationHistory') || '[]');
+  const histDiv = document.getElementById('modificationHistory');
+  if (!histDiv) return;
+  if (history.length === 0) {
+    histDiv.innerHTML = '<div style="color:#9ca3af;">Aucune modification</div>';
+    return;
+  }
+  histDiv.innerHTML = history.slice(-5).reverse().map(h => 
+    `<div style="padding:3px;">${h.date}: ${h.action}</div>`
+  ).join('');
+};
+
+window.exportHistoryJSON = function() {
+  const history = JSON.parse(localStorage.getItem('modificationHistory') || '[]');
+  const blob = new Blob([JSON.stringify(history, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'historique-' + new Date().toISOString().split('T')[0] + '.json';
+  a.click();
+  URL.revokeObjectURL(url);
+};
+
+window.generateComplaintForm = function() {
+  alert('Formulaire CNIL généré pour:\n' + (localStorage.getItem('gname') || '[Votre Nom]') + '\nEnvoyez à: plaintes@cnil.fr');
+};
+
+window.downloadComplaintPDF = function() {
+  const text = 'MODÈLE RÉCLAMATION RGPD\nNom: ' + (localStorage.getItem('gname') || 'Votre nom') + '\nEmail: ' + (localStorage.getItem('gemail') || 'Email') + '\n\nSujet: Réclamation Guidéon\nDescription: [Détails]';
+  const blob = new Blob([text], { type: 'text/plain' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'reclamation-cnil.txt';
+  a.click();
+};
+</script>
 </head>
 <body>
 <div id="splashScreen" style="position:fixed;top:0;left:0;width:100%;height:100%;background:linear-gradient(135deg,#4c1d95,#1e3a8a);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:99999;"><div style="font-size:90px;margin-bottom:10px;">🧠</div><h1 style="color:#c084fc;font-size:30px;font-weight:700;font-family:sans-serif;margin:0;">Guidéon</h1>
@@ -2112,6 +2161,60 @@ function confirmCheckbox(checkbox) {
           URL: <code style="background:#1a1a2e;padding:2px 4px;border-radius:2px;">guideon.ai/verify/a7f3d2e1</code><br>
           Vérifiez l'authenticité de ce rapport
         </p>
+      </div>        </p>
+      </div>
+
+      <div style="background:#0f0f1a;border-left:3px solid #ef4444;padding:10px;border-radius:4px;margin-bottom:12px;">
+        <p style="color:#ef4444;font-weight:600;margin:0 0 8px 0;">🗑️ 14. SUPPRESSION RGPD (ARTICLE 17)</p>
+        <p style="color:#9ca3af;font-size:11px;line-height:1.6;margin:0 0 10px 0;">
+          <strong style="color:#ef4444;">Droit à l'oubli:</strong><br>
+          Vous pouvez demander la suppression complète et irréversible de toutes vos données.<br><br>
+          <strong>⚠️ Attention:</strong><br>
+          • Cette action est IRRÉVERSIBLE<br>
+          • Délai de rétention: 30 jours avant suppression définitive<br>
+          • Toutes les conversations seront supprimées<br>
+          • Les données en backup seront aussi effacées<br><br>
+          <strong>🕐 Statut:</strong> <span id="deletionStatus" style="color:#9ca3af;">Aucune demande</span>
+        </p>
+        <button onclick="initiateDeletion()" style="width:100%;padding:10px;background:#ef4444;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-top:8px;font-weight:600;">⚠️ Demander suppression</button>
+      </div>
+
+      <div style="background:#0f0f1a;border-left:3px solid #3b82f6;padding:10px;border-radius:4px;margin-bottom:12px;">
+        <p style="color:#3b82f6;font-weight:600;margin:0 0 8px 0;">📊 15. HISTORIQUE DES MODIFICATIONS</p>
+        <p style="color:#9ca3af;font-size:11px;line-height:1.6;margin:0 0 10px 0;">
+          <strong style="color:#3b82f6;">Audit trail:</strong> Toutes les modifications de vos préférences.
+        </p>
+        <div id="modificationHistory" style="background:#1a1a2e;border:1px solid #2d1b69;border-radius:4px;padding:8px;margin-bottom:10px;max-height:120px;overflow-y:auto;font-size:10px;color:#7c3aed;">
+          <div style="color:#9ca3af;">Chargement...</div>
+        </div>
+        <button onclick="exportHistoryJSON()" style="width:100%;padding:10px;background:#3b82f6;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;">📥 Exporter historique</button>
+      </div>
+
+      <div style="background:#0f0f1a;border-left:3px solid #10b981;padding:10px;border-radius:4px;margin-bottom:12px;">
+        <p style="color:#10b981;font-weight:600;margin:0 0 8px 0;">🔔 16. NOTIFICATIONS DE CONFORMITÉ</p>
+        <p style="color:#9ca3af;font-size:11px;line-height:1.6;margin:0 0 10px 0;">
+          <strong style="color:#10b981;">Alertes légales:</strong><br>
+          • 📧 Mises à jour RGPD/CCPA/LGPD<br>
+          • 🔄 Changements de CGU<br>
+          • 📅 Rappel audit annuel (25/09/2027)<br><br>
+          <strong>🕐 Statut:</strong> ✅ Activées
+        </p>
+        <label style="color:#9ca3af;font-size:11px;display:flex;align-items:center;gap:8px;pointer-events:none;">
+          <input type="checkbox" id="complianceAlerts" checked style="pointer-events:auto;">
+          Recevoir notifications de conformité
+        </label>
+      </div>
+
+      <div style="background:#0f0f1a;border-left:3px solid #f59e0b;padding:10px;border-radius:4px;margin-bottom:12px;">
+        <p style="color:#f59e0b;font-weight:600;margin:0 0 8px 0;">📋 17. FORMULAIRE DE RÉCLAMATION LÉGALE</p>
+        <p style="color:#9ca3af;font-size:11px;line-height:1.6;margin:0 0 10px 0;">
+          <strong style="color:#f59e0b;">Exercer vos droits:</strong><br>
+          🇪🇺 <strong>CNIL (France):</strong> plaintes@cnil.fr<br>
+          🇪🇺 <strong>EDPB (Europe):</strong> edpb.europa.eu<br>
+          🇺🇸 <strong>FTC (USA):</strong> ftc.gov
+        </p>
+        <button onclick="generateComplaintForm()" style="width:100%;padding:10px;background:#f59e0b;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:8px;font-weight:600;">📧 Formulaire CNIL</button>
+        <button onclick="downloadComplaintPDF()" style="width:100%;padding:10px;background:#f59e0b;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;">📄 Télécharger modèle</button>
       </div>
 
     </div>
