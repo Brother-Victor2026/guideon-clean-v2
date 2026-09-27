@@ -2210,6 +2210,7 @@ app.get('/api/test', (req, res) => {
 
 // 📧 API - Envoyer formulaire de réclamation RGPD
 app.post('/api/send-complaint-email', async (req, res) => {
+  console.log('📬 API Réclamation reçue:', req.body);
   try {
     const { name, email, type, description } = req.body;
     
@@ -2299,17 +2300,22 @@ app.post('/api/send-complaint-email', async (req, res) => {
     `;
     
     // Envoyer email au créateur
-    await resend.emails.send({
-      from: 'Guidéon Labs <noreply@guideon.ai>',
-      to: 'victorbossou59@gmail.com',
-      subject: '📋 [RGPD] Nouvelle réclamation - ' + complaintId,
-      html: creatorEmailHtml,
-      replyTo: email
-    });
+    try {
+      const creatorRes = await resend.emails.send({
+        from: 'Guidéon Labs <test@resend.dev>',
+        to: 'codjovictorbossou@gmail.com',
+        subject: '📋 [RGPD] Nouvelle réclamation - ' + complaintId,
+        html: creatorEmailHtml,
+        replyTo: email
+      });
+      console.log('📧 Email créateur envoyé:', creatorRes);
+    } catch(emailErr) {
+      console.error('❌ Erreur email créateur:', emailErr.message);
+    }
     
     // Envoyer confirmation à l'utilisateur
     await resend.emails.send({
-      from: 'Guidéon Labs <noreply@guideon.ai>',
+      from: 'Guidéon Labs <test@resend.dev>',
       to: email,
       subject: '✅ Votre réclamation RGPD a été reçue - ' + complaintId,
       html: userEmailHtml
