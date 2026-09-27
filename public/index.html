@@ -683,6 +683,107 @@ window.downloadComplaintPDF = function() {
   a.click();
 };
 </script>
+<script>
+// Validation et auto-enregistrement nom
+document.addEventListener('DOMContentLoaded', function() {
+  const nameInput = document.getElementById('formName');
+  if (nameInput) {
+    nameInput.addEventListener('input', function() {
+      if (this.value.trim().length > 3) {
+        localStorage.setItem('gname', this.value);
+        document.getElementById('nameCheck').style.display = 'inline';
+      } else {
+        document.getElementById('nameCheck').style.display = 'none';
+      }
+    });
+  }
+
+  const emailInput = document.getElementById('formEmail');
+  if (emailInput) {
+    emailInput.addEventListener('input', function() {
+      const isValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.value);
+      localStorage.setItem('gemail', this.value);
+      document.getElementById('emailCheck').style.display = isValid ? 'inline' : 'none';
+    });
+  }
+});
+
+window.generateComplaintForm = function() {
+  // Fermer le 1er modal
+  const privacyModal = document.getElementById('privacyReportModal');
+  if (privacyModal) privacyModal.style.display = 'none';
+  
+  // Ouvrir le formulaire
+  const modal = document.getElementById('cniFormularModal');
+  if (modal) {
+    document.getElementById('formName').value = localStorage.getItem('gname') || '';
+    document.getElementById('formEmail').value = localStorage.getItem('gemail') || '';
+    modal.style.display = 'flex';
+  }
+};
+
+window.downloadComplaintPDF = function() {
+  if (!confirm('Télécharger le formulaire?')) return;
+  const name = document.getElementById('formName').value || 'Votre nom';
+  const email = document.getElementById('formEmail').value || 'email@example.com';
+  const type = document.querySelector('input[name="formType"]:checked')?.value || 'droit-oubli';
+  const desc = document.getElementById('formDescription').value || '[Description]';
+  const text = 'FORMULAIRE RÉCLAMATION RGPD\n' + '='.repeat(50) + '\nDate: ' + new Date().toLocaleDateString('fr-FR') + '\nNom: ' + name + '\nEmail: ' + email + '\n\nType: ' + type + '\n\nDescription:\n' + desc + '\n\nCréateur & Entreprise:\n👨‍💼 Victor Hugo Bossou\n🏢 Guidéon Labs\n🌍 Bénin, Afrique\n📧 victorbossou59@gmail.com';
+  const blob = new Blob([text], { type: 'text/plain' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'reclamation-rgpd-' + new Date().toISOString().split('T')[0] + '.txt';
+  a.click();
+  URL.revokeObjectURL(url);
+};
+
+window.downloadFormularPDF = function() {
+  downloadComplaintPDF();
+};
+
+window.closeFormularModal = function() {
+  const modal = document.getElementById('cniFormularModal');
+  if (modal) modal.style.display = 'none';
+  
+  // Réouvrir le 1er modal
+  const privacyModal = document.getElementById('privacyReportModal');
+  if (privacyModal) privacyModal.style.display = 'block';
+};
+
+window.sendFormToEmail = function() {
+  const name = document.getElementById('formName').value || 'Sans nom';
+  const email = document.getElementById('formEmail').value || 'sans-email';
+  const type = document.querySelector('input[name="formType"]:checked')?.value || 'droit-oubli';
+  const desc = document.getElementById('formDescription').value || '[Vide]';
+  
+  const data = {
+    name: name,
+    email: email,
+    type: type,
+    description: desc,
+    date: new Date().toLocaleString('fr-FR'),
+    fromEmail: 'victorbossou59@gmail.com'
+  };
+  
+  fetch('/api/send-complaint-email', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.success) {
+      const status = document.getElementById('sendStatus');
+      status.style.display = 'block';
+      setTimeout(() => {
+        status.style.display = 'none';
+      }, 5000);
+    }
+  })
+  .catch(e => console.error('Erreur:', e));
+};
+</script>
 </head>
 <body>
 <div id="splashScreen" style="position:fixed;top:0;left:0;width:100%;height:100%;background:linear-gradient(135deg,#4c1d95,#1e3a8a);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:99999;"><div style="font-size:90px;margin-bottom:10px;">🧠</div><h1 style="color:#c084fc;font-size:30px;font-weight:700;font-family:sans-serif;margin:0;">Guidéon</h1>
@@ -2087,131 +2188,43 @@ function confirmCheckbox(checkbox) {
       <p style="color:#ef4444;font-weight:600;margin:0 0 8px 0;">📥 Actions</p>
       <button onclick="downloadPrivacyPDF()" style="width:100%;padding:10px;background:#7c3aed;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:8px;">📄 Télécharger en PDF</button>
       <button onclick="requestDataDeletion()" style="width:100%;padding:10px;background:#ef4444;color:#fff;border:none;border-radius:8px;cursor:pointer;">🗑️ Demander suppression données</button>
-      <div style="background:#0f0f1a;border-left:3px solid #10b981;padding:10px;border-radius:4px;margin-bottom:12px;">
-        <p style="color:#10b981;font-weight:600;margin:0 0 8px 0;">⏱️ 9. HORODATAGE</p>
-        <p style="color:#9ca3af;font-size:11px;margin:0;">📅 Rapport généré le <span id="reportDate">-</span> à <span id="reportTime">-</span></p>
-      </div>
-
-      <div style="background:#0f0f1a;border-left:3px solid #06b6d4;padding:10px;border-radius:4px;margin-bottom:12px;">
-        <p style="color:#06b6d4;font-weight:600;margin:0 0 8px 0;">✅ 10. STATUT DE CONFORMITÉ LÉGALE</p>
-        <p style="color:#9ca3af;font-size:11px;line-height:1.6;margin:0;">
-          Ce rapport confirme que Guidéon respecte les régulations suivantes:<br><br>
-          <strong style="color:#06b6d4;">🇪🇺 RGPD (UE) - CERTIFIÉ ✅</strong><br>
-          Vos droits: accès, rectification, suppression, portabilité, opposition<br>
-          Délai de traitement: 30 jours maximum<br><br>
-          <strong style="color:#06b6d4;">🇺🇸 CCPA (Californie) - CERTIFIÉ ✅</strong><br>
-          Droit de savoir, supprimer, refuser la vente de vos données<br>
-          Opt-out: activé dans les paramètres<br><br>
-          <strong style="color:#06b6d4;">🇧🇷 LGPD (Brésil) - CERTIFIÉ ✅</strong><br>
-          Consentement explicite requis pour toute utilisation de données<br>
-          Base légale: contrat de service utilisateur<br><br>
-          <strong style="color:#f59e0b;">🔐 Audit annuel: 23/09/2026</strong><br>
-          Prochain audit: 23/09/2027
-        </p>
-      </div>
-
-      <div style="background:#0f0f1a;border-left:3px solid #f59e0b;padding:10px;border-radius:4px;margin-bottom:12px;">
-        <p style="color:#f59e0b;font-weight:600;margin:0 0 8px 0;">🔐 11. SIGNATURE DIGITALE & AUTHENTICITÉ</p>
-        <p style="color:#9ca3af;font-size:11px;line-height:1.6;margin:0;word-break:break-all;">
-          <strong style="color:#f59e0b;">Certificat d'authenticité:</strong><br>
-          Ce rapport est signé numériquement et vérifiable.<br><br>
-          <strong>📝 Signataire autorisé:</strong><br>
-          Brother Victor'Bossou (Créateur Guidéon)<br>
-          Rôle: Responsable de la Confidentialité<br><br>
-          <strong>🔑 Empreinte SHA256:</strong><br>
-          a7f3d2e1c9b4f8a6d5e3c1b9a7f3d2e1<br><br>
-          <strong>🕐 Validité du certificat:</strong><br>
-          Émis: 25/09/2026 23:17<br>
-          Expires: 25/09/2027 23:17<br>
-          Statut: ✅ Valide<br><br>
-          <strong>🔏 Méthodologie:</strong><br>
-          Signature RSA-2048 | Hachage SHA-256
-        </p>
-      </div>
-
-      <div style="background:#0f0f1a;border-left:3px solid #8b5cf6;padding:10px;border-radius:4px;margin-bottom:12px;">
-        <p style="color:#8b5cf6;font-weight:600;margin:0 0 8px 0;">📊 12. EXPORT COMPLET DES DONNÉES (RGPD)</p>
-        <p style="color:#9ca3af;font-size:11px;line-height:1.6;margin:0 0 10px 0;">
-          <strong style="color:#8b5cf6;">Droit à la portabilité (Article 20 RGPD):</strong><br>
-          Exportez toutes vos données personnelles dans un format structuré et lisible (JSON).<br><br>
-          <strong>📋 Données incluses dans l'export:</strong><br>
-          • Profil utilisateur (nom, email, date création)<br>
-          • Préférences et paramètres<br>
-          • Historique des conversations<br>
-          • Mémoires et annotations<br>
-          • Consentements et choix de confidentialité<br>
-          • Métadonnées (dates, IP, navigateur)<br><br>
-          <strong>💾 Format: JSON (lisible, réutilisable)</strong><br>
-          <strong>📅 Généré: <span id="exportDate">-</span></strong><br>
-          <strong>🔒 Chiffré: Non (à garder en sécurité)</strong>
-        </p>
-        <button onclick="exportPrivacyDataJSON()" style="width:100%;padding:10px;background:#8b5cf6;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:8px;font-weight:600;font-size:14px;">📥 Exporter en JSON</button>
-        <p style="color:#9ca3af;font-size:10px;margin:0;font-style:italic;">
-          Cet export peut être importé dans un autre service ou conservé comme sauvegarde
-        </p>
-      </div>
-
-      <div style="background:#0f0f1a;border-left:3px solid #ec4899;padding:10px;border-radius:4px;margin-bottom:12px;">
-        <p style="color:#ec4899;font-weight:600;margin:0 0 8px 0;">🔗 13. VÉRIFICATION AUTHENTIQUE</p>
-        <div style="text-align:center;margin:10px 0;">
-          <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=guideon.ai/verify/a7f3d2e1" alt="QR Code Vérification" style="border:2px solid #ec4899;border-radius:8px;padding:5px;background:#fff;">
-        </div>
-        <p style="color:#9ca3af;font-size:11px;margin:0;text-align:center;">
-          📱 Scannez le QR Code<br>
-          URL: <code style="background:#1a1a2e;padding:2px 4px;border-radius:2px;">guideon.ai/verify/a7f3d2e1</code><br>
-          Vérifiez l'authenticité de ce rapport
-        </p>
-      </div>        </p>
-      </div>
-
-      <div style="background:#0f0f1a;border-left:3px solid #ef4444;padding:10px;border-radius:4px;margin-bottom:12px;">
-        <p style="color:#ef4444;font-weight:600;margin:0 0 8px 0;">🗑️ 14. SUPPRESSION RGPD (ARTICLE 17)</p>
-        <p style="color:#9ca3af;font-size:11px;line-height:1.6;margin:0 0 10px 0;">
-          <strong style="color:#ef4444;">Droit à l'oubli:</strong><br>
-          Vous pouvez demander la suppression complète et irréversible de toutes vos données.<br><br>
-          <strong>⚠️ Attention:</strong><br>
-          • Cette action est IRRÉVERSIBLE<br>
-          • Délai de rétention: 30 jours avant suppression définitive<br>
-          • Toutes les conversations seront supprimées<br>
-          • Les données en backup seront aussi effacées<br><br>
-          <strong>🕐 Statut:</strong> <span id="deletionStatus" style="color:#9ca3af;">Aucune demande</span>
-        </p>
-        <button onclick="initiateDeletion()" style="width:100%;padding:10px;background:#ef4444;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-top:8px;font-weight:600;">⚠️ Demander suppression</button>
-      </div>
-
-      <div style="background:#0f0f1a;border-left:3px solid #3b82f6;padding:10px;border-radius:4px;margin-bottom:12px;">
-        <p style="color:#3b82f6;font-weight:600;margin:0 0 8px 0;">📊 15. HISTORIQUE DES MODIFICATIONS</p>
-        <p style="color:#9ca3af;font-size:11px;line-height:1.6;margin:0 0 10px 0;">
-          <strong style="color:#3b82f6;">Audit trail:</strong> Toutes les modifications de vos préférences.
-        </p>
-        <div id="modificationHistory" style="background:#1a1a2e;border:1px solid #2d1b69;border-radius:4px;padding:8px;margin-bottom:10px;max-height:120px;overflow-y:auto;font-size:10px;color:#7c3aed;">
-          <div style="color:#9ca3af;">Chargement...</div>
-        </div>
-        <button onclick="exportHistoryJSON()" style="width:100%;padding:10px;background:#3b82f6;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;">📥 Exporter historique</button>
-      </div>
-
-      <div style="background:#0f0f1a;border-left:3px solid #10b981;padding:10px;border-radius:4px;margin-bottom:12px;">
+            <div style="background:#0f0f1a;border-left:3px solid #10b981;padding:10px;border-radius:4px;margin-bottom:12px;">
         <p style="color:#10b981;font-weight:600;margin:0 0 8px 0;">🔔 16. NOTIFICATIONS DE CONFORMITÉ</p>
         <p style="color:#9ca3af;font-size:11px;line-height:1.6;margin:0 0 10px 0;">
-          <strong style="color:#10b981;">Alertes légales:</strong><br>
-          • 📧 Mises à jour RGPD/CCPA/LGPD<br>
-          • 🔄 Changements de CGU<br>
-          • 📅 Rappel audit annuel (25/09/2027)<br><br>
-          <strong>🕐 Statut:</strong> ✅ Activées
+          Guidéon Labs s'engage à vous maintenir informé de tous les changements relatifs à la protection de vos données. Vous recevrez des notifications automatiques concernant les mises à jour des politiques de confidentialité, les changements de conditions d'utilisation, les audits de conformité annuels, et toute situation nécessitant votre attention selon la loi RGPD/CCPA/LGPD.<br><br>
+          <strong style="color:#10b981;">📬 Types de notifications:</strong><br>
+          • 📧 <strong>Mises à jour RGPD/CCPA/LGPD:</strong> Conformité légale et changements réglementaires<br>
+          • 🔄 <strong>Changements de CGU:</strong> Modifications des conditions d'utilisation<br>
+          • 📅 <strong>Rappel audit annuel:</strong> Vérification annuelle de vos données (25/09/2027)<br>
+          • ⚠️ <strong>Alertes de sécurité:</strong> Incidents ou failles détectées<br>
+          • 🔔 <strong>Demandes d'accès:</strong> Tiers demandant accès à vos données<br><br>
+          <strong>🕐 Statut:</strong> ✅ Notifications activées depuis le 26/09/2026
         </p>
         <label style="color:#9ca3af;font-size:11px;display:flex;align-items:center;gap:8px;pointer-events:none;">
           <input type="checkbox" id="complianceAlerts" checked style="pointer-events:auto;">
-          Recevoir notifications de conformité
+          Recevoir les notifications de conformité
         </label>
       </div>
 
-      <div style="background:#0f0f1a;border-left:3px solid #f59e0b;padding:10px;border-radius:4px;margin-bottom:12px;">
+            <div style="background:#0f0f1a;border-left:3px solid #f59e0b;padding:10px;border-radius:4px;margin-bottom:12px;">
         <p style="color:#f59e0b;font-weight:600;margin:0 0 8px 0;">📋 17. FORMULAIRE DE RÉCLAMATION LÉGALE</p>
         <p style="color:#9ca3af;font-size:11px;line-height:1.6;margin:0 0 10px 0;">
-          <strong style="color:#f59e0b;">Exercer vos droits:</strong><br>
-          🇪🇺 <strong>CNIL (France):</strong> plaintes@cnil.fr<br>
-          🇪🇺 <strong>EDPB (Europe):</strong> edpb.europa.eu<br>
-          🇺🇸 <strong>FTC (USA):</strong> ftc.gov
+          Vous avez le droit de déposer une réclamation concernant le traitement de vos données personnelles. Guidéon Labs, à travers son créateur Victor Hugo Bossou et son entreprise Guidéon Labs basée au Bénin, s'engage à répondre à toute réclamation dans un délai de 30 jours conformément aux standards internationaux de protection des données.<br><br>
+          <strong style="color:#f59e0b;">👨‍💼 Créateur:</strong><br>
+          Victor Hugo Bossou - Fondateur & CTO de Guidéon Labs<br>
+          Basé à Cotonou, Bénin<br>
+          Spécialiste en Intelligence Artificielle et Solutions Conversationnelles<br><br>
+          <strong style="color:#f59e0b;">🏢 Entreprise:</strong><br>
+          <span style="font-size:13px;font-style:italic;color:#f59e0b;font-weight:700;">⟨ Guidéon Labs ⟩</span><br>
+          Siège: Cotonou, Bénin, Afrique de l'Ouest<br>
+          Secteur: Intelligence Artificielle & Solutions Conversationnelles<br>
+          Mission: Démocratiser l'IA en Afrique<br>
+          Fondée: 2024<br><br>
+          <strong style="color:#10b981;">👉 À propos:</strong><br>
+          Guidéon Labs est une entreprise technologique innovante spécialisée dans le développement d'assistants IA multilingues. Nous créons des solutions conversationnelles intelligentes pour améliorer l'accessibilité et l'expérience utilisateur. Notre équipe travaille à rendre l'IA inclusive et accessible à tous, particulièrement en Afrique. Nous respectons strictement les normes RGPD, CCPA et LGPD. Votre vie privée est notre priorité.<br><br>
+          <strong style="color:#f59e0b;">📧 Nous contacter:</strong><br>
+          Email: victorbossou59@gmail.com<br>
+          Site: guideon.ai
         </p>
         <button onclick="generateComplaintForm()" style="width:100%;padding:10px;background:#f59e0b;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:8px;font-weight:600;">📧 Formulaire CNIL</button>
         <button onclick="downloadComplaintPDF()" style="width:100%;padding:10px;background:#f59e0b;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;">📄 Télécharger modèle</button>
@@ -2321,6 +2334,63 @@ Cette action est irréversible.')) return;
     .catch(e => alert('Erreur: ' + e.message));
 }
 </script>
+
+
+<div id="cniFormularModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.8);z-index:9999;justify-content:center;align-items:center;overflow-y:auto;">
+  <div style="background:#0f0f1a;border:2px solid #f59e0b;border-radius:12px;padding:20px;max-width:550px;width:90%;margin:20px auto;color:#9ca3af;">
+    <h3 style="color:#f59e0b;margin-top:0;text-align:center;">📋 Formulaire de Réclamation RGPD</h3>
+    
+    <div style="margin:10px 0;">
+      <label style="color:#f59e0b;font-weight:600;">Nom complet:</label>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <input id="formName" type="text" placeholder="Victor Hugo Bossou" style="flex:1;padding:8px;background:#1a1a2e;border:1px solid #2d1b69;color:#9ca3af;border-radius:4px;box-sizing:border-box;">
+        <span id="nameCheck" style="color:#10b981;font-size:18px;display:none;">✅</span>
+      </div>
+    </div>
+
+    <div style="margin:10px 0;">
+      <label style="color:#f59e0b;font-weight:600;">Adresse email:</label>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <input id="formEmail" type="email" placeholder="votre.email@example.com" style="flex:1;padding:8px;background:#1a1a2e;border:1px solid #2d1b69;color:#9ca3af;border-radius:4px;box-sizing:border-box;">
+        <span id="emailCheck" style="color:#10b981;font-size:18px;display:none;">✅</span>
+      </div>
+    </div>
+
+    <div style="margin:10px 0;">
+      <label style="color:#f59e0b;font-weight:600;">Type de réclamation:</label>
+      <label style="color:#9ca3af;font-size:11px;display:block;margin:5px 0;"><input type="radio" name="formType" value="droit-oubli" checked> 1. Article 17 - Droit à l'oubli</label>
+      <label style="color:#9ca3af;font-size:11px;display:block;margin:5px 0;"><input type="radio" name="formType" value="acces"> 2. Article 15 - Droit d'accès</label>
+      <label style="color:#9ca3af;font-size:11px;display:block;margin:5px 0;"><input type="radio" name="formType" value="portabilite"> 3. Article 20 - Droit de portabilité</label>
+      <label style="color:#9ca3af;font-size:11px;display:block;margin:5px 0;"><input type="radio" name="formType" value="rectification"> 4. Article 16 - Droit de rectification</label>
+      <label style="color:#9ca3af;font-size:11px;display:block;margin:5px 0;"><input type="radio" name="formType" value="limitation"> 5. Article 18 - Droit de limitation</label>
+      <label style="color:#9ca3af;font-size:11px;display:block;margin:5px 0;"><input type="radio" name="formType" value="opposition"> 6. Article 21 - Droit d'opposition</label>
+    </div>
+
+    <div style="margin:10px 0;">
+      <label style="color:#f59e0b;font-weight:600;">Description du problème:</label>
+      <textarea id="formDescription" placeholder="Décrivez votre réclamation en détail..." style="width:100%;height:80px;padding:8px;background:#1a1a2e;border:1px solid #2d1b69;color:#9ca3af;margin:5px 0;border-radius:4px;box-sizing:border-box;font-family:monospace;font-size:11px;"></textarea>
+      <button onclick="sendFormToEmail()" style="width:auto;padding:8px 15px;background:#10b981;color:#fff;border:none;border-radius:4px;cursor:pointer;font-weight:600;font-size:11px;margin-top:8px;">📤 Envoyer</button>
+    </div>
+
+    <div style="background:#1a1a2e;border-left:3px solid #f59e0b;padding:10px;border-radius:4px;margin:10px 0;">
+      <strong style="color:#f59e0b;">Créateur & Entreprise:</strong>
+      <p style="color:#9ca3af;font-size:10px;margin:5px 0;">
+        👨‍💼 Victor Hugo Bossou<br>
+        🏢 Guidéon Labs<br>
+        🌍 Bénin, Afrique<br>
+        📧 victorbossou59@gmail.com<br>
+        🔗 <a href="https://guideon.ai" style="color:#f59e0b;text-decoration:none;">guideon.ai</a>
+      </p>
+    </div>
+
+    <div style="display:flex;gap:10px;margin-top:15px;">
+      <button onclick="downloadFormularPDF()" style="flex:1;padding:10px;background:#3b82f6;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;">📥 Télécharger</button>
+      <button onclick="closeFormularModal()" style="flex:1;padding:10px;background:#666;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;">✕ Fermer</button>
+    </div>
+
+    <div id="sendStatus" style="display:none;margin-top:10px;padding:10px;background:#10b981;border-radius:4px;text-align:center;color:#fff;font-weight:600;">✅ Votre description a été reçue!</div>
+  </div>
+</div>
 
 </body>
 </html>

@@ -2207,6 +2207,141 @@ app.get('/api/test', (req, res) => {
   res.json({ test: 'OK', time: new Date().toISOString() });
 });
 
+
+// 📧 API - Envoyer formulaire de réclamation RGPD
+app.post('/api/send-complaint-email', async (req, res) => {
+  try {
+    const { name, email, type, description } = req.body;
+    
+    // Validation
+    if (!name || !email || !type || !description) {
+      return res.status(400).json({ error: 'Données incomplètes' });
+    }
+    
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ error: 'Email invalide' });
+    }
+
+    const complaintId = 'COMPLAINT-' + Date.now() + '-' + Math.random().toString(36).substring(7).toUpperCase();
+    const submittedDate = new Date().toLocaleString('fr-FR');
+    
+    // Email au CRÉATEUR (victorbossou59@gmail.com)
+    const creatorEmailHtml = `
+    <div style="font-family:Arial,sans-serif;background:#f5f5f5;padding:20px;border-radius:8px;">
+      <div style="background:#0f0f1a;color:#9ca3af;padding:20px;border-radius:8px;border-left:4px solid #f59e0b;">
+        <h2 style="color:#f59e0b;margin:0 0 15px 0;">📋 Nouvelle Réclamation RGPD - Guidéon</h2>
+        
+        <p><strong>ID Réclamation:</strong> ${complaintId}</p>
+        <p><strong>Date:</strong> ${submittedDate}</p>
+        
+        <hr style="border:none;border-top:1px solid #2d1b69;margin:15px 0;">
+        
+        <h3 style="color:#3b82f6;">Informations de contact:</h3>
+        <p><strong>Nom:</strong> ${name}</p>
+        <p><strong>Email:</strong> <a href="mailto:${email}" style="color:#f59e0b;text-decoration:none;">${email}</a></p>
+        
+        <h3 style="color:#3b82f6;">Détails de la réclamation:</h3>
+        <p><strong>Type (Article):</strong> ${type}</p>
+        <p><strong>Description:</strong></p>
+        <pre style="background:#1a1a2e;padding:10px;border-radius:4px;overflow-x:auto;color:#9ca3af;">${description}</pre>
+        
+        <hr style="border:none;border-top:1px solid #2d1b69;margin:15px 0;">
+        
+        <p style="font-size:12px;color:#7c3aed;"><strong>⚠️ À TRAITER:</strong> Répondre avant 30 jours (conformité RGPD)</p>
+        <p style="font-size:12px;color:#9ca3af;">
+          Répondre à: <a href="mailto:${email}" style="color:#f59e0b;text-decoration:none;">${email}</a><br>
+          Référence: ${complaintId}
+        </p>
+      </div>
+      
+      <div style="margin-top:20px;padding:15px;background:#1a1a2e;border-radius:8px;border-left:4px solid #10b981;">
+        <h3 style="color:#10b981;margin-top:0;">📊 Créateur & Entreprise</h3>
+        <p>👨‍💼 Victor Hugo Bossou</p>
+        <p>🏢 Guidéon Labs</p>
+        <p>🌍 Bénin, Afrique</p>
+        <p>📧 victorbossou59@gmail.com</p>
+        <p>🔗 <a href="https://guideon.ai" style="color:#f59e0b;text-decoration:none;">guideon.ai</a></p>
+      </div>
+    </div>
+    `;
+    
+    // Email de CONFIRMATION à l'utilisateur
+    const userEmailHtml = `
+    <div style="font-family:Arial,sans-serif;background:#f5f5f5;padding:20px;border-radius:8px;">
+      <div style="background:#0f0f1a;color:#9ca3af;padding:20px;border-radius:8px;border-left:4px solid #10b981;">
+        <h2 style="color:#10b981;margin:0 0 15px 0;">✅ Réclamation reçue - Guidéon</h2>
+        
+        <p>Bonjour ${name},</p>
+        <p>Nous avons bien reçu votre réclamation RGPD.</p>
+        
+        <hr style="border:none;border-top:1px solid #2d1b69;margin:15px 0;">
+        
+        <p><strong>Référence:</strong> ${complaintId}</p>
+        <p><strong>Date de réception:</strong> ${submittedDate}</p>
+        
+        <p style="margin-top:20px;"><strong>Prochaines étapes:</strong></p>
+        <ul style="color:#9ca3af;">
+          <li>Nous examinerons votre demande dans les 3 jours</li>
+          <li>Réponse complète sous 30 jours (conformité RGPD Article 12)</li>
+          <li>Nous vous contactons à l'adresse: ${email}</li>
+        </ul>
+        
+        <hr style="border:none;border-top:1px solid #2d1b69;margin:15px 0;">
+        
+        <p style="font-size:12px;color:#7c3aed;"><strong>Besoin d'aide?</strong></p>
+        <p style="font-size:12px;color:#9ca3af;">
+          Contactez: <a href="mailto:victorbossou59@gmail.com" style="color:#f59e0b;text-decoration:none;">victorbossou59@gmail.com</a><br>
+          Référence: ${complaintId}
+        </p>
+      </div>
+    </div>
+    `;
+    
+    // Envoyer email au créateur
+    await resend.emails.send({
+      from: 'Guidéon Labs <noreply@guideon.ai>',
+      to: 'victorbossou59@gmail.com',
+      subject: '📋 [RGPD] Nouvelle réclamation - ' + complaintId,
+      html: creatorEmailHtml,
+      replyTo: email
+    });
+    
+    // Envoyer confirmation à l'utilisateur
+    await resend.emails.send({
+      from: 'Guidéon Labs <noreply@guideon.ai>',
+      to: email,
+      subject: '✅ Votre réclamation RGPD a été reçue - ' + complaintId,
+      html: userEmailHtml
+    });
+    
+    // Archiver en base de données
+    if (DB) {
+      await fetch(`${DB}/complaints`, {
+        method: 'POST',
+        headers: { ...SB, 'Prefer': 'return=minimal' },
+        body: JSON.stringify({
+          complaint_id: complaintId,
+          name: name,
+          email: email,
+          type: type,
+          description: description,
+          submitted_at: new Date().toISOString(),
+          status: 'received'
+        })
+      });
+    }
+    
+    console.log('✓ Réclamation RGPD:', complaintId, '|', name, '|', email);
+    res.json({ success: true, complaintId: complaintId, message: 'Réclamation enregistrée' });
+    
+  } catch(err) {
+    console.error('✗ Erreur réclamation:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
 app.listen(process.env.PORT || 8080, () => console.log("Guideon actif !"));
 
 
