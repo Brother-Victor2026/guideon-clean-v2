@@ -2,42 +2,6 @@ async function toggleShare(){if(!confirm("Modifier la permission de partage ?"))
 async function createNewAccount(){if(!confirm("Vous allez être déconnecté(e). Continuer ?"))return;const tok=localStorage.getItem("gtoken");try{await fetch("/api/auth/logout",{method:"POST",headers:{"Authorization":"Bearer "+tok}});}catch(e){}localStorage.removeItem("gtoken");localStorage.removeItem("gname");document.getElementById("prof").style.display="none";document.getElementById("authModal").scrollIntoView({behavior:"smooth"});stab("reg");location.reload();}
 function switchToRegistration(){if(!confirm("Créer un nouveau compte ? Vous allez être déconnecté(e)."))return;const tok=localStorage.getItem("gtoken");try{fetch("/api/auth/logout",{method:"POST",headers:{"Authorization":"Bearer "+tok}});}catch(e){}localStorage.removeItem("gtoken");localStorage.removeItem("gname");document.getElementById("prof").style.display="none";document.getElementById("authModal").scrollIntoView({behavior:"smooth"});stab("reg");location.reload();}
 
-// Afficher le rapport de confidentialité dans un modal
-
-    });
-    
-    if (!res.ok) {
-      alert("❌ Erreur: " + res.statusText);
-      return;
-    }
-    
-    const blob = await res.blob();
-    const text = await blob.text();
-    
-    // Afficher les données dans le modal
-    const contentDiv = document.getElementById('privacyContent');
-    contentDiv.innerHTML = `
-      <h4 style="color:#a78bfa;margin:12px 0 8px 0;">👤 Informations Utilisateur</h4>
-      <p>${text.split('\n')[1] || 'Email: -'}</p>
-      <p>${text.split('\n')[2] || 'Nom: -'}</p>
-      
-      <h4 style="color:#a78bfa;margin:12px 0 8px 0;">📊 Statistiques</h4>
-      <p>${text.split('\n')[4] || 'Total conversations: -'}</p>
-      
-      <h4 style="color:#a78bfa;margin:12px 0 8px 0;">🔒 Engagement</h4>
-      <p>✓ Aucune donnée personnelle vendue à des tiers<br>
-      ✓ Chiffrement end-to-end disponible<br>
-      ✓ Droits RGPD & CCPA garantis<br>
-      ✓ Données supprimées après 90 jours inactifs</p>
-    `;
-    
-    // Afficher le modal
-    document.getElementById('privacyModal').style.display = 'flex';
-  } catch (e) {
-    alert("❌ Erreur: " + e.message);
-  }
-}
-
 // Télécharger le PDF
 async function downloadPrivacyPDF() {
   try {
