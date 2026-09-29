@@ -1,6 +1,20 @@
-◇ injected env (7) from .env // tip: ⌘ override existing { override: true }
+◇ injected env (8) from .env // tip: ◈ secrets for agents [www.dotenvx.com]
 Guideon actif !
-🔑 Token: eyJpZCI6MTQsImVtYWlsIjoidmJvc3NvdTI3MEBnbWFpbC5jb20iLCJleHAiOjE3OTE3MDQxMTU3MDR9.6d8151bd9fe3655742a3c853ecce4b8f297f1f0e9b2beeaa303c1fbc17e514d3
-👤 User: { id: 14, email: 'vbossou270@gmail.com', exp: 1791704115704 }
-🔑 Token: eyJpZCI6MTQsImVtYWlsIjoidmJvc3NvdTI3MEBnbWFpbC5jb20iLCJleHAiOjE3OTE3MDQxMTU3MDR9.6d8151bd9fe3655742a3c853ecce4b8f297f1f0e9b2beeaa303c1fbc17e514d3
-👤 User: { id: 14, email: 'vbossou270@gmail.com', exp: 1791704115704 }
+📞 POST /api/sessions reçu
+🔑 Token: eyJpZCI6MTQsImVtYWlsIjoidmJvc3NvdTI3MEBnbWFpbC5jb20iLCJleHAiOjE3OTU5NzY0ODUyMDl9.de4a21c228acdee35b4166b1402780fcbd8355ada085e2946ab001b535f98a2f
+👤 User: { id: 14, email: 'vbossou270@gmail.com', exp: 1795976485209 }
+📊 Session créée: [
+  {
+    id: 1788200485512,
+    user_id: '14',
+    title: 'Nouvelle conversation',
+    created_at: '2026-08-31T18:21:27.630328+00:00',
+    pinned: false
+  }
+]
+🔑 Token: eyJpZCI6MTQsImVtYWlsIjoidmJvc3NvdTI3MEBnbWFpbC5jb20iLCJleHAiOjE3OTU5NzY0ODUyMDl9.de4a21c228acdee35b4166b1402780fcbd8355ada085e2946ab001b535f98a2f
+👤 User: { id: 14, email: 'vbossou270@gmail.com', exp: 1795976485209 }
+🔑 Token: eyJpZCI6MTQsImVtYWlsIjoidmJvc3NvdTI3MEBnbWFpbC5jb20iLCJleHAiOjE3OTU5NzY0ODUyMDl9.de4a21c228acdee35b4166b1402780fcbd8355ada085e2946ab001b535f98a2f
+👤 User: { id: 14, email: 'vbossou270@gmail.com', exp: 1795976485209 }
+🔑 Token: eyJpZCI6MTQsImVtYWlsIjoidmJvc3NvdTI3MEBnbWFpbC5jb20iLCJleHAiOjE3OTU5NzY0ODUyMDl9.de4a21c228acdee35b4166b1402780fcbd8355ada085e2946ab001b535f98a2f
+👤 User: { id: 14, email: 'vbossou270@gmail.com', exp: 1795976485209 }

@@ -3,12 +3,7 @@ async function createNewAccount(){if(!confirm("Vous allez être déconnecté(e).
 function switchToRegistration(){if(!confirm("Créer un nouveau compte ? Vous allez être déconnecté(e)."))return;const tok=localStorage.getItem("gtoken");try{fetch("/api/auth/logout",{method:"POST",headers:{"Authorization":"Bearer "+tok}});}catch(e){}localStorage.removeItem("gtoken");localStorage.removeItem("gname");document.getElementById("prof").style.display="none";document.getElementById("authModal").scrollIntoView({behavior:"smooth"});stab("reg");location.reload();}
 
 // Afficher le rapport de confidentialité dans un modal
-async function downloadPrivacyReport() {
-  try {
-    const tok = localStorage.getItem("gtoken");
-    const res = await fetch('/api/privacy-report', {
-      method: 'GET',
-      headers: { "Authorization": "Bearer " + tok }
+
     });
     
     if (!res.ok) {
@@ -294,3 +289,25 @@ function cancelProjectCreation() {
   document.getElementById('projectCreatedModal').style.display = 'none';
 }
 
+
+
+
+// Charger les paramètres sauvegardés au démarrage
+document.addEventListener('DOMContentLoaded', () => {
+  const savedTone = localStorage.getItem('gtone');
+  const savedStyle = localStorage.getItem('gstyle');
+  const savedLang = localStorage.getItem('glang') || 'auto';
+  const savedLength = localStorage.getItem('glength') || 'normal';
+
+  const toneEl = document.getElementById('toneInput');
+  const styleEl = document.getElementById('styleInput');
+  const langEl = document.getElementById('langSelect');
+  const lengthEl = document.getElementById('lengthSelect');
+
+  if (toneEl && savedTone) toneEl.value = savedTone;
+  if (styleEl && savedStyle) styleEl.value = savedStyle;
+  if (langEl) langEl.value = savedLang;
+  if (lengthEl) lengthEl.value = savedLength;
+
+  console.log('📥 Paramètres chargés:', { savedTone, savedStyle, savedLang, savedLength });
+});
