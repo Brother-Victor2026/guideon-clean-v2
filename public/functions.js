@@ -77,7 +77,7 @@ async function checkUpdates() {
       <h4 style="color:#a78bfa;">Vérification</h4>
       <button onclick="checkUpdates()" style="width:100%;padding:10px;background:#1e3a8a;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:8px;">🔄 Vérifier à nouveau</button>
       <label style="color:#9ca3af;font-size:12px;display:flex;align-items:center;gap:8px;margin-top:12px;">
-        <input type="checkbox" id="autoUpdate" checked> Mises à jour automatiques
+        <input type="checkbox" id="autoUpdate" ${localStorage.getItem('gautoUpdate') === '0' ? '' : 'checked'} onchange="localStorage.setItem('gautoUpdate', this.checked ? '1' : '0')"> Mises à jour automatiques
       </label>
     `;
     

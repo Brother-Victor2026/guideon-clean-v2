@@ -81,19 +81,51 @@ app.use(express.static(path.join(__dirname, 'public')));
 // Initialiser Resend
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-// Supprimer automatiquement conversations après 15 jours inactivité
-setInterval(async () => {
-  const fifteenDaysAgo = new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString();
+// Suppression automatique des conversations inactives depuis 30 jours (messages + conversation).
+// Ignore les comptes qui ont decoche la case de suppression et les conversations epinglees.
+async function cleanupInactiveConversations() {
   try {
-    const { data, error } = await sb
-      .from('conversations')
-      .delete()
-      .lt('updated_at', fifteenDaysAgo);
-    if (!error) console.log('✅ Conversations supprimées (15 jours+)');
+    const cutoffMs = Date.now() - 30 * 24 * 60 * 60 * 1000;
+    const cutoffISO = new Date(cutoffMs).toISOString();
+    const dry = process.env.HISTORY_DELETE_DRY_RUN === '1';
+    const optOut = new Set();
+    for (let p = 0; p < 50; p++) {
+      const ur = await fetch(`${DB}/users?select=id,checkboxes&order=id.asc&limit=1000&offset=${p * 1000}`, { headers: SB });
+      const users = await ur.json();
+      if (!Array.isArray(users)) { console.error('❌ Suppression auto : lecture des comptes impossible'); return; }
+      for (const u of users) { if (u.checkboxes && u.checkboxes.deleteHistoryAuto === false) optOut.add(String(u.id)); }
+      if (users.length < 1000) break;
+    }
+    let lastId = 0;
+    let removed = 0;
+    for (let p = 0; p < 200; p++) {
+      const sr = await fetch(`${DB}/sessions?select=*&id=gt.${lastId}&order=id.asc&limit=500`, { headers: SB });
+      const sessions = await sr.json();
+      if (!Array.isArray(sessions)) { console.error('❌ Suppression auto : lecture des conversations impossible'); return; }
+      if (sessions.length === 0) break;
+      for (const s of sessions) {
+        lastId = s.id;
+        if (optOut.has(String(s.user_id)) || s.pinned === true) continue;
+        const t = new Date(s.created_at).getTime();
+        if (isNaN(t) || t >= cutoffMs) continue;
+        const rr = await fetch(`${DB}/conversations?session_id=eq.${s.id}&created_at=gte.${encodeURIComponent(cutoffISO)}&select=id&limit=1`, { headers: SB });
+        const recent = await rr.json();
+        if (!Array.isArray(recent) || recent.length > 0) continue;
+        if (dry) { console.log('[dry-run] conversation a supprimer:', s.id); continue; }
+        await fetch(`${DB}/conversations?session_id=eq.${s.id}`, { method: 'DELETE', headers: SB });
+        await fetch(`${DB}/sessions?id=eq.${s.id}`, { method: 'DELETE', headers: SB });
+        removed++;
+      }
+      if (sessions.length < 500) break;
+    }
+    if (removed > 0) console.log('✅ Conversations inactives supprimées (30 jours) :', removed);
   } catch (e) {
     console.error('❌ Erreur suppression:', e.message);
   }
-}, 24 * 60 * 60 * 1000); // Quotidien
+}
+setInterval(cleanupInactiveConversations, 24 * 60 * 60 * 1000); // Quotidien
+if (process.env.HISTORY_DELETE_RUN_ON_START === '1') setTimeout(cleanupInactiveConversations, 5000);
+
 
 app.post('/api/register', async (req, res) => {
   try {
@@ -783,6 +815,7 @@ app.post('/api/chat', async (req, res) => {
   console.log('📥 token exists:', !!token);let userId = 'default';
     let dbHistory = [];
     let userInstructions = '';
+    let ucb = {};
     let user = null;
     let searchSources = null;
     if (token && DB) {
@@ -791,12 +824,13 @@ app.post('/api/chat', async (req, res) => {
         userId = String(user.id);
         const [hRes, uRes] = await Promise.all([
           fetch(`${DB}/conversations?user_id=eq.${userId}&session_id=eq.${session_id}&order=id.asc&limit=10`, { headers: SB }),
-          fetch(`${DB}/users?id=eq.${userId}&select=instructions`, { headers: SB })
+          fetch(`${DB}/users?id=eq.${userId}&select=instructions,checkboxes`, { headers: SB })
         ]);
         const hData = await hRes.json();
         const uData = await uRes.json();
         if (Array.isArray(hData)) dbHistory = hData;
         if (Array.isArray(uData) && uData[0]) userInstructions = uData[0].instructions || '';
+        if (Array.isArray(uData) && uData[0]) ucb = uData[0].checkboxes || {};
       }
     }
     // Détection et recherche en arrière-plan
@@ -908,7 +942,32 @@ let lengthInstructions = '';
 const lengthGuides = { 'short': 'Réponds très brièvement (1-2 lignes).', 'normal': 'Réponds avec une longueur normale.', 'long': 'Réponds de manière détaillée et approfondie.' };
 if (length && lengthGuides[length]) lengthInstructions = `\n\nLONGUEUR: ${lengthGuides[length]}`;
 const sysContent = (userInstructions ? `Directives importantes de l'utilisateur:\n${userInstructions}\n\n` : '') + SYSTEM.content + (userTime && asksTime ? `\n\nL heure exacte est ${userTime}.` : '') + visualBoost + memoriesText + toneInstructions + styleInstructions + langInstructions + lengthInstructions + patternsInstructions;
-    const SYSTEM_MSG = { role: 'system', content: sysContent };
+        // Adaptation du comportement de Guideon selon les echanges (uniquement si la case "Permettre l'analyse des interactions" est cochee)
+    let adaptInstructions = '';
+    if (user && ucb && ucb.analyticsConsent === true) {
+      try {
+        const past = (dbHistory.length > 0 ? dbHistory : (history || [])).filter(x => x && x.role === 'user' && typeof x.content === 'string').map(x => x.content);
+        const msgs = [...past.slice(-8), message].filter(t => typeof t === 'string' && t.trim().length > 0);
+        if (msgs.length >= 3) {
+          const avg = msgs.reduce((acc, t) => acc + t.length, 0) / msgs.length;
+          const lower = msgs.join(' ').toLowerCase();
+          const tips = [];
+          if (avg < 40) tips.push("Les messages de l'utilisateur sont très courts : réponds de façon brève et directe, sans introduction ni conclusion superflues.");
+          else if (avg > 220) tips.push("Les messages de l'utilisateur sont longs et détaillés : réponds de façon structurée et approfondie.");
+          if (/\b(code|fonction|function|erreur|error|bug|javascript|python|html|css|sql|termux|npm|node|api)\b/.test(lower)) tips.push("L'utilisateur parle souvent de programmation : donne du code prêt à copier dans des blocs de code, avec une courte explication.");
+          if (/\b(exemple|exemples|example)\b/.test(lower)) tips.push("L'utilisateur apprécie les exemples concrets : illustre tes explications par un exemple.");
+          const vous = (lower.match(/\b(vous|votre|vos)\b/g) || []).length;
+          const tu = (lower.match(/\b(tu|ton|ta|tes|toi)\b/g) || []).length;
+          if (vous >= 2 && vous > tu) tips.push("L'utilisateur vouvoie : réponds en le vouvoyant.");
+          else if (tu >= 2 && tu > vous) tips.push("L'utilisateur tutoie : réponds en le tutoyant, avec chaleur.");
+          if (tips.length > 0) {
+            adaptInstructions = "\n\nADAPTATION AUTOMATIQUE (selon les échanges récents) :\n- " + tips.join("\n- ");
+            console.log('🧠 Adaptation active :', tips.length, 'règle(s)');
+          }
+        }
+      } catch (e) { console.error('Adaptation:', e.message); }
+    }
+    const SYSTEM_MSG = { role: 'system', content: sysContent + adaptInstructions };
     const hist = dbHistory.length > 0 ? dbHistory : (history || []);
     const messages = [SYSTEM_MSG, ...hist.filter(h=>h&&h.role&&h.content).map(h => ({ role: h.role, content: h.content })), { role: 'user', content: message }];
     const geminiBody = JSON.stringify({ model: MODELS[model] || "openai/gpt-oss-120b", messages, temperature: autoOptSettings.temperature || parseFloat(temperature) || 0.5, stream: true });
@@ -1028,13 +1087,14 @@ const sysContent = (userInstructions ? `Directives importantes de l'utilisateur:
       if (user) {
         const isFirst = dbHistory.length === 0;
         // Vérifier cloudBackup avant sauvegarde
-    const userCheckboxes = userData[0]?.checkboxes || {};
+    const userCheckboxes = ucb || {};
+    const cloudOn = userCheckboxes.cloudBackup !== false;
     if (userCheckboxes.cloudBackup !== false) {
       await fetch(`${DB}/conversations`, { method: 'POST', headers: { ...SB, 'Prefer': 'return=minimal' }, body: JSON.stringify([{ user_id: String(user.id), role: 'user', content: message, session_id, image_url: null }])});
     }
-        const convRes = await fetch(`${DB}/conversations`, { method: 'POST', headers: { ...SB, 'Prefer': 'return=minimal' }, body: JSON.stringify([{ user_id: String(user.id), role: 'assistant', content: reply, session_id, image_url: savedImageUrl }])});
+        const convRes = !cloudOn ? { ok: true } : await fetch(`${DB}/conversations`, { method: 'POST', headers: { ...SB, 'Prefer': 'return=minimal' }, body: JSON.stringify([{ user_id: String(user.id), role: 'assistant', content: reply, session_id, image_url: savedImageUrl }])});
     if (!convRes.ok) { console.error('ERREUR insertion conversations:', convRes.status, await convRes.text()); }
-        if (isFirst && session_id) {
+        if (isFirst && session_id && cloudOn) {
           const titleRes = await fetch("https://api.groq.com/openai/v1/chat/completions", { method: "POST", headers: { "Authorization": `Bearer ${API_KEY}`, "Content-Type": "application/json" }, body: JSON.stringify({ model: "openai/gpt-oss-20b", messages: [{ role: "user", content: `Génère un titre court (max 5 mots) pour cette conversation: "${message}". Réponds UNIQUEMENT avec le titre.` }], max_tokens: 500, reasoning_effort: "low" }) });
           const titleData = await titleRes.json();
           const title = titleData.choices?.[0]?.message?.content?.trim() || 'Nouvelle conversation';
@@ -1203,7 +1263,8 @@ app.get('/api/sessions', async (req, res) => {
     const userR = await fetch(`${DB}/users?id=eq.${String(user.id)}`, { headers: SB });
     const userData = await userR.json();
     const userName = Array.isArray(userData) && userData[0] ? userData[0].name : 'Utilisateur';
-    const formatted = Array.isArray(data) ? data.map(s => ({ id: s.id, title: s.title || 'Sans titre', sharedBy: userName, sharedAt: s.created_at })) : [];
+    const lastMap = await sessionsLastActivity(String(user.id));
+    const formatted = Array.isArray(data) ? data.map(s => ({ id: s.id, title: s.title || 'Sans titre', sharedBy: userName, sharedAt: s.created_at, created_at: s.created_at, pinned: s.pinned === true, lastActivity: lastMap[s.id] || null })) : [];
     res.json(formatted);
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
@@ -1416,17 +1477,97 @@ app.get('/api/export/:sessionId', async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-app.get('/api/share/:sessionId', async (req, res) => {
+// ===== PARTAGE PUBLIC D'UNE CONVERSATION (lecture seule, lien signe) =====
+function shareSig(sid) {
+  return crypto.createHmac('sha256', SECRET).update('share:' + sid).digest('hex').slice(0, 32);
+}
+function escHtml(t) {
+  return String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+app.post('/api/sessions/:id/share-link', async (req, res) => {
   try {
-    const r = await fetch(`${DB}/conversations?session_id=eq.${req.params.sessionId}&order=id.asc`, { headers: SB });
-    const data = await r.json();
-    console.log("✅ Checkboxes chargés de la BD:", data);
-    const userR = await fetch(`${DB}/users?id=eq.${String(user.id)}`, { headers: SB });
-    const userData = await userR.json();
-    const userName = Array.isArray(userData) && userData[0] ? userData[0].name : 'Utilisateur';
-    const formatted = Array.isArray(data) ? data.map(s => ({ id: s.id, title: s.title || 'Sans titre', sharedBy: userName, sharedAt: s.created_at })) : [];
-    res.json(formatted);
-  } catch(e) { res.status(500).json({ error: e.message }); }
+    const token = req.headers.authorization?.split(' ')[1];
+    const user = checkToken(token);
+    if (!user) return res.status(401).json({ error: 'Non autorise' });
+    const sid = String(req.params.id);
+    if (!/^\d+$/.test(sid)) return res.status(400).json({ error: 'Conversation invalide' });
+    const uid = String(user.id);
+    const sRes = await fetch(`${DB}/sessions?id=eq.${sid}&user_id=eq.${uid}&select=id`, { headers: SB });
+    const sess = await sRes.json();
+    if (!Array.isArray(sess) || !sess[0]) return res.status(404).json({ error: 'Conversation introuvable' });
+    const uRes = await fetch(`${DB}/users?id=eq.${uid}&select=checkboxes`, { headers: SB });
+    const uData = await uRes.json();
+    const cb = (Array.isArray(uData) && uData[0] && uData[0].checkboxes) || {};
+    if (cb.allowPublicShare !== true) return res.status(403).json({ error: "Le partage public est désactivé. Cochez « Autoriser partages publics » dans Paramètres." });
+    res.json({ path: `/api/share/${sid}?k=${shareSig(sid)}` });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.get('/api/share/:sessionId', async (req, res) => {
+  const page = (code, title, body) => res.status(code).set({ 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex' }).send(`<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escHtml(title)}</title></head><body style="margin:0;background:#0f0f1a;color:#e5e7eb;font-family:system-ui,sans-serif;"><div style="max-width:720px;margin:0 auto;padding:20px;">${body}</div></body></html>`);
+  try {
+    const sid = String(req.params.sessionId);
+    const k = String(req.query.k || '');
+    if (!/^\d+$/.test(sid)) return page(400, 'Lien invalide', '<p>Lien invalide.</p>');
+    const good = shareSig(sid);
+    if (k.length !== good.length || !crypto.timingSafeEqual(Buffer.from(k), Buffer.from(good))) return page(403, 'Lien invalide', '<p>Lien invalide ou expiré.</p>');
+    const sRes = await fetch(`${DB}/sessions?id=eq.${sid}&select=id,title,user_id`, { headers: SB });
+    const sess = await sRes.json();
+    if (!Array.isArray(sess) || !sess[0]) return page(404, 'Introuvable', '<p>Conversation introuvable.</p>');
+    const uRes = await fetch(`${DB}/users?id=eq.${String(sess[0].user_id)}&select=checkboxes`, { headers: SB });
+    const uData = await uRes.json();
+    const cb = (Array.isArray(uData) && uData[0] && uData[0].checkboxes) || {};
+    if (cb.allowPublicShare !== true) return page(403, 'Partage désactivé', '<p>Le propriétaire a désactivé le partage public de ses conversations.</p>');
+    const mRes = await fetch(`${DB}/conversations?session_id=eq.${sid}&select=role,content,created_at&order=id.asc&limit=500`, { headers: SB });
+    const msgs = await mRes.json();
+    const rows = (Array.isArray(msgs) ? msgs : []).map(m => `<div style="margin:14px 0;padding:12px;border-radius:10px;background:${m.role === 'assistant' ? '#1a1a2e' : '#14213d'};"><div style="font-size:12px;color:#a78bfa;margin-bottom:6px;">${m.role === 'assistant' ? 'Guidéon' : 'Utilisateur'}</div><div style="white-space:pre-wrap;line-height:1.5;">${escHtml(m.content)}</div></div>`).join('');
+    const collabForm = cb.allowCollabShare === true ? `<div style="margin-top:24px;padding:14px;border-radius:10px;background:#1a1a2e;"><div style="color:#a78bfa;font-size:14px;margin-bottom:8px;">💬 Laisser un commentaire au propriétaire</div><input id="cn" maxlength="40" placeholder="Votre nom (facultatif)" style="width:100%;box-sizing:border-box;padding:10px;margin-bottom:8px;border-radius:8px;border:1px solid #2d1b69;background:#0f0f1a;color:#e5e7eb;"><textarea id="ct" maxlength="500" rows="3" placeholder="Votre commentaire ou suggestion" style="width:100%;box-sizing:border-box;padding:10px;border-radius:8px;border:1px solid #2d1b69;background:#0f0f1a;color:#e5e7eb;"></textarea><button id="cs" style="margin-top:8px;padding:10px 16px;border:none;border-radius:8px;background:#4c1d95;color:#fff;cursor:pointer;">Envoyer</button><div id="cm" style="margin-top:8px;font-size:13px;color:#9ca3af;"></div></div><script>(function(){var b=document.getElementById('cs'),m=document.getElementById('cm');b.onclick=async function(){var t=document.getElementById('ct').value.trim();if(t.length<2){m.textContent='Écrivez un message.';return;}b.disabled=true;try{var r=await fetch(location.pathname+'/comment'+location.search,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:document.getElementById('cn').value,text:t})});var d=await r.json();m.textContent=r.ok?'Merci ! Votre commentaire a été envoyé.':(d.error||'Erreur');if(r.ok)document.getElementById('ct').value='';}catch(e){m.textContent='Erreur réseau';}b.disabled=false;};})();</script>` : '';
+    page(200, sess[0].title || 'Conversation', `<h2 style="color:#fff;font-family:Georgia,serif;">${escHtml(sess[0].title || 'Conversation')}</h2><p style="color:#9ca3af;font-size:13px;">Conversation partagée en lecture seule.</p>${rows || '<p>Aucun message.</p>'}${collabForm}`);
+  } catch (e) { res.status(500).send('Erreur'); }
+});
+
+// Commentaires des collaborateurs (via le lien de partage) : envoyes au proprietaire sous forme de notification
+const collabHits = new Map();
+function collabLimited(key, max) {
+  const now = Date.now();
+  const arr = (collabHits.get(key) || []).filter(t => now - t < 3600000);
+  collabHits.set(key, arr);
+  return arr.length >= max;
+}
+function collabHit(key) {
+  if (collabHits.size > 5000) collabHits.clear();
+  const arr = collabHits.get(key) || [];
+  arr.push(Date.now());
+  collabHits.set(key, arr);
+}
+app.post('/api/share/:sessionId/comment', async (req, res) => {
+  try {
+    const sid = String(req.params.sessionId);
+    const k = String(req.query.k || '');
+    if (!/^\d+$/.test(sid)) return res.status(400).json({ error: 'Lien invalide' });
+    const good = shareSig(sid);
+    if (k.length !== good.length || !crypto.timingSafeEqual(Buffer.from(k), Buffer.from(good))) return res.status(403).json({ error: 'Lien invalide' });
+    const ip = String(req.headers['x-forwarded-for'] || req.ip || 'x').split(',')[0].trim();
+    if (collabLimited('s' + sid, 20) || collabLimited('i' + ip, 8)) return res.status(429).json({ error: 'Trop de commentaires pour le moment. Réessayez plus tard.' });
+    const clean = (v, n) => String(v == null ? '' : v).replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, n);
+    const text = clean(req.body && req.body.text, 500);
+    const name = clean(req.body && req.body.name, 40) || 'Un collaborateur';
+    if (text.length < 2) return res.status(400).json({ error: 'Commentaire trop court' });
+    const sRes = await fetch(`${DB}/sessions?id=eq.${sid}&select=id,title,user_id`, { headers: SB });
+    const sess = await sRes.json();
+    if (!Array.isArray(sess) || !sess[0]) return res.status(404).json({ error: 'Conversation introuvable' });
+    const owner = String(sess[0].user_id);
+    const uRes = await fetch(`${DB}/users?id=eq.${owner}&select=checkboxes`, { headers: SB });
+    const uData = await uRes.json();
+    const cb = (Array.isArray(uData) && uData[0] && uData[0].checkboxes) || {};
+    if (cb.allowPublicShare !== true || cb.allowCollabShare !== true) return res.status(403).json({ error: 'Les commentaires sont désactivés par le propriétaire.' });
+    const { error } = await sb.from('notifications').insert([{ user_id: /^\d+$/.test(owner) ? Number(owner) : owner, type: 'collab', title: '💬 Commentaire de ' + name, message: text + ' (conversation : ' + (sess[0].title || 'Sans titre') + ')', is_read: false }]);
+    if (error) throw error;
+    collabHit('s' + sid); collabHit('i' + ip);
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('collab:', e && e.message);
+    res.status(500).json({ error: 'Envoi impossible' });
+  }
 });
 
 app.get('/api/search/history', async (req, res) => {
@@ -1754,7 +1895,7 @@ app.get('/api/privacy-report', async (req, res) => {
     doc.fontSize(11).text('✓ Aucune donnée personnelle vendue à des tiers');
     doc.text('✓ Chiffrement end-to-end disponible');
     doc.text('✓ Droits RGPD & CCPA garantis');
-    doc.text('✓ Données supprimées après 90 jours d\'inactivité');
+    doc.text('✓ Données supprimées après 30 jours d\'inactivité');
     doc.text('');
     
     doc.fontSize(10).text('Généré le: ' + new Date().toLocaleString('fr-FR'));
@@ -1918,10 +2059,27 @@ app.get('/api/checkboxes/load', async (req, res) => {
   try {
     const token = req.headers.authorization?.split(' ')[1];
     if (!token) return res.status(401).json({ error: 'Token manquant' });
+    const user = checkToken(token);
+    if (!user) return res.status(401).json({ error: 'Token invalide' });
+
+    const r = await fetch(`${DB}/users?id=eq.${user.id}`, { headers: SB });
+    const data = await r.json();
+    res.json(data[0]?.checkboxes || {});
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 app.get('/api/status/temp-mode', async (req, res) => {
   try {
     // Récupère l'état tmpChat global depuis Victor (admin)
     const adminResp = await fetch(`${DB}/users?email=eq.victorbossou59@gmail.com`, { headers: SB });
+    const adminData = await adminResp.json();
+    if (!adminData[0]) return res.json({ tmpChat: false });
+    
+    const adminCheckboxes = adminData[0].checkboxes || {};
+    res.json({ tmpChat: adminCheckboxes.tmpChat === true });
+  } catch(e) { res.json({ tmpChat: false }); }
+});
+
 app.get('/api/is-admin', async (req, res) => {
   try {
     const token = req.headers.authorization?.replace('Bearer ', '');
@@ -1934,23 +2092,6 @@ app.get('/api/is-admin', async (req, res) => {
     const isAdmin = user.email === 'victorbossou59@gmail.com';
     res.json({ isAdmin });
   } catch(e) { res.json({ isAdmin: false }); }
-});
-
-    const adminData = await adminResp.json();
-    if (!adminData[0]) return res.json({ tmpChat: false });
-    
-    const adminCheckboxes = adminData[0].checkboxes || {};
-    res.json({ tmpChat: adminCheckboxes.tmpChat === true });
-  } catch(e) { res.json({ tmpChat: false }); }
-});
-
-    const user = checkToken(token);
-    if (!user) return res.status(401).json({ error: 'Token invalide' });
-
-    const r = await fetch(`${DB}/users?id=eq.${user.id}`, { headers: SB });
-    const data = await r.json();
-    res.json(data[0]?.checkboxes || {});
-  } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
 // ===== ANALYTICS LOGGING =====
@@ -2382,6 +2523,36 @@ app.get('/api/shared', async (req, res) => {
     const formatted = Array.isArray(data) ? data.map(s => ({ id: s.id, title: s.title || 'Sans titre', sharedBy: userName, sharedAt: s.created_at })) : [];
     res.json(formatted);
   } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// Derniere activite (dernier message) de chaque conversation d'un utilisateur
+async function sessionsLastActivity(uid) {
+  const last = {};
+  try {
+    for (let p = 0; p < 10; p++) {
+      const mRes = await fetch(`${DB}/conversations?user_id=eq.${uid}&select=session_id,created_at&order=created_at.desc&limit=1000&offset=${p * 1000}`, { headers: SB });
+      const msgs = await mRes.json();
+      if (!Array.isArray(msgs)) break;
+      for (const m of msgs) { if (m.session_id != null && !last[m.session_id]) last[m.session_id] = m.created_at; }
+      if (msgs.length < 1000) break;
+    }
+  } catch (e) { console.error('lastActivity:', e.message); }
+  return last;
+}
+
+// Liste complete des conversations de l'utilisateur pour le modal "Conversations"
+app.get('/api/sessions/all', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    const user = checkToken(token);
+    if (!user) return res.status(401).json({ error: 'Non autorise' });
+    const uid = String(user.id);
+    const sRes = await fetch(`${DB}/sessions?user_id=eq.${uid}&order=created_at.desc`, { headers: SB });
+    const sessions = await sRes.json();
+    const last = await sessionsLastActivity(uid);
+    const out = Array.isArray(sessions) ? sessions.map(s => ({ id: s.id, title: s.title || 'Sans titre', createdAt: s.created_at, lastActivity: last[s.id] || null, pinned: s.pinned === true })) : [];
+    res.json(out);
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // ===== SYSTÈME DE MÉMOIRE AMÉLIORÉ =====
