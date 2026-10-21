@@ -2551,6 +2551,43 @@ async function runImportantNotifications() {
 setTimeout(runImportantNotifications, 2 * 60 * 1000);
 setInterval(runImportantNotifications, 6 * 60 * 60 * 1000);
 
+const INSTALL_REMINDER_SCHEDULE = [
+  { hour: 7,  mark: 'install_07', title: '☀️ R\u00e9veil en douceur', message: "Installez Guid\u00e9on d\u00e8s le matin pour l'avoir \u00e0 port\u00e9e de main toute la journ\u00e9e." },
+  { hour: 8,  mark: 'install_08', title: '🚀 En route',            message: "Emmenez Guid\u00e9on avec vous : installez l'app avant de sortir." },
+  { hour: 16, mark: 'install_16', title: '☕ Petite pause',         message: "Profitez-en pour installer Guid\u00e9on, \u00e7a prend 10 secondes." },
+  { hour: 17, mark: 'install_17', title: '🏁 Fin de journ\u00e9e approche', message: "Installez Guid\u00e9on maintenant pour l'avoir pr\u00eat ce soir." },
+  { hour: 9,  mark: 'install_09', title: '🌅 Bonjour !',        message: "Installez Guid\u00e9on sur votre \u00e9cran d'accueil pour commencer la journ\u00e9e plus vite." },
+  { hour: 14, mark: 'install_14', title: '⚡ Pause de midi',     message: "Un acc\u00e8s plus rapide \u00e0 Guid\u00e9on en un tap : installez l'app maintenant." },
+  { hour: 19, mark: 'install_19', title: '🌆 Fin de journ\u00e9e', message: "Retrouvez Guid\u00e9on instantan\u00e9ment ce soir \u2014 installez-le sur votre \u00e9cran d'accueil." },
+  { hour: 20, mark: 'install_20', title: '📲 Petit rappel',      message: "Guid\u00e9on s'installe en 10 secondes et reste \u00e0 port\u00e9e de main." },
+  { hour: 21, mark: 'install_21', title: '🌙 Soir\u00e9e tranquille', message: "Profitez-en pour installer Guid\u00e9on, pas besoin d'ouvrir le navigateur \u00e0 chaque fois." },
+  { hour: 22, mark: 'install_22', title: '✨ Avant de dormir',   message: "Un dernier geste utile : installez Guid\u00e9on pour demain." },
+  { hour: 0,  mark: 'install_00', title: '🌌 Noctambule ?',      message: "Guid\u00e9on est toujours l\u00e0. Installez-le pour y acc\u00e9der plus vite, m\u00eame tard." },
+];
+
+function getBeninHour() {
+  const raw = parseInt(new Intl.DateTimeFormat('en-US', { timeZone: 'Africa/Porto-Novo', hour: '2-digit', hour12: false }).format(new Date()), 10);
+  return raw % 24; // normalise le cas ou ICU renvoie "24" au lieu de "00" a minuit
+}
+
+async function runInstallReminders() {
+  try {
+    const hour = getBeninHour();
+    const slot = INSTALL_REMINDER_SCHEDULE.find(s => s.hour === hour);
+    if (!slot) return;
+    const { data: users, error } = await sbAdmin.from('users').select('id, checkboxes');
+    if (error || !users) return;
+    for (const u of users) {
+      const cb = u.checkboxes || {};
+      if (cb.notifCheck !== true) continue;
+      if (cb.pwaInstalled === true) continue;
+      await notifyOnce(u, slot.mark, 20 * 60 * 60 * 1000, { type: 'info', title: slot.title, message: slot.message });
+    }
+  } catch (e) { console.error('Rappels installation:', e.message); }
+}
+setTimeout(runInstallReminders, 3 * 60 * 1000);
+setInterval(runInstallReminders, 10 * 60 * 1000);
+
 // Demander suppression données utilisateur (RGPD)
 app.post('/api/user/delete', async (req, res) => {
   const token = req.headers.authorization?.replace('Bearer ', '');
