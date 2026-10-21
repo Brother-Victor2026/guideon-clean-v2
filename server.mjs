@@ -2506,7 +2506,7 @@ setTimeout(notifyNewVersion, 60 * 1000);
 setInterval(notifyNewVersion, 6 * 60 * 60 * 1000);
 
 // Notifications importantes automatiques : une seule fois par evenement, pour les comptes qui ont active les notifications
-async function notifyOnce(u, mark, minGapMs, row) {
+async function notifyOnce(u, mark, minGapMs, row, extra = {}) {
   try {
     const cb0 = u.checkboxes || {};
     const marks0 = (cb0.notifMarks && typeof cb0.notifMarks === 'object') ? cb0.notifMarks : {};
@@ -2517,7 +2517,7 @@ async function notifyOnce(u, mark, minGapMs, row) {
     const cb1 = (fresh && fresh.checkboxes) || cb0;
     cb1.notifMarks = { ...(cb1.notifMarks || {}), [mark]: Date.now() };
     await sbAdmin.from('users').update({ checkboxes: cb1 }).eq('id', u.id);
-    sendPush(u.id, 'general', { title: row.title, body: row.message, url: '/' }).catch(() => {});
+    sendPush(u.id, 'general', { title: row.title, body: row.message, url: '/', ...extra }).catch(() => {});
     return true;
   } catch (e) { console.error('Notification', mark, ':', e.message); return false; }
 }
@@ -2552,6 +2552,19 @@ setTimeout(runImportantNotifications, 2 * 60 * 1000);
 setInterval(runImportantNotifications, 6 * 60 * 60 * 1000);
 
 const INSTALL_REMINDER_SCHEDULE = [
+  { hour: 1,  mark: 'install_01', title: '🌌 Nuit profonde',        message: "M\u00eame \u00e0 cette heure, Guid\u00e9on est l\u00e0. Installez-le pour ne jamais le perdre de vue." },
+  { hour: 2,  mark: 'install_02', title: '😴 Insomnie ?',           message: "Si vous \u00eates r\u00e9veill\u00e9, autant installer Guid\u00e9on maintenant." },
+  { hour: 3,  mark: 'install_03', title: '🕯️ Cœur de la nuit',      message: "Guid\u00e9on veille avec vous. Installez-le en quelques secondes." },
+  { hour: 4,  mark: 'install_04', title: '🌃 Avant l\'aube',        message: "Pr\u00e9parez votre journ\u00e9e : installez Guid\u00e9on d\u00e8s maintenant." },
+  { hour: 5,  mark: 'install_05', title: '🌄 Le lever du jour approche', message: "Soyez pr\u00eat d\u00e8s le r\u00e9veil : installez Guid\u00e9on." },
+  { hour: 6,  mark: 'install_06', title: '⏰ Debout !',             message: "Commencez la journ\u00e9e avec Guid\u00e9on \u00e0 port\u00e9e de main \u2014 installez-le." },
+  { hour: 10, mark: 'install_10', title: '📈 Milieu de matin\u00e9e', message: "Un petit moment pour installer Guid\u00e9on et gagner du temps toute la journ\u00e9e." },
+  { hour: 11, mark: 'install_11', title: '🕚 Avant midi',           message: "Installez Guid\u00e9on maintenant, \u00e7a prend moins d'une minute." },
+  { hour: 12, mark: 'install_12', title: '🍽️ Midi',                message: "Pendant votre pause d\u00e9jeuner, installez Guid\u00e9on sur votre \u00e9cran d'accueil." },
+  { hour: 13, mark: 'install_13', title: '🔆 D\u00e9but d\'apr\u00e8s-midi', message: "Guid\u00e9on reste \u00e0 port\u00e9e de main \u2014 installez-le en un instant." },
+  { hour: 15, mark: 'install_15', title: '📱 Milieu d\'apr\u00e8s-midi', message: "Un acc\u00e8s plus rapide \u00e0 Guid\u00e9on : installez l'application maintenant." },
+  { hour: 18, mark: 'install_18', title: '🌇 Fin de journ\u00e9e de travail', message: "Avant de rentrer, installez Guid\u00e9on pour l'avoir toujours avec vous." },
+  { hour: 23, mark: 'install_23', title: '🌠 Avant minuit',         message: "Dernier rappel de la journ\u00e9e : installez Guid\u00e9on." },
   { hour: 7,  mark: 'install_07', title: '☀️ R\u00e9veil en douceur', message: "Installez Guid\u00e9on d\u00e8s le matin pour l'avoir \u00e0 port\u00e9e de main toute la journ\u00e9e." },
   { hour: 8,  mark: 'install_08', title: '🚀 En route',            message: "Emmenez Guid\u00e9on avec vous : installez l'app avant de sortir." },
   { hour: 16, mark: 'install_16', title: '☕ Petite pause',         message: "Profitez-en pour installer Guid\u00e9on, \u00e7a prend 10 secondes." },
@@ -2581,7 +2594,7 @@ async function runInstallReminders() {
       const cb = u.checkboxes || {};
       if (cb.notifCheck !== true) continue;
       if (cb.pwaInstalled === true) continue;
-      await notifyOnce(u, slot.mark, 20 * 60 * 60 * 1000, { type: 'info', title: slot.title, message: slot.message });
+      await notifyOnce(u, slot.mark, 20 * 60 * 60 * 1000, { type: 'info', title: slot.title, message: slot.message }, { installAction: true });
     }
   } catch (e) { console.error('Rappels installation:', e.message); }
 }

@@ -15,7 +15,8 @@ self.addEventListener('push', event => {
       badge: '/badge-96.png',
       tag: d.tag || ('g-' + Date.now()),
       vibrate: [200, 100, 200],
-      data: { url: d.url || '/' }
+      data: { url: d.url || '/' },
+      actions: d.installAction ? [{ action: 'install', title: '📲 Installer' }] : []
     });
   })());
 });
@@ -24,11 +25,13 @@ self.addEventListener('notificationclick', event => {
   event.notification.close();
   const data = event.notification.data || {};
   const wantActivate = event.action === 'activate' || data.activate === true;
-  const url = wantActivate ? '/?activerNotifs=1' : (data.url || '/');
+  const wantInstall = event.action === 'install';
+  const url = wantActivate ? '/?activerNotifs=1' : (wantInstall ? '/?triggerInstall=1' : (data.url || '/'));
   event.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
     for (const c of list) {
       if ('focus' in c) {
         if (wantActivate) c.postMessage({ type: 'ACTIVATE_REPLIES' });
+        if (wantInstall) c.postMessage({ type: 'TRIGGER_INSTALL' });
         return c.focus();
       }
     }
