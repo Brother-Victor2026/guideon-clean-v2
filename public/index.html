@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="fr">
-<head><script src="clear-cache.js">function exportCC37(){let text='=== TRANSCRIPTION GUIDÉON ===\n\n';const items=document.querySelectorAll('#ccHistory37 div[data-caption]');items.forEach(item=>{text+=item.getAttribute('data-caption')+'\n';});const blob=new Blob([text],{type:'text/plain'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='captions-guideon.txt';a.click();}
+<head>
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#1a0f3a"><script src="clear-cache.js">function exportCC37(){let text='=== TRANSCRIPTION GUIDÉON ===\n\n';const items=document.querySelectorAll('#ccHistory37 div[data-caption]');items.forEach(item=>{text+=item.getAttribute('data-caption')+'\n';});const blob=new Blob([text],{type:'text/plain'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='captions-guideon.txt';a.click();}
 
 
 
@@ -85,7 +87,7 @@ header{background:linear-gradient(135deg,#1a0533,#0d1f4d);padding:14px 16px;disp
 .ib{background:none;border:none;color:#a78bfa;font-size:18px;cursor:pointer}
 .pl{display:flex;gap:8px;padding:8px 14px;background:#0f0f1a;overflow-x:auto}
 .pb{background:#1a1a2e;border:1px solid #2a2a4a;color:#a78bfa;padding:5px 12px;border-radius:20px;font-size:12px;cursor:pointer;white-space:nowrap}
-#chat{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:14px}
+#chat{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:14px;touch-action:pan-y;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
 .msg{display:flex;gap:8px;max-width:88%;animation:fi 0.3s ease}
 @keyframes fi{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 .msg.user{margin-left:auto;flex-direction:row-reverse}
@@ -880,7 +882,7 @@ function updateCCColor(color){const ccHistory=document.getElementById('ccHistory
 <div style="position:relative;width:100%;"><input type="password" id="pi" placeholder="Mot de passe..." onkeydown="if(event.key==='Enter')cp()" style="width:100%;padding-right:40px;box-sizing:border-box;"><button type="button" onclick="togglePwd('pi',this)" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#a78bfa;font-size:14px;">Voir</button></div>
 <div class="er" id="pe">Mot de passe incorrect</div>
 <button onclick="cp()">Entrer</button>
-<p style="text-align:center;margin-top:8px;"><a href="#" onclick="location.href='/reset-password'" style="color:#a78bfa;font-size:13px;">Mot de passe oublié ?</a></p>
+<p style="text-align:center;margin-top:8px;"><a href="#" onclick="location.replace('/reset-password')" style="color:#a78bfa;font-size:13px;">Mot de passe oublié ?</a></p>
 </div></div>
 <header>
 <div class="logo">🧠</div>
@@ -1024,7 +1026,8 @@ function copyMsg(event) {
     setTimeout(() => { btn.textContent = '📋 Copier'; }, 2000);
   }).catch(err => console.error('❌ Copy failed:', err));
 }
-function am(role,content,img=null,ts=null){const chat=document.getElementById('chat');const wl=chat.querySelector('.wl');if(wl)wl.remove();const d=document.createElement('div');d.className='msg '+(role==='guideon'?'g':'user');const av=role==='guideon'?'🧠':'👥';const ac=role==='guideon'?'g':'u';const t=role==='guideon'?marked.parse(content||''):(content||'').replace(/\n/g,'<br>');const ih=img?'<br><img src="'+img+'" loading="lazy" style="max-width:220px;border-radius:12px;margin-top:8px">':'';const ah=role==='guideon'?'<div class="ba"><button class="cb" onclick="(()=>{const ta=document.createElement(\'textarea\');ta.value=this.closest(\'.mc\').querySelector(\'.bub\').innerText;ta.style.position=\'fixed\';ta.style.top=\'-9999px\';document.body.appendChild(ta);ta.focus();ta.select();try{document.execCommand(\'copy\');}catch(e){};document.body.removeChild(ta);cBtn.textContent=\'✅\';setTimeout(()=>{cBtn.textContent=\'📋 Copier\';},2000);})()">Copier</button><button class="cb" onclick="sm()">✅</button><button class="cb" onclick="fb(this,-1)">❌</button><button class="cb" onclick="speak(this)">🔊</button><button class="cb" onclick="shareMsg(this)">Partager</button></div>':'';d.innerHTML='<div class="av '+ac+'">'+av+'</div><div class="mc"><div class="bub">'+t+ih+'</div>'+ah+'<div class="mt">'+gt(ts)+'</div></div>';if(content===''){const b=d.querySelector('.bub');if(b)b.dataset.fmt='1'}chat.appendChild(d);if(role==='guideon'&&content){if(navigator.serviceWorker.controller){navigator.serviceWorker.controller.postMessage({type:'SHOW_NOTIFICATION',message:content.substring(0,50)+'...'});}}chat.scrollTop=chat.scrollHeight;const th=localStorage.getItem('gtheme');if(th==='light'&&role==='guideon'){d.style.background='#ffffff';d.style.color='#1e1b4b';d.style.border='1px solid #c4b5fd';}if(role==='guideon'){updateRegenerateButton();const chat=document.getElementById('chat');const oldF=document.getElementById('app-footer');if(oldF)oldF.remove();const f=document.createElement('div');f.id='app-footer';f.style.cssText='text-align:center;font-size:11px;color:#6b7280;margin:12px 0;';f.textContent='🧠 Guidéon is an AI. Please verify important information.';chat.appendChild(f);}return d;}
+function gSmartScroll(){var c=document.getElementById('chat');if(!c)return;if(c.scrollHeight-c.scrollTop-c.clientHeight<140)c.scrollTop=c.scrollHeight;}
+function am(role,content,img=null,ts=null){const chat=document.getElementById('chat');const wl=chat.querySelector('.wl');if(wl)wl.remove();const d=document.createElement('div');d.className='msg '+(role==='guideon'?'g':'user');const av=role==='guideon'?'🧠':'👥';const ac=role==='guideon'?'g':'u';const t=role==='guideon'?marked.parse(content||''):(content||'').replace(/\n/g,'<br>');const ih=img?'<br><img src="'+img+'" loading="lazy" style="max-width:220px;border-radius:12px;margin-top:8px">':'';const ah=role==='guideon'?'<div class="ba"><button class="cb" onclick="(()=>{const ta=document.createElement(\'textarea\');ta.value=this.closest(\'.mc\').querySelector(\'.bub\').innerText;ta.style.position=\'fixed\';ta.style.top=\'-9999px\';document.body.appendChild(ta);ta.focus();ta.select();try{document.execCommand(\'copy\');}catch(e){};document.body.removeChild(ta);this.textContent=\'✅\';setTimeout(()=>{this.textContent=\'Copier\';},2000);})()">Copier</button><button class="cb" onclick="fb(this,1)">👍</button><button class="cb" onclick="fb(this,-1)">👎</button><button class="cb" onclick="speak(this)">🔊</button><button class="cb" onclick="shareMsg(this)">Partager</button></div>':'';d.innerHTML='<div class="av '+ac+'">'+av+'</div><div class="mc"><div class="bub">'+t+ih+'</div>'+ah+'<div class="mt">'+gt(ts)+'</div></div>';if(content===''){const b=d.querySelector('.bub');if(b)b.dataset.fmt='1'}chat.appendChild(d);if(role==='guideon'&&content){if(navigator.serviceWorker.controller){navigator.serviceWorker.controller.postMessage({type:'SHOW_NOTIFICATION',message:content.substring(0,50)+'...'});}}if(role==='guideon')gSmartScroll();else chat.scrollTop=chat.scrollHeight;const th=localStorage.getItem('gtheme');if(th==='light'&&role==='guideon'){d.style.background='#ffffff';d.style.color='#1e1b4b';d.style.border='1px solid #c4b5fd';}if(role==='guideon'){updateRegenerateButton();const chat=document.getElementById('chat');const oldF=document.getElementById('app-footer');if(oldF)oldF.remove();const f=document.createElement('div');f.id='app-footer';f.style.cssText='text-align:center;font-size:11px;color:#6b7280;margin:12px 0;';f.textContent='🧠 Guidéon is an AI. Please verify important information.';chat.appendChild(f);}return d;}
 function regenerateResponse(btn) {
   const msg = btn.closest('.msg');
   if (!msg) return;
@@ -1071,7 +1074,7 @@ function updateRegenerateButton() {
     }
   }
 }
-function sty(){const chat=document.getElementById('chat');const d=document.createElement('div');d.className='msg g';d.id='ty';d.innerHTML='<div class="av g">🧠</div><div class="ty"><span></span><span></span><span></span></div>';chat.appendChild(d);chat.scrollTop=chat.scrollHeight;}
+function sty(){const chat=document.getElementById('chat');const d=document.createElement('div');d.className='msg g';d.id='ty';d.innerHTML='<div class="av g">🧠</div><div class="ty"><span></span><span></span><span></span></div>';chat.appendChild(d);gSmartScroll();}
 function rty(){const t=document.getElementById('ty');if(t)t.remove();}
 function useSug(t){const ui=document.getElementById('ui');ui.value=t.replace(/&#39;/g,"'");ui.focus();ui.style.height='auto';ui.style.height=Math.min(ui.scrollHeight,120)+'px';}
 
@@ -1101,8 +1104,100 @@ if(msg.startsWith('!web ')){
 const q=msg.substring(5);const cacheKey='search_'+q;let sd=null;const cached=sessionStorage.getItem(cacheKey);if(cached){sd=JSON.parse(cached);}else{const sr=await fetch('/api/search',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({query:q})});sd=await sr.json();sessionStorage.setItem(cacheKey,JSON.stringify(sd));}const fm=sd.result?'[Info: '+sd.result+']\n\n'+q:q;const rH1=chatHistory.slice(-20);const r=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:fm,history:rH1})});const d=await r.json();rty();am('guideon',d.reply);return;
 }
 if(!curSession)await newSession();const rH2=chatHistory.slice(-20);pendingSessionId=curSession;const r=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:msg,history:rH2})});
-if(r.status===429){try{const qd=await r.json();const resetTime=qd.resetTime||'plus tard';const qmsg='<div style="background:#2d1b3d;border:1px solid #a78bfa;border-radius:12px;padding:14px 16px;color:#e9d5ff;font-size:14px;line-height:1.5;">⏳ <strong>Vous avez atteint la limite de votre conversation.</strong><br>Revenez vers <strong>'+resetTime+'</strong> pour une nouvelle conversation.</div>';const bub=am('guideon','');if(bub)bub.innerHTML=qmsg;document.getElementById('chat').scrollTop=document.getElementById('chat').scrollHeight;}catch(qe){am('guideon','Vous avez atteint la limite de votre conversation. Reessayez plus tard.');}return;}
-const reader=r.body.getReader();const dec=new TextDecoder();let buf='';let full='';let el=null;let mc;let imgHtml='';
+if(r.status===429){try{const qd=await r.json();window.gShowQuotaBanner&&window.gShowQuotaBanner(qd.resetTime,qd.resetAt);}catch(qe){window.gShowQuotaBanner&&window.gShowQuotaBanner('plus tard',null);}ve=false;return;}
+const reader=r.body.getReader();const dec=new TextDecoder();let buf='';let full='';let el=null;let mc;let imgHtml='';let bub=null;let shown='';let gQueue=[];let gBusy=false;function gSafeRender(t){
+  var openLink = t.lastIndexOf('[');
+  if (openLink !== -1) {
+    var closeBracket = t.indexOf(']', openLink);
+    if (closeBracket === -1) return t.slice(0, openLink);
+    var openParen = t.indexOf('(', closeBracket);
+    if (openParen === closeBracket + 1) {
+      var closeParen = t.indexOf(')', openParen);
+      if (closeParen === -1) return t.slice(0, openLink);
+    }
+  }
+  return t;
+}
+function gReveal(){if(gBusy)return;gBusy=true;(function step(){if(gQueue.length===0){gBusy=false;if(bub)bub.innerHTML=marked.parse(shown)+imgHtml;return;}shown+=gQueue.shift();if(bub)bub.innerHTML=marked.parse(gSafeRender(shown))+imgHtml;gSmartScroll();setTimeout(step,40);})();}function gQueueWords(t){var parts=t.split(/(\s+)/).filter(function(x){return x.length>0;});for(var i=0;i<parts.length;i++)gQueue.push(parts[i]);gReveal();}
+var gReasonFull = '';
+function gReasonLastLine(t){
+  var parts = t.split(/\n+/).filter(function(x){ return x.trim().length > 0; });
+  return parts.length ? parts[parts.length - 1].trim().slice(0, 70) : '';
+}
+function gOpenReasonDetail(){
+  if (document.getElementById('gReasonOverlay')) return;
+  var ov = document.createElement('div');
+  ov.id = 'gReasonOverlay';
+  ov.style.cssText = 'position:fixed;inset:0;z-index:10095;background:#0f0f1a;display:flex;flex-direction:column;';
+  var head = document.createElement('div');
+  head.style.cssText = 'display:flex;align-items:center;gap:14px;padding:16px;border-bottom:1px solid #2d1b69;';
+  var x = document.createElement('button');
+  x.textContent = '\u2715';
+  x.setAttribute('aria-label', 'Fermer');
+  x.style.cssText = 'background:none;border:none;color:#e5e7eb;font-size:22px;cursor:pointer;padding:0;';
+  x.onclick = function(){ ov.remove(); };
+  var title = document.createElement('span');
+  title.textContent = 'R\u00e9flexion';
+  title.style.cssText = "color:#fff;font-size:20px;font-weight:600;font-family:Georgia,'Times New Roman',serif;";
+  head.appendChild(x); head.appendChild(title);
+  var body = document.createElement('div');
+  body.id = 'gReasonOverlayBody';
+  body.style.cssText = 'flex:1;overflow-y:auto;padding:16px;white-space:pre-wrap;line-height:1.5;color:#c7c7d1;font-size:15px;';
+  body.textContent = gReasonFull;
+  ov.appendChild(head); ov.appendChild(body);
+  document.body.appendChild(ov);
+  body.scrollTop = body.scrollHeight;
+}
+function gShowReasoning(txt){
+  var ty0 = document.getElementById('ty');
+  if (ty0) ty0.remove();
+  gReasonFull += txt;
+  var msg = document.getElementById('gReasonMsg');
+  if (!msg) {
+    if (!document.getElementById('gReasonCss')) {
+      var st = document.createElement('style');
+      st.id = 'gReasonCss';
+      st.textContent = '@keyframes gBrainPulse{0%{transform:scale(1);opacity:.7}50%{transform:scale(1.22);opacity:1}100%{transform:scale(1);opacity:.7}}.gBrainAnim{display:inline-block;animation:gBrainPulse 1s ease-in-out infinite;}#gReasonMsg .av{display:flex !important;}';
+      document.head.appendChild(st);
+    }
+    msg = document.createElement('div');
+    msg.id = 'gReasonMsg';
+    msg.className = 'msg g';
+    msg.style.cssText = 'cursor:pointer;';
+    var av = document.createElement('div');
+    av.className = 'av g gBrainAnim';
+    av.textContent = '\ud83e\udde0';
+    var mc = document.createElement('div');
+    mc.className = 'mc';
+    var row = document.createElement('div');
+    row.style.cssText = 'display:flex;align-items:center;gap:8px;color:#a78bfa;font-size:13px;';
+    var label = document.createElement('span');
+    label.textContent = 'R\u00e9flexion';
+    label.style.cssText = 'font-weight:600;';
+    var ticker = document.createElement('span');
+    ticker.id = 'gReasonTicker';
+    ticker.style.cssText = 'color:#9ca3af;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:200px;';
+    row.appendChild(label); row.appendChild(ticker);
+    mc.appendChild(row);
+    msg.appendChild(av); msg.appendChild(mc);
+    msg.onclick = gOpenReasonDetail;
+    var chat = document.getElementById('chat');
+    if (chat) chat.appendChild(msg);
+  }
+  var ticker2 = document.getElementById('gReasonTicker');
+  if (ticker2) ticker2.textContent = gReasonLastLine(gReasonFull);
+  var ovBody = document.getElementById('gReasonOverlayBody');
+  if (ovBody) { ovBody.textContent = gReasonFull; ovBody.scrollTop = ovBody.scrollHeight; }
+  gSmartScroll();
+}
+function gCollapseReasoning(){ gRemoveReasoning(); }
+function gRemoveReasoning(){
+  var msg = document.getElementById('gReasonMsg');
+  if (msg) msg.remove();
+  var ov = document.getElementById('gReasonOverlay');
+  if (ov) ov.remove();
+  gReasonFull = '';
+}
 while(true){
 const {done,value}=await reader.read();if(done)break;
 buf+=dec.decode(value,{stream:true});const lines=buf.split('\n');buf=lines.pop();
@@ -1110,21 +1205,25 @@ for(const line of lines){
 const t=line.trim();if(!t.startsWith('data: '))continue;const dd=t.slice(6);
 try{
 const p=JSON.parse(dd);if(p.error)throw new Error(p.error);
-if(p.content){
-full+=p.content;if(!el){rty();el=am('guideon','');mc=el.querySelector('.mc');el.scrollIntoView()}
-const bub=el.querySelector('.bub');if(bub)bub.innerHTML=marked.parse(full)+imgHtml;
-document.getElementById('chat').scrollTop=document.getElementById('chat').scrollHeight;
+if(p.reasoning){
+gShowReasoning(p.reasoning);
+}else if(p.content){
+if(document.getElementById('gReasonBox'))gCollapseReasoning();
+full+=p.content;if(!el){rty();el=am('guideon','');mc=el.querySelector('.mc');bub=el.querySelector('.bub');}
+gQueueWords(p.content);
 }else if(p.image){
 imgHtml='<br><img src="'+p.image+'" loading="lazy" style="max-width:220px;border-radius:12px;margin-top:8px;">';
-if(!el){rty();el=am('guideon','');mc=el.querySelector('.mc');el.scrollIntoView()}
-const bub=el.querySelector('.bub');if(bub)bub.innerHTML=marked.parse(full)+imgHtml;
-document.getElementById('chat').scrollTop=document.getElementById('chat').scrollHeight;
+if(!el){rty();el=am('guideon','');mc=el.querySelector('.mc');bub=el.querySelector('.bub');}
+if(bub)bub.innerHTML=marked.parse(full)+imgHtml;shown=full;
+gSmartScroll();
 }
-}catch(e){console.error('SSE err',e,dd);}
+}catch(e){console.error('SSE err',e,dd);gRemoveReasoning();}
 }
 }
-if(!el){rty();if(full)el=am('guideon',full);}else{const bub=el.querySelector('.bub');if(bub)bub.innerHTML=marked.parse(full)+imgHtml;
-addCopyButtons(bub);}const _bub=el&&el.querySelector('.bub');if(_bub)_bub.innerHTML=_bub.innerHTML.replace(/Voici (un|une) (portrait|image|dessin|tableau|illustration|aperçu) de[^.!?\n]*[.!?]?\s*/gi,'');
+while(gQueue.length>0||gBusy){await new Promise(function(r){setTimeout(r,30);});}
+gRemoveReasoning();
+if(!el){rty();if(full)el=am('guideon',full);}else{if(bub)bub.innerHTML=marked.parse(full)+imgHtml;
+addCopyButtons(bub);}const _bub=el&&el.querySelector('.bub');if(_bub){const _old=_bub.innerHTML;const _new=_old.replace(/Voici (un|une) (portrait|image|dessin|tableau|illustration|aperçu) de[^.!?\n]*[.!?]?\s*/gi,'');if(_new!==_old){_bub.innerHTML=_new;_bub.querySelectorAll('.post-copy-block,.copy-code-btn').forEach(function(x){x.remove();});try{addCopyButtons(_bub);}catch(e){}}}
 chatHistory.push({role:'user',content:msg});localStorage.setItem('gchatHistory',JSON.stringify(chatHistory));chatHistory.push({role:'assistant',content:full});ve=false;
 }catch(e){rty();am('guideon','Erreur: '+e.message);ve=false;}
 }
@@ -1290,12 +1389,12 @@ function updateCCColor(color){const ccHistory=document.getElementById('ccHistory
 <div style="display:flex;gap:8px;margin-bottom:16px;">
 <button onclick="stab('login')" class="tab-button active" data-tab="connexion" id="tl" style="flex:1;padding:8px;background:#2d1b69;color:#fff;border:none;border-radius:8px;cursor:pointer;">Connexion</button>
 <button onclick="stab('reg')" class="tab-button" data-tab="inscription" id="tr" style="flex:1;padding:8px;background:transparent;color:#a78bfa;border:1px solid #a78bfa;border-radius:8px;cursor:pointer;">Inscription</button>
-<button class="tab-button" data-tab="reset-phase" onclick="window.location.href='/reset-password'" style="flex:1;padding:8px;background:transparent;color:#a78fba;border:1px solid #a78fba;border-radius:8px;cursor:pointer;">Réinitialisation</button>
+<button class="tab-button" data-tab="reset-phase" onclick="window.location.replace('/reset-password')" style="flex:1;padding:8px;background:transparent;color:#a78fba;border:1px solid #a78fba;border-radius:8px;cursor:pointer;">Réinitialisation</button>
 </div>
 <input id="an" placeholder="Votre nom" style="display:none;width:100%;padding:10px;background:#0f0f1a;color:#fff;border:1px solid #2d1b69;border-radius:8px;margin-bottom:8px;box-sizing:border-box;">
 <input id="ae" type="email" placeholder="Email" style="width:100%;padding:10px;background:#0f0f1a;color:#fff;border:1px solid #2d1b69;border-radius:8px;margin-bottom:8px;box-sizing:border-box;">
 <div style="position:relative;width:100%;margin-bottom:12px;"><input id="ap" type="password" placeholder="Mot de passe" style="width:100%;padding:10px;padding-right:40px;background:#0f0f1a;color:#fff;border:1px solid #2d1b69;border-radius:8px;box-sizing:border-box;"><button type="button" onclick="togglePwd('ap',this)" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#a78bfa;font-size:14px;">Voir</button></div>
-<p style="text-align:center;margin-bottom:8px;"><a href="#" onclick="location.href='/reset-password'" style="color:#a78bfa;font-size:13px;">Mot de passe oublié ?</a></p><p id="ae2" style="color:#f87171;text-align:center;margin-bottom:8px;font-size:13px;display:none;"></p>
+<p style="text-align:center;margin-bottom:8px;"><a href="#" onclick="location.replace('/reset-password')" style="color:#a78bfa;font-size:13px;">Mot de passe oublié ?</a></p><p id="ae2" style="color:#f87171;text-align:center;margin-bottom:8px;font-size:13px;display:none;"></p>
 <button onclick="doAuth()" id="ab" style="width:100%;padding:12px;background:linear-gradient(135deg,#4c1d95,#1e3a8a);color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:15px;">Se connecter</button>
 </div></div>
 <div id="sidebar" style="display:none;position:fixed;top:0;left:0;bottom:0;width:270px;background:#0f0f1a;z-index:9997;border-right:1px solid #2d1b69;flex-direction:column;padding:12px;overflow-y:auto;">
@@ -1337,13 +1436,13 @@ function updateCCColor(color){const ccHistory=document.getElementById('ccHistory
 <option value="creatif">✨ Créatif</option>
 <option value="technique">🔧 Technique</option>
 <option value="simplifie">🎯 Simplifié</option>
-</select><button onclick="savePreferences()" style="width:100%;padding:10px;background:#1e3a8a;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:12px;">💾 Enregistrer Tone/Style</button><label style="color:#9ca3af;font-size:12px;display:flex;align-items:center;gap:8px;margin-bottom:12px;cursor:pointer;"><input type="checkbox" id="tmpChat" onchange="saveCheckboxState(this.id,this.checked)"> Mode temporaire</label><div style="margin-bottom:12px;"><label style="color:#a78bfa;font-size:12px;">🌙 Thème</label><select id="themeSelect" onchange="applyTheme(this.value)" style="width:100%;padding:8px;background:#0f0f1a;color:#fff;border:1px solid #2d1b69;border-radius:8px;font-size:13px;"><option value="dark">Sombre</option><option value="light">Clair</option></select></div><div style="margin-bottom:12px;"><label style="color:#a78bfa;font-size:12px;">🌍 Langue</label><select id="langSelect" style="width:100%;padding:8px;background:#0f0f1a;color:#fff;border:1px solid #2d1b69;border-radius:8px;font-size:13px;"><option value="auto">Auto</option><option value="fr">Français</option><option value="en">Anglais</option></select><button onclick="saveLang()" style="width:100%;padding:8px;background:#10b981;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-top:6px;margin-bottom:12px;">💾 Enregistrer Langue</button></div><div style="margin-bottom:12px;"><label style="color:#a78bfa;font-size:12px;">📏 Longueur</label><select id="lengthSelect" style="width:100%;padding:8px;background:#0f0f1a;color:#fff;border:1px solid #2d1b69;border-radius:8px;font-size:13px;"><option value="normal">Normale</option><option value="short">Courte</option><option value="long">Détaillée</option></select><button onclick="saveLength()" style="width:100%;padding:8px;background:#7c3aed;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-top:6px;margin-bottom:12px;">💾 Enregistrer Longueur</button></div><label style="color:#9ca3af;font-size:12px;display:flex;align-items:center;gap:8px;margin-bottom:12px;pointer-events:none;"><input type="checkbox" id="notifCheck" style="pointer-events:auto;" onchange="saveCheckboxState(this.id,this.checked);if(this.checked){showConfirmDialog(`✅ Notifications activées
+</select><button onclick="savePreferences()" style="width:100%;padding:10px;background:#1e3a8a;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:12px;">💾 Enregistrer Tone/Style</button><label style="color:#9ca3af;font-size:12px;display:flex;align-items:center;gap:8px;margin-bottom:12px;cursor:pointer;"><input type="checkbox" id="tmpChat" onchange="saveCheckboxState(this.id,this.checked)"> Mode temporaire</label><div style="margin-bottom:12px;"><label style="color:#a78bfa;font-size:12px;">🌙 Thème</label><select id="themeSelect" onchange="applyTheme(this.value)" style="width:100%;padding:8px;background:#0f0f1a;color:#fff;border:1px solid #2d1b69;border-radius:8px;font-size:13px;"><option value="dark">Sombre</option><option value="light">Clair</option></select></div><div style="margin-bottom:12px;"><label style="color:#a78bfa;font-size:12px;">🌍 Langue</label><select id="langSelect" style="width:100%;padding:8px;background:#0f0f1a;color:#fff;border:1px solid #2d1b69;border-radius:8px;font-size:13px;"><option value="auto">Auto</option><option value="fr">Français</option><option value="en">Anglais</option></select><button onclick="saveLang()" style="width:100%;padding:8px;background:#10b981;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-top:6px;margin-bottom:12px;">💾 Enregistrer Langue</button></div><div style="margin-bottom:12px;"><button id="gInstallPromptBtn" onclick="window.gTriggerInstall&&window.gTriggerInstall()" style="width:100%;padding:8px;background:#1e3a8a;color:#fff;border:none;border-radius:8px;cursor:pointer;">📲 Installer Guidéon IA</button></div><div style="margin-bottom:12px;"><label style="color:#a78bfa;font-size:12px;">📏 Longueur</label><select id="lengthSelect" style="width:100%;padding:8px;background:#0f0f1a;color:#fff;border:1px solid #2d1b69;border-radius:8px;font-size:13px;"><option value="normal">Normale</option><option value="short">Courte</option><option value="long">Détaillée</option></select><button onclick="saveLength()" style="width:100%;padding:8px;background:#7c3aed;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-top:6px;margin-bottom:12px;">💾 Enregistrer Longueur</button></div><label style="color:#9ca3af;font-size:12px;display:flex;align-items:center;gap:8px;margin-bottom:12px;pointer-events:none;"><input type="checkbox" id="notifCheck" style="pointer-events:auto;" onchange="saveCheckboxState(this.id,this.checked);if(this.checked){showConfirmDialog(`✅ Notifications activées
 Vous recevrez des notifications de mises à jour et d'événements importants`,()=>{},()=>{document.getElementById('notifCheck').checked=false;});}else{showConfirmDialog(`❌ Notifications désactivées
 Vous ne recevrez plus de notifications`,()=>{},()=>{document.getElementById('notifCheck').checked=true;});}"> Notifications activées / désactivées</label><button onclick="showStats()" style="width:100%;padding:10px;background:#1e3a8a;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:8px;">📊 Statistiques</button><button onclick="viewMemory()" style="width:100%;padding:10px;background:#1e3a8a;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:8px;">🧠 Mémoire</button><button onclick="clearMem()" style="width:100%;padding:10px;background:#374151;color:#fff;border:none;border-radius:8px;cursor:pointer;">🗑️ Effacer mémoire</button></div><div id="tab-privacy" class="tab-content" style="display:none;"><h4 style="color:#a78bfa;">📊 Vos données avec Guidéon</h4><div style="background:#0f0f1a;border:1px solid #2d1b69;border-radius:8px;padding:12px;margin-bottom:12px;"><div style="color:#9ca3af;font-size:12px;line-height:1.6;">👤 <strong>Nom:</strong> <span id="dataName">-</span><br>🆔 <strong>ID Utilisateur:</strong> <span id="dataEmail">-</span><br>💬 <strong>Conversations:</strong> <span id="dataConvCount">0</span><br>💾 <strong>Espace:</strong> <span id="dataSize">-</span></div><button onclick="shareUserData()" style="width:100%;padding:10px;background:#7c3aed;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-top:12px;font-weight:600;">🔗 Partager vos données</button></div><h4 style="color:#a78bfa;">Actions</h4><button onclick="downloadData()" style="width:100%;padding:10px;background:#1e3a8a;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:8px;">📥 Télécharger</button><button onclick="deleteData()" style="width:100%;padding:10px;background:#7f1d1d;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:16px;">🗑️ Supprimer</button><h4 style="color:#a78bfa;">Partage</h4><label style="color:#9ca3af;font-size:12px;pointer-events:none;"><input type="checkbox" id="shareControl" style="pointer-events:auto;" onchange="saveCheckboxState(this.id,this.checked);if(this.checked){showConfirmDialog('✅ Partage autorisé\nVos données pourront être partagées\nAppuyez sur OK',()=>{},()=>{document.getElementById('shareControl').checked=false;});}else{showConfirmDialog('❌ Partage désactivé\nVos données ne seront plus partagées\nAppuyez sur OK pour désactiver l\'autorisation',()=>{},()=>{document.getElementById('shareControl').checked=true;});}"> Autoriser partage</label></div><div id="tab-security" class="tab-content" style="display:none;"><h4 style="color:#a78bfa;">Mot de passe</h4><input id="newPwdSec" type="password" placeholder="Nouveau" style="width:100%;padding:10px;background:#0f0f1a;color:#fff;border:1px solid #2d1b69;border-radius:8px;margin-bottom:8px;box-sizing:border-box;"><input id="confirmPwdSec" type="password" placeholder="Confirmer" style="width:100%;padding:10px;background:#0f0f1a;color:#fff;border:1px solid #2d1b69;border-radius:8px;margin-bottom:8px;box-sizing:border-box;"><button onclick="changePassword()" style="width:100%;padding:10px;background:#2d1b69;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:16px;">Changer</button><h4 style="color:#a78bfa;">Sessions</h4><div id="sessionsList" style="background:#0f0f1a;border:1px solid #2d1b69;border-radius:8px;padding:12px;margin-bottom:8px;font-size:12px;color:#9ca3af;">Chargement...</div><button onclick="logoutOtherSessions()" style="width:100%;padding:10px;background:#7f1d1d;color:#fff;border:none;border-radius:8px;cursor:pointer;">Déconnecter</button></div><div id="tab-accessibility" class="tab-content" style="display:none;"><h4 style="color:#a78bfa;">Thème</h4><select id="advThemeSelect" style="width:100%;padding:8px;background:#0f0f1a;color:#fff;border:1px solid #2d1b69;border-radius:8px;margin-bottom:12px;"><option>Sombre</option><option>Clair</option><option>Contraste</option></select><h4 style="color:#a78bfa;">Police</h4><input type="range" id="fontSizeSlider" min="12" max="18" value="14" onchange="changeFontSize(this.value)" style="width:100%;margin-bottom:8px;"><span id="fontSizeValue" style="color:#9ca3af;">14px</span><h4 style="color:#a78bfa;margin-top:12px;">Contraste</h4><input type="range" id="contrastSlider" min="100" max="150" value="100" onchange="changeContrast(this.value)" style="width:100%;margin-bottom:8px;"><span id="contrastValue" style="color:#9ca3af;">Normal</span></div><div id="tab-shared" class="tab-content" style="display:none;"><h4 style="color:#a78bfa;">📋 Conversations partagées</h4><div id="sharedList" style="background:#0f0f1a;border:1px solid #2d1b69;border-radius:8px;padding:12px;margin-bottom:12px;font-size:12px;color:#9ca3af;min-height:100px;">Chargement...</div><h4 style="color:#a78bfa;">Permissions</h4><label style="color:#9ca3af;font-size:12px;display:flex;align-items:center;gap:8px;margin-bottom:8px;pointer-events:none;"><input type="checkbox" id="allowPublicShare" style="pointer-events:auto;" onchange="saveCheckboxState(this.id,this.checked);if(this.checked){showConfirmDialog('✅ Partages publics autorisés\nVos conversations partagées seront visibles\nVeuillez appuyer sur OK pour l\'activer.',()=>{loadSharedConversations();},()=>{document.getElementById('allowPublicShare').checked=false;});}else{showConfirmDialog('❌ Partages publics désactivés\nVos conversations partagées ne seront plus visibles\nÊtes-vous sûr(e) de le désactiver ? Si oui, appuyez sur OK.',()=>{loadSharedConversations();},()=>{document.getElementById('allowPublicShare').checked=true;});}"> Autoriser partages publics</label><label style="color:#9ca3af;font-size:12px;display:flex;align-items:center;gap:8px;pointer-events:none;"><input type="checkbox" id="allowCollabShare" style="pointer-events:auto;" onchange="saveCheckboxState(this.id,this.checked);if(this.checked){showConfirmDialog('✅ Collaborations autorisées\nVos collaborateurs pourront vous aider\nVeuillez appuyer sur OK pour l\'activer.',()=>{},()=>{document.getElementById('allowCollabShare').checked=false;});}else{showConfirmDialog('❌ Collaborations désactivées\nVos collaborateurs ne pourront plus vous aider\nÊtes-vous sûr(e) de le désactiver ? Si oui, appuyez sur OK.',()=>{},()=>{document.getElementById('allowCollabShare').checked=true;});}"> Autoriser collaborations</label></div><div id="tab-privacy-advanced" class="tab-content" style="display:none;"><h4 style="color:#a78bfa;">🛡️ Confidentialité des données</h4><p style="color:#9ca3af;font-size:12px;margin-bottom:12px;">Guidéon s'engage pour la transparence des pratiques en matière de données.</p><label style="color:#9ca3af;font-size:12px;display:flex;align-items:center;gap:8px;margin-bottom:12px;pointer-events:none;"><input type="checkbox" id="analyticsConsent" style="pointer-events:auto;" onchange="saveCheckboxState(this.id,this.checked);if(this.checked){showConfirmDialog('✅ Analyse activée\nVos interactions seront analysées\nVeuillez appuyer sur OK pour l\'activer.',()=>{},()=>{document.getElementById('analyticsConsent').checked=false;});}else{showConfirmDialog('❌ Analyse désactivée\nVos interactions ne seront plus analysées\nÊtes-vous sûr(e) de le désactiver ? Si oui, appuyez sur OK.',()=>{},()=>{document.getElementById('analyticsConsent').checked=true;});}" > Permettre l'analyse des interactions (améliore l'IA)</label><label style="color:#9ca3af;font-size:12px;display:flex;align-items:center;gap:8px;margin-bottom:12px;pointer-events:none;"><input type="checkbox" id="cloudBackup" checked style="pointer-events:auto;" onchange="saveCheckboxState(this.id,this.checked);if(this.checked){showConfirmDialog(`✅ Sauvegarde cloud activée
 Vos données seront sauvegardées en cloud
 Veuillez appuyer sur OK pour l'activer.`,()=>{},()=>{document.getElementById('cloudBackup').checked=false;});}else{showConfirmDialog(`❌ Sauvegarde cloud désactivée
 Vos données ne seront plus sauvegardées en cloud
-Êtes-vous sûr(e) de le désactiver ? Si oui, appuyez sur OK.`,()=>{},()=>{document.getElementById('cloudBackup').checked=true;});}" > Sauvegarder dans le cloud</label><label style="color:#9ca3af;font-size:12px;display:flex;align-items:center;gap:8px;margin-bottom:16px;"><input type="checkbox" id="deleteHistoryAuto" checked style="pointer-events:auto;" onchange="saveCheckboxState(this.id,this.checked);if(this.checked){showConfirmDialog('✅ Suppression automatique activée\nVotre historique sera supprimé après 30 jours d\'inactivité\nVeuillez appuyer sur OK pour l\'activer.',()=>{},()=>{document.getElementById('deleteHistoryAuto').checked=false;});}else{showConfirmDialog('❌ Suppression automatique désactivée\nVotre historique sera conservé\nÊtes-vous sûr(e) de le désactiver ? Si oui, appuyez sur OK.',()=>{},()=>{document.getElementById('deleteHistoryAuto').checked=true;});}"> Supprimer l'historique après 30 jours inactifs (auto-suppression)</label><h4 style="color:#a78bfa;">Données tierces</h4><div style="background:#0f0f1a;border-left:3px solid #7c3aed;padding:10px;border-radius:4px;margin-bottom:12px;"><p style="color:#9ca3af;font-size:11px;margin:0;">✓ Aucune donnée personnelle vendue à des tiers<br>✓ Chiffrement end-to-end disponible<br>✓ Droits RGPD & CCPA garantis</p></div><button onclick="downloadPrivacyReport()" style="width:100%;padding:10px;background:#1e3a8a;color:#fff;border:none;border-radius:8px;cursor:pointer;">📄 Rapport de confidentialité</button></div><div id="tab-updates" class="tab-content" style="display:none;"><h4 style="color:#a78bfa;">📦 Mises à jour</h4><div style="background:#0f0f1a;border:1px solid #2d1b69;border-radius:8px;padding:12px;margin-bottom:12px;"><div style="color:#a78bfa;font-size:16px;font-weight:600;margin-bottom:8px;">✅ Dernière version</div><div style="color:#7c3aed;font-size:14px;margin-bottom:4px;">v<span id="latestVersion">1.0.259</span><div id="versionDisplay" style="color:#9ca3af;font-size:11px;margin-top:8px;">⏱️ Auto-version activée</div></div><div style="color:#9ca3af;font-size:11px;margin-bottom:12px;">📅 <span id="updateDate">02/10/2026</span> à <span id="updateTime">01:33:13</span></div><button onclick="checkUpdate()" style="width:100%;padding:10px;background:#7c3aed;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;margin-bottom:12px;">✓ Vérifier mise à jour</button></div><div style="background:#0f0f1a;border:1px solid #2d1b69;border-radius:8px;padding:12px;"><div style="color:#a78bfa;font-size:12px;font-weight:600;margin-bottom:8px;">📋 Changelog</div><div style="color:#9ca3af;font-size:11px;line-height:1.8;"><div>✨ Endpoint /api/sessions/logout-others</div><div>🎨 Interface d'inscription améliorée</div><div>🔐 Nouvelles options de confidentialité</div><div>📊 Statistiques détaillées</div></div></div></div><div id="tab-realtime" class="tab-content" style="display:none;"><h4 style="color:#a78bfa;">📊 Données en temps réel</h4><button onclick="loadRealtime()" style="width:100%;padding:10px;background:#1e3a8a;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:12px;">🔄 Charger données</button><div id="realtimeData" style="background:#0f0f1a;border:1px solid #2d1b69;border-radius:8px;padding:12px;font-size:12px;color:#9ca3af;min-height:100px;"></div></div><div id="tab-memories" class="tab-content" style="display:none;"><h4 style="color:#a78bfa;margin-bottom:12px;">🧠 Mes mémoires</h4><div id="memoriesList" style="max-height:300px;overflow-y:auto;margin-bottom:12px;border:1px solid #2d1b69;border-radius:8px;padding:8px;">Chargement...</div><textarea id="newMemory" placeholder="Ajouter une mémoire..." style="width:100%;padding:10px;background:#0f0f1a;color:#fff;border:1px solid #2d1b69;border-radius:8px;margin-bottom:8px;box-sizing:border-box;height:60px;resize:none;font-size:12px;"></textarea><button onclick="addMemory()" style="width:100%;padding:10px;background:#10b981;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:8px;">➕ Ajouter</button><button onclick="loadMemories()" style="width:100%;padding:8px;background:#6b7280;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:12px;">🔄 Rafraîchir</button></div><div id="tab-about" class="tab-content" style="display:none;"><h3 style="color:#a78bfa;font-size:18px;margin-bottom:4px;">Guidéon v2.0</h3><p style="color:#7c3aed;font-size:12px;margin-bottom:12px;">🎯 Production | Juillet 2026</p><h4 style="color:#a78bfa;">Liens</h4><div style="display:flex;flex-direction:column;gap:6px;"><a href="#" style="color:#7c3aed;text-decoration:none;font-size:12px;">📖 Docs</a><a href="mailto:support@guideon.ai" style="color:#7c3aed;text-decoration:none;font-size:12px;">📧 Support</a><a href="#" style="color:#7c3aed;text-decoration:none;font-size:12px;">📊 Status</a></div></div><div style="display:flex;gap:8px;margin-top:16px;"><button onclick="saveProfile()" style="flex:1;padding:10px;background:#2d1b69;color:#fff;border:none;border-radius:8px;cursor:pointer;">💾 Sauver</button><button onclick="logout()" style="flex:1;padding:10px;background:#7f1d1d;color:#fff;border:none;border-radius:8px;cursor:pointer;">🚪 Quitter</button></div><button onclick="createNewAccount()" style="width:100%;padding:10px;background:#5f0000;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-top:8px;margin-bottom:8px;">❌ Supprimer</button><button onclick="switchToRegistration()" style="width:100%;padding:10px;background:#065f46;color:#fff;border:none;border-radius:8px;cursor:pointer;">➕ Créer compte</button><div id="memview" style="display:none;margin-top:12px;padding:12px;background:#0f0f1a;border-radius:8px;color:#9ca3af;font-size:12px;line-height:1.6;"></div></div></div>
+Êtes-vous sûr(e) de le désactiver ? Si oui, appuyez sur OK.`,()=>{},()=>{document.getElementById('cloudBackup').checked=true;});}" > Sauvegarder dans le cloud (vos conversations sont enregistrées en ligne et retrouvables sur tous vos appareils ; décochée, elles ne sont pas conservées)</label><label style="color:#9ca3af;font-size:12px;display:flex;align-items:center;gap:8px;margin-bottom:16px;"><input type="checkbox" id="deleteHistoryAuto" checked style="pointer-events:auto;" onchange="saveCheckboxState(this.id,this.checked);if(this.checked){showConfirmDialog('✅ Suppression automatique activée\nVotre historique sera supprimé après 30 jours d\'inactivité\nVeuillez appuyer sur OK pour l\'activer.',()=>{},()=>{document.getElementById('deleteHistoryAuto').checked=false;});}else{showConfirmDialog('❌ Suppression automatique désactivée\nVotre historique sera conservé\nÊtes-vous sûr(e) de le désactiver ? Si oui, appuyez sur OK.',()=>{},()=>{document.getElementById('deleteHistoryAuto').checked=true;});}"> Supprimer l'historique après 30 jours inactifs (auto-suppression)</label><h4 style="color:#a78bfa;">Données tierces</h4><div style="background:#0f0f1a;border-left:3px solid #7c3aed;padding:10px;border-radius:4px;margin-bottom:12px;"><p style="color:#9ca3af;font-size:11px;margin:0;">✓ Aucune donnée personnelle vendue à des tiers<br>✓ Chiffrement end-to-end disponible<br>✓ Droits RGPD & CCPA garantis</p></div><button onclick="downloadPrivacyReport()" style="width:100%;padding:10px;background:#1e3a8a;color:#fff;border:none;border-radius:8px;cursor:pointer;">📄 Rapport de confidentialité</button></div><div id="tab-updates" class="tab-content" style="display:none;"><h4 style="color:#a78bfa;">📦 Mises à jour</h4><div style="background:#0f0f1a;border:1px solid #2d1b69;border-radius:8px;padding:12px;margin-bottom:12px;"><div style="color:#a78bfa;font-size:16px;font-weight:600;margin-bottom:8px;">✅ Dernière version</div><div style="color:#7c3aed;font-size:14px;margin-bottom:4px;">v<span id="latestVersion">1.0.260</span><div id="versionDisplay" style="color:#9ca3af;font-size:11px;margin-top:8px;">⏱️ Auto-version activée</div></div><div style="color:#9ca3af;font-size:11px;margin-bottom:12px;">📅 <span id="updateDate">02/10/2026</span> à <span id="updateTime">01:34:29</span></div><button onclick="checkUpdate()" style="width:100%;padding:10px;background:#7c3aed;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;margin-bottom:12px;">✓ Vérifier mise à jour</button></div><div style="background:#0f0f1a;border:1px solid #2d1b69;border-radius:8px;padding:12px;"><div style="color:#a78bfa;font-size:12px;font-weight:600;margin-bottom:8px;">📋 Changelog</div><div style="color:#9ca3af;font-size:11px;line-height:1.8;"><div>✨ Endpoint /api/sessions/logout-others</div><div>🎨 Interface d'inscription améliorée</div><div>🔐 Nouvelles options de confidentialité</div><div>📊 Statistiques détaillées</div></div></div></div><div id="tab-realtime" class="tab-content" style="display:none;"><h4 style="color:#a78bfa;">📊 Données en temps réel</h4><button onclick="loadRealtime()" style="width:100%;padding:10px;background:#1e3a8a;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:12px;">🔄 Charger données</button><div id="realtimeData" style="background:#0f0f1a;border:1px solid #2d1b69;border-radius:8px;padding:12px;font-size:12px;color:#9ca3af;min-height:100px;"></div></div><div id="tab-memories" class="tab-content" style="display:none;"><h4 style="color:#a78bfa;margin-bottom:12px;">🧠 Mes mémoires</h4><div id="memoriesList" style="max-height:300px;overflow-y:auto;margin-bottom:12px;border:1px solid #2d1b69;border-radius:8px;padding:8px;">Chargement...</div><textarea id="newMemory" placeholder="Ajouter une mémoire..." style="width:100%;padding:10px;background:#0f0f1a;color:#fff;border:1px solid #2d1b69;border-radius:8px;margin-bottom:8px;box-sizing:border-box;height:60px;resize:none;font-size:12px;"></textarea><button onclick="addMemory()" style="width:100%;padding:10px;background:#10b981;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:8px;">➕ Ajouter</button><button onclick="loadMemories()" style="width:100%;padding:8px;background:#6b7280;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:12px;">🔄 Rafraîchir</button></div><div id="tab-about" class="tab-content" style="display:none;"><h3 style="color:#a78bfa;font-size:18px;margin-bottom:4px;">Guidéon v2.0</h3><p style="color:#7c3aed;font-size:12px;margin-bottom:12px;">🎯 Production | Juillet 2026</p><h4 style="color:#a78bfa;">Liens</h4><div style="display:flex;flex-direction:column;gap:6px;"><a href="#" style="color:#7c3aed;text-decoration:none;font-size:12px;">📖 Docs</a><a href="mailto:support@guideon.ai" style="color:#7c3aed;text-decoration:none;font-size:12px;">📧 Support</a><a href="#" style="color:#7c3aed;text-decoration:none;font-size:12px;">📊 Status</a></div></div><div style="display:flex;gap:8px;margin-top:16px;"><button onclick="saveProfile()" style="flex:1;padding:10px;background:#2d1b69;color:#fff;border:none;border-radius:8px;cursor:pointer;">💾 Sauver</button><button onclick="logout()" style="flex:1;padding:10px;background:#7f1d1d;color:#fff;border:none;border-radius:8px;cursor:pointer;">🚪 Quitter</button></div><button onclick="createNewAccount()" style="width:100%;padding:10px;background:#5f0000;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-top:8px;margin-bottom:8px;">❌ Supprimer</button><button onclick="switchToRegistration()" style="width:100%;padding:10px;background:#065f46;color:#fff;border:none;border-radius:8px;cursor:pointer;">➕ Créer compte</button><div id="memview" style="display:none;margin-top:12px;padding:12px;background:#0f0f1a;border-radius:8px;color:#9ca3af;font-size:12px;line-height:1.6;"></div></div></div>
 </div></div>
 <div id="sharemod" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9998;align-items:center;justify-content:center;">
 <div style="background:#1a1a2e;padding:24px;border-radius:16px;width:88%;max-width:340px;border:1px solid #2d1b69;">
@@ -1820,7 +1919,7 @@ function addCopyButtons(el){
       const cbtn=document.createElement('button');
       cbtn.textContent='Copier';
       cbtn.style.cssText='position:absolute;right:8px;top:8px;background:none;border:1px solid #a78bfa;color:#a78bfa;border-radius:6px;padding:2px 8px;font-size:12px;cursor:pointer;';
-        cbtn.onclick=function(){const block=cbtn.parentElement;const div=block?block.querySelector('div'):null;const t=div?div.textContent:el.innerText||'';const ta=document.createElement('textarea');ta.value=t;ta.style.cssText='position:fixed;top:-9999px;left:-9999px;opacity:0;';document.body.appendChild(ta);ta.focus();ta.select();try{document.execCommand('copy');cbtn.textContent='✅';setTimeout(()=>{cbtn.textContent='Copier';},2000);}catch(e){}document.body.removeChild(ta);if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(t).then(()=>{cBtn.textContent='✓ Copié';setTimeout(function(){cBtn.textContent='Copier'},2000);}).catch(()=>{});};
+        cbtn.onclick=function(){const block=cbtn.parentElement;const div=block?block.querySelector('div'):null;const t=div?div.textContent:el.innerText||'';const ta=document.createElement('textarea');ta.value=t;ta.style.cssText='position:fixed;top:-9999px;left:-9999px;opacity:0;';document.body.appendChild(ta);ta.focus();ta.select();try{document.execCommand('copy');cbtn.textContent='✅';setTimeout(()=>{cbtn.textContent='Copier';},2000);}catch(e){}document.body.removeChild(ta);if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(t).then(()=>{cbtn.textContent='✓ Copié';setTimeout(function(){cbtn.textContent='Copier'},2000);}).catch(()=>{});};
       cb.appendChild(cbtn);
       const pre=document.createElement('div');pre.textContent=postText;cb.appendChild(pre);
       el.appendChild(cb);
@@ -2521,8 +2620,8 @@ setTimeout(updateInstructionsPlaceholder, 500);
       fresh.slice(0, firstRun ? 3 : 5).forEach(function(n){ window.showNotification(n.type, n.title, n.message); });
     } catch(e) { console.error('Erreur notifications:', e.message); }
   };
-  setInterval(window.fetchNotifications, 30000);
-  window.addEventListener('load', function(){ setTimeout(window.fetchNotifications, 2000); });
+  setInterval(function(){ window.fetchNotifications(); }, 30000);
+  window.addEventListener('load', function(){ setTimeout(function(){ window.fetchNotifications(); }, 2000); });
 })();
 </script>
 <script>
@@ -2680,6 +2779,9 @@ setTimeout(updateInstructionsPlaceholder, 500);
       var menu = document.createElement('div');
       menu.className = 'convMenu';
       menu.style.cssText = 'position:absolute;right:0;top:48px;z-index:5;background:#1a1a2e;border:1px solid #2d2d4e;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.6);min-width:190px;overflow:hidden;';
+      var xb = mkBtn('✕', 'display:block;margin:4px 8px 0 auto;background:none;border:none;color:#9ca3af;font-size:18px;cursor:pointer;padding:4px 8px;');
+      xb.onclick = function(ev){ ev.stopPropagation(); closeMenus(); };
+      menu.appendChild(xb);
       function item(label, color, fn){
         var b = mkBtn(label, 'display:block;width:100%;text-align:left;padding:12px 14px;background:none;border:none;color:' + color + ';font-size:15px;cursor:pointer;');
         b.onclick = function(ev){ ev.stopPropagation(); closeMenus(); fn(); };
@@ -2738,6 +2840,9 @@ setTimeout(updateInstructionsPlaceholder, 500);
     x.onclick = closeModal;
     trash.onclick = function(){ var ids = Object.keys(selected); if (ids.length) removeMany(ids); };
     q.addEventListener('input', render);
+    m.addEventListener('click', function(e){
+      if (m.querySelector('.convMenu') && !(e.target.closest && e.target.closest('.convMenu'))) { closeMenus(); e.stopPropagation(); e.preventDefault(); }
+    }, true);
     await reload();
   };
 })();
@@ -2781,6 +2886,759 @@ setTimeout(updateInstructionsPlaceholder, 500);
       if (/createNewProject|showMyProjects/.test(oc)) setTimeout(window.closeProjectsModal, 0);
     });
     document.body.appendChild(m);
+  };
+})();
+</script>
+<script>
+(function(){
+  var _f = window.fetch;
+  function b64(s){
+    var p = '='.repeat((4 - s.length % 4) % 4);
+    var r = atob((s + p).replace(/-/g, '+').replace(/_/g, '/'));
+    var a = new Uint8Array(r.length);
+    for (var i = 0; i < r.length; i++) a[i] = r.charCodeAt(i);
+    return a;
+  }
+  window.gEnablePush = async function(flags){
+    if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) return { ok: false, error: 'Les notifications ne sont pas prises en charge par ce navigateur.' };
+    var tok = localStorage.getItem('gtoken');
+    if (!tok) return { ok: false, error: "Connectez-vous d'abord." };
+    var perm = Notification.permission;
+    if (perm === 'default') perm = await Notification.requestPermission();
+    if (perm !== 'granted') return { ok: false, error: "Autorisation de notification non accordée (état : " + perm + ").\n\nPour l'activer : touchez ⓘ à gauche de l'adresse, puis Autorisations, Notifications, Autoriser. Vérifiez aussi Android > Paramètres > Applications > Chrome > Notifications, et désactivez le mode « Ne pas déranger »." };
+    try {
+      var reg = await navigator.serviceWorker.ready;
+      var sub = await reg.pushManager.getSubscription();
+      if (!sub) {
+        var kr = await _f('/api/push/key');
+        var kd = await kr.json();
+        if (!kd.key) return { ok: false, error: 'Les notifications push ne sont pas configurées sur le serveur.' };
+        sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64(kd.key) });
+      }
+      var body = { subscription: sub.toJSON() };
+      for (var k in flags) body[k] = flags[k];
+      var r = await _f('/api/push/subscribe', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + tok }, body: JSON.stringify(body) });
+      var d = await r.json();
+      if (!r.ok) return { ok: false, error: d.error || 'Activation impossible' };
+      return { ok: true };
+    } catch (e) { return { ok: false, error: 'Activation impossible : ' + (e && e.message ? e.message : e) }; }
+  };
+  window.gDisablePush = async function(flag){
+    try {
+      var tok = localStorage.getItem('gtoken');
+      if (!tok || !('serviceWorker' in navigator)) return;
+      var reg = await navigator.serviceWorker.ready;
+      var sub = await reg.pushManager.getSubscription();
+      if (!sub) return;
+      var body = { subscription: sub.toJSON() };
+      body[flag] = false;
+      await _f('/api/push/subscribe', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + tok }, body: JSON.stringify(body) });
+    } catch (e) {}
+  };
+  function pushWanted(){
+    var nc = document.getElementById('notifCheck');
+    return localStorage.getItem('gNotifReplies') === '1' || (nc && nc.checked);
+  }
+  document.addEventListener('visibilitychange', function(){
+    var tok = localStorage.getItem('gtoken');
+    if (!tok || !pushWanted()) return;
+    var body = JSON.stringify({ token: tok, hidden: document.hidden });
+    try {
+      if (document.hidden && navigator.sendBeacon) navigator.sendBeacon('/api/push/visibility', new Blob([body], { type: 'application/json' }));
+      else _f('/api/push/visibility', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: body, keepalive: true });
+    } catch (e) {}
+  });
+  var nc0 = document.getElementById('notifCheck');
+  if (nc0) nc0.addEventListener('change', async function(){
+    if (nc0.checked) {
+      var r = await window.gEnablePush({ general: true });
+      if (!r.ok) alert('⚠️ ' + r.error + "\nLes notifications restent affichées dans la page.");
+    } else {
+      window.gDisablePush('general');
+    }
+  });
+  setTimeout(async function(){
+    try {
+      if (!('Notification' in window) || Notification.permission !== 'granted' || !localStorage.getItem('gtoken')) return;
+      var f = {};
+      if (localStorage.getItem('gNotifReplies') === '1') f.replies = true;
+      var nc1 = document.getElementById('notifCheck');
+      if (nc1 && nc1.checked) f.general = true;
+      if (Object.keys(f).length) await window.gEnablePush(f);
+    } catch (e) {}
+  }, 5000);
+})();
+</script>
+<script>
+(function(){
+  var _f = window.fetch;
+  function lastGuideonText(){
+    var b = document.querySelectorAll('#chat .msg.g .bub');
+    return b.length ? (b[b.length - 1].innerText || '') : '';
+  }
+  function removeCard(){ var c = document.getElementById('gNotifCard'); if (c) { c.remove(); if (window.gInvite) window.gInvite(); } }
+  if (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) { /* app installée : garder le comportement normal des autres cartes */ }
+  function canShowCard(){
+    if (!('PushManager' in window) || !('Notification' in window)) return false;
+    if (localStorage.getItem('gNotifReplies') === '1') return false;
+    var now = Date.now();
+    var last = parseInt(localStorage.getItem('gNotifCardLast') || '0', 10) || 0;
+    var gap = (last && localStorage.getItem('gNotifCardX') === String(last)) ? 1800000 : 900000;
+    if (last && now - last < gap) return false;
+    var day = new Date().toDateString();
+    if (localStorage.getItem('gNotifCardDay') !== day) { localStorage.setItem('gNotifCardDay', day); localStorage.setItem('gNotifCardCount', '0'); }
+    return (parseInt(localStorage.getItem('gNotifCardCount') || '0', 10) || 0) < 6;
+  }
+  function showCard(){
+    var chat = document.getElementById('chat');
+    if (!chat || document.getElementById('gNotifCard') || !canShowCard()) return;
+    var c = document.createElement('div');
+    c.id = 'gNotifCard';
+    c.style.cssText = 'position:relative;margin:12px auto;width:92%;max-width:520px;box-sizing:border-box;padding:16px;border:1px solid #2d1b69;border-radius:18px;background:#14142a;color:#e5e7eb;';
+    c.innerHTML = "<button id='gNotifX' aria-label='Fermer' style='position:absolute;top:10px;right:14px;background:none;border:none;color:#9ca3af;font-size:20px;cursor:pointer;'>✕</button>"
+      + "<div style='font-size:26px;'>🔔</div>"
+      + "<div style='font-weight:700;font-size:17px;margin:6px 0;color:#fff;'>Soyez averti(e) quand Guidéon répond.</div>"
+      + "<div style='color:#9ca3af;font-size:14px;margin-bottom:12px;line-height:1.4;'>N'hésitez pas à vous éloigner, Guidéon vous notifiera dès qu'il répondra.</div>"
+      + "<button id='gNotifGo' style='width:100%;padding:12px;border:1px solid #4c1d95;border-radius:12px;background:none;color:#60a5fa;font-size:16px;cursor:pointer;'>Activer</button>";
+    var tyEl = document.getElementById('ty');
+    if (tyEl && tyEl.parentNode) tyEl.parentNode.insertBefore(c, tyEl); else chat.appendChild(c);
+    window.__gCardAt = Date.now();
+    localStorage.setItem('gNotifCardLast', String(Date.now()));
+    localStorage.setItem('gNotifCardCount', String((parseInt(localStorage.getItem('gNotifCardCount') || '0', 10) || 0) + 1));
+    if (window.gInvite) window.gInvite();
+    if (Notification.permission === 'denied') { var gsub = c.querySelectorAll('div')[2]; if (gsub) gsub.textContent = 'Les notifications sont bloquées pour ce site. Touchez Activer pour voir comment les autoriser.'; }
+    chat.scrollTop = chat.scrollHeight;
+    document.getElementById('gNotifX').onclick = function(){ localStorage.setItem('gNotifCardX', localStorage.getItem('gNotifCardLast') || ''); removeCard(); };
+    document.getElementById('gNotifGo').onclick = async function(){
+      var go = this;
+      go.disabled = true;
+      go.textContent = 'Activation...';
+      var r = window.gEnablePush ? await window.gEnablePush({ replies: true }) : { ok: false, error: 'Fonction indisponible' };
+      if (r.ok) {
+        localStorage.setItem('gNotifReplies', '1');
+        c.innerHTML = "<div style='padding:6px 2px;'>✅ Notification activée. Guidéon vous préviendra dès qu'il aura fini de répondre.</div>";
+        setTimeout(removeCard, 3500);
+      } else {
+        go.disabled = false;
+        go.textContent = 'Activer';
+        alert('⚠️ ' + r.error);
+      }
+    };
+  }
+  window.fetch = function(u, o){
+    try {
+      if (typeof u === 'string' && u === '/api/chat' && o && o.method === 'POST') {
+        window.__gPend = { sid: (typeof curSession !== 'undefined') ? curSession : null, t: Date.now(), wasHidden: false, rec: false };
+        setTimeout(function(){ if (window.gRefreshReply) window.gRefreshReply().then(showCard); else showCard(); }, 400);
+      }
+    } catch (e) {}
+    return _f.apply(this, arguments);
+  };
+  document.addEventListener('visibilitychange', function(){
+    if (document.hidden && window.__gPend) window.__gPend.wasHidden = true;
+  });
+  function recover(){
+    var p = window.__gPend;
+    if (!p || !p.sid) { window.__gPend = null; return; }
+    var tok = localStorage.getItem('gtoken');
+    if (!tok) return;
+    var tries = 0;
+    if (window.__gRecTimer) clearInterval(window.__gRecTimer);
+    window.__gRecTimer = setInterval(async function(){
+      tries++;
+      try {
+        var r = await _f('/api/history/' + p.sid, { headers: { 'Authorization': 'Bearer ' + tok } });
+        var d = await r.json();
+        if (Array.isArray(d) && d.length) {
+          var last = d[d.length - 1];
+          if (last.role === 'assistant' && new Date(last.created_at).getTime() >= p.t - 5000) {
+            clearInterval(window.__gRecTimer);
+            window.__gPend = null;
+            var shown = lastGuideonText();
+            var incomplete = !shown || /^Erreur/.test(shown) || shown.length < String(last.content || '').length * 0.6;
+            if (incomplete && String(typeof curSession !== 'undefined' ? curSession : '') === String(p.sid) && typeof switchSession === 'function') await switchSession(p.sid);
+            return;
+          }
+        }
+      } catch (e) {}
+      if (tries >= 45) { clearInterval(window.__gRecTimer); window.__gPend = null; }
+    }, 2000);
+  }
+  setInterval(function(){
+    if (typeof ve === 'undefined') return;
+    /* la carte reste affichée tant qu'elle n'est pas activée ou fermée */
+    var p = window.__gPend;
+    if (!p || p.rec || ve !== false) return;
+    var t = lastGuideonText();
+    var failed = /^Erreur/.test(t);
+    if (!p.wasHidden && !failed) { window.__gPend = null; return; }
+    p.rec = true;
+    recover();
+  }, 1000);
+})();
+</script>
+<script>
+(function(){
+  var gEmailFix = true;
+  function email(){
+    try {
+      var t = localStorage.getItem('gtoken') || '';
+      var p = JSON.parse(atob(t.split('.')[0]));
+      return p && p.email ? String(p.email) : '';
+    } catch (e) { return ''; }
+  }
+  function fix(){
+    var el = document.getElementById('userEmail');
+    var em = email();
+    if (el && em && el.textContent !== em) el.textContent = em;
+  }
+  var el0 = document.getElementById('userEmail');
+  if (el0 && window.MutationObserver) new MutationObserver(fix).observe(el0, { childList: true, characterData: true, subtree: true });
+  fix();
+  setTimeout(fix, 1500);
+  document.addEventListener('click', function(){ setTimeout(fix, 60); }, true);
+})();
+</script>
+<script>
+(function(){
+  function swReady(){
+    if (!('serviceWorker' in navigator)) return Promise.resolve(null);
+    return Promise.race([navigator.serviceWorker.ready, new Promise(function(r){ setTimeout(function(){ r(null); }, 3000); })]);
+  }
+  function closeNotifs(tag){
+    swReady().then(function(reg){
+      if (!reg) return;
+      return reg.getNotifications({ tag: tag }).then(function(list){ list.forEach(function(n){ n.close(); }); });
+    }).catch(function(){});
+  }
+  window.gRefreshReply = async function(){
+    var on = false;
+    try {
+      if ('Notification' in window && Notification.permission === 'granted' && 'PushManager' in window) {
+        var reg = await swReady();
+        if (reg) {
+          var sub = await reg.pushManager.getSubscription();
+          on = !!sub && localStorage.getItem('gNotifReplies') === '1';
+        }
+      }
+    } catch (e) {}
+    if (!on) localStorage.removeItem('gNotifReplies');
+    return on;
+  };
+  window.gInvite = async function(){
+    try {
+      if (!('Notification' in window) || Notification.permission !== 'granted') return;
+      if (localStorage.getItem('gNotifReplies') === '1') return;
+      var reg = await swReady();
+      if (!reg) return;
+      await reg.showNotification('🔔 Soyez averti(e) quand Guidéon répond', {
+        body: "Touchez « Activer » pour être prévenu(e) dès que Guidéon a fini de répondre.",
+        icon: '/icon-192.png', badge: '/badge-96.png', tag: 'g-invite',
+        actions: [{ action: 'activate', title: 'Activer' }],
+        data: { url: '/?activerNotifs=1', activate: true }
+      });
+    } catch (e) {}
+  };
+  async function activateFromInvite(){
+    if (!localStorage.getItem('gtoken') || !window.gEnablePush) return;
+    var r = await window.gEnablePush({ replies: true });
+    if (r.ok) {
+      localStorage.setItem('gNotifReplies', '1');
+      closeNotifs('g-invite');
+      if (window.showNotification) window.showNotification('info', 'Notification activée', "Guidéon vous préviendra dès qu'il aura fini de répondre quand vous ne serez pas sur le chat.");
+    } else {
+      alert('⚠️ ' + r.error);
+    }
+  }
+  if (/[?&]activerNotifs=1/.test(location.search)) {
+    try { history.replaceState(null, '', location.pathname); } catch (e) {}
+    setTimeout(activateFromInvite, 1500);
+  }
+  if ('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('message', function(e){
+    if (e.data && e.data.type === 'ACTIVATE_REPLIES') activateFromInvite();
+  });
+  document.addEventListener('visibilitychange', function(){ if (!document.hidden) closeNotifs('g-reply'); });
+})();
+</script>
+<script>
+(function(){
+  var _f = window.fetch;
+  var ACC = { update: '#10b981', collab: '#3b82f6', info: '#a78bfa', error: '#ef4444' };
+  var ICO = { update: '📦', collab: '💬', info: '🔔', error: '⚠️' };
+  function toastBox(){
+    var b = document.getElementById('gToasts');
+    if (!b) {
+      b = document.createElement('div');
+      b.id = 'gToasts';
+      b.style.cssText = 'position:fixed;left:0;right:0;top:calc(env(safe-area-inset-top, 0px) + 10px);z-index:10080;display:flex;flex-direction:column;align-items:center;gap:8px;pointer-events:none;padding:0 10px;';
+      document.body.appendChild(b);
+    }
+    if (!document.getElementById('gToastCss')) {
+      var st = document.createElement('style');
+      st.id = 'gToastCss';
+      st.textContent = '@keyframes gToastIn{from{transform:translateY(-24px);opacity:0}to{transform:translateY(0);opacity:1}}@keyframes gToastBar{from{width:100%}to{width:0}}';
+      document.head.appendChild(st);
+    }
+    return b;
+  }
+  window.showNotification = function(type, title, message){
+    var acc = ACC[type] || ACC.info;
+    var ico = ICO[type] || ICO.info;
+    var box = toastBox();
+    var card = document.createElement('div');
+    card.style.cssText = 'pointer-events:auto;position:relative;overflow:hidden;width:100%;max-width:420px;box-sizing:border-box;padding:12px 14px 14px 14px;border-radius:16px;background:#14142a;color:#e5e7eb;border:1px solid #2d1b69;border-left:5px solid ' + acc + ';box-shadow:0 8px 28px rgba(0,0,0,0.55);animation:gToastIn .25s ease;';
+    var row = document.createElement('div');
+    row.style.cssText = 'display:flex;gap:10px;align-items:flex-start;';
+    var ic = document.createElement('div');
+    ic.textContent = ico;
+    ic.style.cssText = 'flex:none;width:36px;height:36px;border-radius:50%;background:' + acc + '33;display:flex;align-items:center;justify-content:center;font-size:18px;';
+    var tx = document.createElement('div');
+    tx.style.cssText = 'flex:1;min-width:0;';
+    var t1 = document.createElement('div');
+    t1.textContent = String(title == null ? '' : title);
+    t1.style.cssText = 'font-weight:700;font-size:15px;color:#fff;';
+    var t2 = document.createElement('div');
+    t2.textContent = String(message == null ? '' : message);
+    t2.style.cssText = 'font-size:13px;color:#9ca3af;margin-top:3px;line-height:1.35;word-break:break-word;';
+    tx.appendChild(t1); tx.appendChild(t2);
+    var x = document.createElement('button');
+    x.textContent = '✕';
+    x.setAttribute('aria-label', 'Fermer');
+    x.style.cssText = 'flex:none;background:none;border:none;color:#6b7280;font-size:16px;cursor:pointer;padding:0 2px;';
+    row.appendChild(ic); row.appendChild(tx); row.appendChild(x);
+    var act = document.createElement('button');
+    act.textContent = type === 'update' ? '🔄 Actualiser' : '✓ Vu';
+    act.style.cssText = 'margin-top:10px;margin-left:46px;padding:7px 14px;border-radius:10px;border:1px solid ' + acc + ';background:none;color:' + acc + ';font-size:13px;cursor:pointer;';
+    var bar = document.createElement('div');
+    bar.style.cssText = 'position:absolute;left:0;bottom:0;height:3px;background:' + acc + ';animation:gToastBar 8s linear forwards;';
+    card.appendChild(row); card.appendChild(act); card.appendChild(bar);
+    box.appendChild(card);
+    var done = false;
+    function close(){
+      if (done) return;
+      done = true;
+      card.style.transition = 'opacity .25s';
+      card.style.opacity = '0';
+      setTimeout(function(){ card.remove(); }, 260);
+    }
+    x.onclick = close;
+    act.onclick = function(){ if (type === 'update') location.reload(); else close(); };
+    setTimeout(close, 8000);
+  };
+  function loadSeen(){ try { return JSON.parse(localStorage.getItem('gnotifSeen') || '{}'); } catch (e) { return {}; } }
+  window.fetchNotifications = async function(){
+    var token = localStorage.getItem('gtoken');
+    var cb = document.getElementById('notifCheck');
+    if (!token || !cb || !cb.checked) return;
+    try {
+      var res = await _f('/api/notifications', { headers: { 'Authorization': 'Bearer ' + token } });
+      if (!res.ok) return;
+      var data = await res.json();
+      var list = (data.notifications || []).filter(function(n){ return n && n.id != null; });
+      if (list.length === 0) return;
+      var seen = loadSeen();
+      var comp = document.getElementById('complianceAlerts');
+      var compOff = comp && !comp.checked;
+      var showList = [], readIds = [];
+      list.forEach(function(n){
+        var age = Date.now() - new Date(n.created_at).getTime();
+        if (seen[n.id] || (age > 7 * 86400000) || (n.type === 'compliance' && compOff)) { readIds.push(n.id); return; }
+        if (showList.length < 3) { showList.push(n); readIds.push(n.id); seen[n.id] = Date.now(); }
+      });
+      var keys = Object.keys(seen);
+      if (keys.length > 300) keys.sort(function(a, b){ return seen[a] - seen[b]; }).slice(0, keys.length - 300).forEach(function(k){ delete seen[k]; });
+      try { localStorage.setItem('gnotifSeen', JSON.stringify(seen)); } catch (e) {}
+      showList.forEach(function(n, i){ setTimeout(function(){ window.showNotification(n.type, n.title, n.message); }, i * 700); });
+      if (readIds.length) _f('/api/notifications/read', { method: 'POST', headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' }, body: JSON.stringify({ ids: readIds }) }).catch(function(){});
+    } catch (e) { console.error('Erreur notifications:', e.message); }
+  };
+})();
+</script>
+<script>
+(function(){
+  if (document.getElementById('gUserMsgCss')) return;
+  var st = document.createElement('style');
+  st.id = 'gUserMsgCss';
+  st.textContent = '.msg.user .av{display:none !important}.msg.g:not(#ty) .av{display:none !important}.msg.user .bub{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}';
+  document.head.appendChild(st);
+  var chat = document.getElementById('chat');
+  if (!chat) return;
+  var openedAt = 0;
+  function closePop(){ var p = document.getElementById('gMsgPop'); if (p) p.remove(); }
+  function closeSheet(){ var s = document.getElementById('gSelSheet'); if (s) s.remove(); }
+  function bubOf(t){ return (t && t.closest) ? t.closest('.msg.user .bub') : null; }
+  function textOf(b){ return String(b.innerText || b.textContent || '').trim(); }
+  function timeOf(b){ var mc = b.closest('.mc'); var mt = mc ? mc.querySelector('.mt') : null; return mt ? mt.textContent.trim() : ''; }
+  function copyText(t){
+    function fallback(){
+      var ta = document.createElement('textarea');
+      ta.value = t;
+      ta.style.cssText = 'position:fixed;top:-9999px;opacity:0;';
+      document.body.appendChild(ta);
+      ta.focus(); ta.select();
+      try { document.execCommand('copy'); } catch (e) {}
+      ta.remove();
+    }
+    try { if (navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(t).catch(fallback); } catch (e) {}
+    fallback();
+    return Promise.resolve();
+  }
+  function openSheet(text){
+    closeSheet();
+    var s = document.createElement('div');
+    s.id = 'gSelSheet';
+    s.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:10061;max-height:65vh;background:#1c1c24;border-top-left-radius:18px;border-top-right-radius:18px;box-shadow:0 -10px 36px rgba(0,0,0,0.6);display:flex;flex-direction:column;';
+    var hd = document.createElement('div');
+    hd.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:14px 16px;color:#fff;font-weight:600;';
+    var ht = document.createElement('span');
+    ht.textContent = 'Sélectionner le texte';
+    var x = document.createElement('button');
+    x.textContent = '✕';
+    x.style.cssText = 'background:none;border:none;color:#9ca3af;font-size:20px;cursor:pointer;';
+    x.onclick = closeSheet;
+    hd.appendChild(ht); hd.appendChild(x);
+    var body = document.createElement('div');
+    body.textContent = text;
+    body.style.cssText = 'padding:4px 16px 24px;overflow-y:auto;white-space:pre-wrap;word-break:break-word;color:#e5e7eb;font-size:17px;line-height:1.5;-webkit-user-select:text;user-select:text;';
+    s.appendChild(hd); s.appendChild(body);
+    document.body.appendChild(s);
+    try { var sel = window.getSelection(); var rg = document.createRange(); rg.selectNodeContents(body); sel.removeAllRanges(); sel.addRange(rg); } catch (e) {}
+  }
+  function openPop(b){
+    closePop();
+    var text = textOf(b);
+    if (!text) return;
+    var pop = document.createElement('div');
+    pop.id = 'gMsgPop';
+    pop.style.cssText = 'position:fixed;z-index:10060;width:250px;background:#1c1c24;border:1px solid #2d2d4e;border-radius:16px;box-shadow:0 10px 36px rgba(0,0,0,0.65);overflow:hidden;color:#e5e7eb;font-size:16px;';
+    var tm = document.createElement('div');
+    tm.textContent = timeOf(b) || '';
+    tm.style.cssText = 'padding:12px 16px 8px;color:#9ca3af;font-size:14px;';
+    pop.appendChild(tm);
+    function row(label, fn){
+      var r = document.createElement('button');
+      r.textContent = label;
+      r.style.cssText = 'display:block;width:100%;text-align:left;padding:13px 16px;background:none;border:none;color:#e5e7eb;font-size:16px;cursor:pointer;';
+      r.onclick = function(ev){ ev.stopPropagation(); fn(r); };
+      pop.appendChild(r);
+    }
+    row('📋  Copier le message', function(r){ copyText(text).then(function(){ r.textContent = '✅  Copié'; setTimeout(closePop, 700); }); });
+    row('🔤  Sélectionner le texte', function(){ closePop(); openSheet(text); });
+    row('✏️  Modifier', function(){
+      closePop();
+      var ui = document.getElementById('ui');
+      if (ui) {
+        ui.value = text;
+        try { ui.dispatchEvent(new Event('input', { bubbles: true })); } catch (e) {}
+        ui.focus();
+        try { ui.setSelectionRange(text.length, text.length); } catch (e) {}
+      }
+    });
+    document.body.appendChild(pop);
+    var rc = b.getBoundingClientRect();
+    var ph = pop.offsetHeight;
+    var top = rc.bottom + 8;
+    if (top + ph > window.innerHeight - 12) top = Math.max(12, rc.top - ph - 8);
+    var left = Math.min(Math.max(8, rc.right - 250), window.innerWidth - 258);
+    pop.style.top = top + 'px';
+    pop.style.left = left + 'px';
+    openedAt = Date.now();
+  }
+  var timer = null, sx = 0, sy = 0, fired = false;
+  chat.addEventListener('touchstart', function(e){
+    var b = bubOf(e.target);
+    if (!b || !e.touches || !e.touches[0]) return;
+    sx = e.touches[0].clientX; sy = e.touches[0].clientY; fired = false;
+    clearTimeout(timer);
+    timer = setTimeout(function(){ fired = true; openPop(b); }, 450);
+  }, { passive: true });
+  chat.addEventListener('touchmove', function(e){
+    if (!e.touches || !e.touches[0]) return;
+    if (Math.abs(e.touches[0].clientX - sx) > 10 || Math.abs(e.touches[0].clientY - sy) > 10) clearTimeout(timer);
+  }, { passive: true });
+  ['touchend', 'touchcancel'].forEach(function(n){ chat.addEventListener(n, function(){ clearTimeout(timer); }, { passive: true }); });
+  chat.addEventListener('contextmenu', function(e){
+    var b = bubOf(e.target);
+    if (!b) return;
+    e.preventDefault();
+    if (!fired) openPop(b);
+    fired = false;
+  });
+  document.addEventListener('click', function(e){
+    var p = document.getElementById('gMsgPop');
+    if (p && Date.now() - openedAt > 400 && !p.contains(e.target)) closePop();
+  }, true);
+  chat.addEventListener('scroll', closePop, { passive: true });
+})();
+</script>
+<script>
+(function(){
+  if (window.__gL3) return;
+  window.__gL3 = true;
+  var EDIT = /^\u270F\uFE0F?\s*Modifier$/;
+  function strip(){
+    var els = document.querySelectorAll('#chat *');
+    for (var i = 0; i < els.length; i++) {
+      var el = els[i];
+      if (el.children.length !== 0) continue;
+      if (el.closest && el.closest('.bub')) continue;
+      var t = (el.textContent || '').replace(/\s+/g, ' ').trim();
+      if (EDIT.test(t) || (el.tagName === 'BUTTON' && t === 'Modifier')) {
+        var p = el.parentNode;
+        el.remove();
+        if (p && !p.classList.contains('mc') && !p.classList.contains('msg') && p.id !== 'chat' && p.children.length === 0 && !(p.textContent || '').trim()) p.remove();
+      }
+    }
+  }
+  var chat = document.getElementById('chat');
+  if (chat && window.MutationObserver) var gTouching = false;
+  chat.addEventListener('touchstart', function(){ gTouching = true; }, { passive: true });
+  chat.addEventListener('touchend', function(){ gTouching = false; setTimeout(strip, 50); }, { passive: true });
+  chat.addEventListener('touchcancel', function(){ gTouching = false; }, { passive: true });
+  new MutationObserver(function(){ if (!gTouching) strip(); }).observe(chat, { childList: true, subtree: true });
+  strip();
+  var nc = document.getElementById('notifCheck');
+  if (nc) nc.addEventListener('change', function(){
+    setTimeout(async function(){
+      try {
+        if (nc.checked) {
+          if (window.gNotifyEnabled) await window.gNotifyEnabled(); if (localStorage.getItem('gNotifReplies') !== '1' && window.gInvite) await window.gInvite();
+        } else if (localStorage.getItem('gNotifReplies') === '1') {
+          if (confirm("Vous avez désactivé les notifications.\nVoulez-vous aussi désactiver la notification « Guidéon a répondu » en arrière-plan ?\n\nOK = la désactiver aussi\nAnnuler = la garder")) {
+            localStorage.removeItem('gNotifReplies');
+            if (window.gDisablePush) await window.gDisablePush('replies');
+            alert("🔕 La notification de réponse en arrière-plan est désactivée. Vous pourrez la réactiver depuis la carte « Soyez averti(e) quand Guidéon répond ».");
+          }
+        }
+      } catch (e) {}
+    }, nc.checked ? 2500 : 300);
+  });
+})();
+</script>
+<script>
+(function(){
+  if (window.gNotifyEnabled) return;
+  window.gNotifyEnabled = async function(){
+    try {
+      if (!('serviceWorker' in navigator) || !('Notification' in window) || Notification.permission !== 'granted') return;
+      var reg = await Promise.race([navigator.serviceWorker.ready, new Promise(function(r){ setTimeout(function(){ r(null); }, 3000); })]);
+      if (!reg) return;
+      var sub = await reg.pushManager.getSubscription();
+      if (!sub) return;
+      if (window.showNotification) window.showNotification('info', '🔔 Notifications activées', "Vous avez activé les notifications de Guidéon : mises à jour et événements importants.");
+      await reg.showNotification('🔔 Notifications activées', {
+        body: "Vous avez activé les notifications de Guidéon : vous recevrez les mises à jour et les événements importants.",
+        icon: '/icon-192.png', badge: '/badge-96.png', tag: 'g-enabled', data: { url: '/' }
+      });
+    } catch (e) {}
+  };
+})();
+</script>
+<script>
+(function(){
+  var IDLE_MS = 15 * 60 * 1000;
+  function touch(){ try { localStorage.setItem('gLastActivity', String(Date.now())); } catch(e) {} }
+  function gCheckIdleOnLoad(){
+    try {
+      var last = parseInt(localStorage.getItem('gLastActivity') || '0', 10) || 0;
+      var tok = localStorage.getItem('gtoken');
+      var sid = localStorage.getItem('session');
+      if (tok && sid && last && Date.now() - last > IDLE_MS) {
+        if (typeof newSession === 'function') { var tryNew = function(){ if (typeof newSession === 'function') newSession(); else setTimeout(tryNew, 300); }; setTimeout(tryNew, 600); }
+      }
+    } catch(e) {}
+    touch();
+  }
+  window.addEventListener('load', gCheckIdleOnLoad);
+  document.addEventListener('click', touch, true);
+  var origAm = window.am;
+  if (typeof origAm === 'function') {
+    window.am = function(){ touch(); return origAm.apply(this, arguments); };
+  }
+  document.addEventListener('visibilitychange', function(){
+    if (document.hidden) { touch(); return; }
+    try {
+      var last = parseInt(localStorage.getItem('gLastActivity') || '0', 10) || 0;
+      var tok = localStorage.getItem('gtoken');
+      var sid = localStorage.getItem('session');
+      if (tok && sid && last && Date.now() - last > IDLE_MS) {
+        if (typeof newSession === 'function') newSession();
+      }
+    } catch(e) {}
+    touch();
+  });
+})();
+</script>
+<script>
+(function(){
+  async function checkGeneralStill(){
+    try {
+      var nc = document.getElementById('notifCheck');
+      if (!nc || !nc.checked) return;
+      if (!('Notification' in window) || Notification.permission !== 'granted') { uncheckGeneral(); return; }
+      if (!('serviceWorker' in navigator)) return;
+      var reg = await Promise.race([navigator.serviceWorker.ready, new Promise(function(r){ setTimeout(function(){ r(null); }, 3000); })]);
+      if (!reg) return;
+      var sub = await reg.pushManager.getSubscription();
+      if (!sub) { uncheckGeneral(); return; }
+    } catch (e) {}
+  }
+  async function uncheckGeneral(){
+    var nc = document.getElementById('notifCheck');
+    if (!nc || !nc.checked) return;
+    nc.checked = false;
+    var tok = localStorage.getItem('gtoken');
+    if (tok) {
+      try { await fetch('/api/checkboxes/save', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + tok }, body: JSON.stringify({ notifCheck: false }) }); } catch (e) {}
+    }
+    if (window.showNotification) window.showNotification('info', 'Notifications désactivées', "Les notifications de Guidéon ont été coupées depuis votre appareil.");
+  }
+  window.gNotifAuto = true;
+  document.addEventListener('visibilitychange', function(){ if (!document.hidden) setTimeout(checkGeneralStill, 1200); });
+  setTimeout(checkGeneralStill, 4000);
+})();
+</script>
+<script>
+(function(){
+  var chat = document.getElementById('chat');
+  if (!chat) return;
+  function close(){ var v = document.getElementById('gImgViewer'); if (v) v.remove(); }
+  function open_(src){
+    close();
+    var v = document.createElement('div');
+    v.id = 'gImgViewer';
+    v.style.cssText = 'position:fixed;inset:0;z-index:10090;background:rgba(0,0,0,0.92);display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;';
+    var img = document.createElement('img');
+    img.src = src;
+    img.style.cssText = 'max-width:100%;max-height:100%;border-radius:10px;object-fit:contain;';
+    var x = document.createElement('button');
+    x.textContent = '✕';
+    x.setAttribute('aria-label', 'Fermer');
+    x.style.cssText = 'position:fixed;top:calc(env(safe-area-inset-top,0px) + 14px);right:16px;background:rgba(255,255,255,0.12);border:none;color:#fff;font-size:22px;width:40px;height:40px;border-radius:50%;cursor:pointer;';
+    x.onclick = function(e){ e.stopPropagation(); close(); };
+    v.appendChild(img);
+    v.appendChild(x);
+    v.addEventListener('click', function(e){ if (e.target === v) close(); });
+    img.addEventListener('click', function(e){ e.stopPropagation(); });
+    document.body.appendChild(v);
+  }
+  chat.addEventListener('click', function(e){
+    var img = e.target && e.target.closest ? e.target.closest('img[loading="lazy"]') : null;
+    if (!img) return;
+    e.preventDefault();
+    open_(img.src);
+  });
+})();
+</script>
+<script>
+(function(){
+  var deferred = null;
+  window.addEventListener('beforeinstallprompt', function(e){
+    e.preventDefault();
+    deferred = e;
+  });
+  window.addEventListener('appinstalled', function(){ deferred = null; });
+  function canShowInstallCard(){
+    if (!deferred) return false;
+    if (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) return false;
+    if (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) return false;
+    var hr = new Date().getHours();
+    if (hr < 7 || hr >= 22) return false;
+    var count = parseInt(localStorage.getItem('gInstallCardCount') || '0', 10) || 0;
+    if (count >= 6) return false;
+    var last = parseInt(localStorage.getItem('gInstallCardLast') || '0', 10) || 0;
+    if (last && Date.now() - last < 3600000) return false;
+    return true;
+  }
+  function showInstallCard(){
+    if (!canShowInstallCard()) return;
+    var chat = document.getElementById('chat');
+    if (!chat || document.getElementById('gInstallCard')) return;
+    var c = document.createElement('div');
+    c.id = 'gInstallCard';
+    c.style.cssText = 'position:relative;margin:12px auto;width:92%;max-width:520px;box-sizing:border-box;padding:16px;border:1px solid #2d1b69;border-radius:18px;background:#14142a;color:#e5e7eb;';
+    c.innerHTML = "<button id='gInstX' aria-label='Fermer' style='position:absolute;top:10px;right:14px;background:none;border:none;color:#9ca3af;font-size:20px;cursor:pointer;'>✕</button>"
+      + "<div style='font-size:26px;'>📲</div>"
+      + "<div style='font-weight:700;font-size:17px;margin:6px 0;color:#fff;'>Installez Guidéon IA</div>"
+      + "<div style='color:#9ca3af;font-size:14px;margin-bottom:12px;line-height:1.4;'>Ajoutez Guidéon à votre écran d'accueil pour y accéder en un geste, comme une vraie application.</div>"
+      + "<button id='gInstGo' style='width:100%;padding:12px;border:1px solid #4c1d95;border-radius:12px;background:none;color:#60a5fa;font-size:16px;cursor:pointer;'>Installer</button>";
+    var ty = document.getElementById('ty');
+    if (ty && ty.parentNode) ty.parentNode.insertBefore(c, ty); else chat.appendChild(c);
+    localStorage.setItem('gInstallCardCount', String((parseInt(localStorage.getItem('gInstallCardCount') || '0', 10) || 0) + 1));
+    localStorage.setItem('gInstallCardLast', String(Date.now()));
+    document.getElementById('gInstX').onclick = function(){ c.remove(); };
+    document.getElementById('gInstGo').onclick = async function(){
+      if (!deferred) { c.remove(); return; }
+      deferred.prompt();
+      try { await deferred.userChoice; } catch(e) {}
+      deferred = null;
+      c.remove();
+    };
+  }
+  var origSm = window.sm;
+  if (typeof origSm === 'function') {
+    window.sm = function(){ var r = origSm.apply(this, arguments); setTimeout(showInstallCard, 600); return r; };
+  }
+})();
+</script>
+<script>
+(function(){
+  var deferred = null;
+  function btn(){ return document.getElementById('gInstallPromptBtn'); }
+  function setInstalled(){
+    var b = btn();
+    if (b) { b.textContent = '✅ Application installée'; b.disabled = true; b.style.opacity = '0.6'; b.style.cursor = 'default'; }
+  }
+  function resetBtn(){
+    var b = btn();
+    if (b) { b.textContent = '📲 Installer Guidéon IA'; b.disabled = false; b.style.opacity = '1'; b.style.cursor = 'pointer'; }
+  }
+  function refreshBtnState(){
+    if (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) setInstalled();
+    else resetBtn();
+  }
+  window.addEventListener('beforeinstallprompt', function(e){ e.preventDefault(); deferred = e; });
+  window.addEventListener('appinstalled', function(){ deferred = null; setInstalled(); });
+  window.gTriggerInstall = async function(){
+    if (!deferred) { alert("Vous avez probablement déjà installé Guidéon IA sur cet appareil : Chrome ne propose l'installation que si l'application n'est pas encore présente.\n\nVérifiez vos applications installées. Si vous ne la trouvez pas, essayez le menu ⋮ de Chrome → « Installer l'application »."); return; }
+    deferred.prompt();
+    try { await deferred.userChoice; } catch(e) {}
+    deferred = null;
+  };
+  refreshBtnState();
+  setTimeout(refreshBtnState, 1500);
+})();
+</script>
+<script>
+(function(){
+  var timer = null;
+  function ui(){ return document.getElementById('ui'); }
+  function sendBtn(){ return document.querySelector('button.sb') || document.querySelector('button[onclick="sm()"]'); }
+  window.gClearQuotaBanner = function(){
+    var b = document.getElementById('gQuotaBanner');
+    if (b) b.remove();
+    var i = ui(); if (i) i.disabled = false;
+    var s = sendBtn(); if (s) s.disabled = false;
+    if (timer) { clearInterval(timer); timer = null; }
+  };
+  window.gShowQuotaBanner = function(resetTime, resetAtISO){
+    window.gClearQuotaBanner();
+    var wrap = document.querySelector('.input-area') || (ui() && ui().closest('div') && ui().closest('div').parentElement) || document.body;
+    var b = document.createElement('div');
+    b.id = 'gQuotaBanner';
+    b.style.cssText = 'margin:8px 10px;padding:12px 14px;border-radius:14px;background:#2d1b3d;border:1px solid #a78bfa;color:#e9d5ff;font-size:14px;display:flex;justify-content:space-between;align-items:center;gap:10px;';
+    var txt = document.createElement('div');
+    txt.innerHTML = '⏳ <strong>Limite atteinte</strong><br><span id="gQuotaResetLabel" style="font-size:12px;color:#c4b5fd;">Réinitialisation à ' + (resetTime || 'plus tard') + '</span>';
+    b.appendChild(txt);
+    var i = ui(); if (i && i.parentNode) i.parentNode.insertBefore(b, i); else document.body.appendChild(b);
+    if (i) i.disabled = true;
+    var s = sendBtn(); if (s) s.disabled = true;
+    if (resetAtISO) {
+      var target = new Date(resetAtISO).getTime();
+      timer = setInterval(function(){
+        if (Date.now() >= target) { window.gClearQuotaBanner(); return; }
+      }, 15000);
+    }
   };
 })();
 </script>

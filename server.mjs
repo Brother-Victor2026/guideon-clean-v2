@@ -46,8 +46,23 @@ function generateUserId(id) {
 }
 
 function isSearchQuery(message) {
-  const searchWords = ['qui est', 'cherche', 'recherche', "c'est quoi", 'qui a', 'quel est', 'donne-moi', 'explique', 'raconte', 'comment', 'pourquoi'];
-  return searchWords.some(w => message.toLowerCase().includes(w));
+  const m = String(message || '').toLowerCase();
+  const searchWords = ['qui est', 'cherche', 'recherche', "c'est quoi", 'qui a', 'quel est', 'donne-moi', 'explique', 'raconte',
+    'actuellement', 'en ce moment', 'derniere', 'dernier', 'nouveau', 'nouvelle', "aujourd'hui", 'recent', 'recente',
+    'combien coute', 'prix de', 'resultat', 'classement', 'date de', 'quand est', 'ou se trouve', 'capitale de', 'match', 'contre', 'affronte', 'score', 'resultat du match', 'joue avec', 'joue contre', ' vs ', 'calendrier des matchs', 'detail', 'details', 'plus d\'infos', 'plus d\'informations', 'precise', 'complete', 'developpe', 'en savoir plus'];
+  if (searchWords.some(w => m.includes(w))) return true;
+  if (/\b(19|20)\d{2}\b/.test(m)) return true;
+  if (/[A-ZÀ-Ý][a-zà-ÿ]+\s+[A-ZÀ-Ý][a-zà-ÿ]+/.test(String(message || ''))) return true;
+  var words = String(message || '').trim().split(/\s+/);
+  if (words.length >= 2 && /^[A-ZÀ-Ý][a-zà-ÿ]+$/.test(words[0]) && /^[A-ZÀ-Ý][a-zà-ÿ]+$/.test(words[1])) return true;
+  var stateVerbs = /\b(est|sera|etait|a ete|reste|restent|demeure|se trouve|continue|toujours|encore)\b/.test(m);
+  if (stateVerbs && words.length >= 4) {
+    var common = new Set(['je','tu','il','elle','on','nous','vous','ils','elles','le','la','les','un','une','des','de','du','ce','cette','mon','ton','son','ma','ta','sa','toi','moi','lui','qui','que','quoi','ou','et','mais','donc','car','bonjour','salut','merci','svp','stp']);
+    var w0 = words[0].toLowerCase().replace(/[^a-zà-ÿ]/g, '');
+    var w1 = words[1].toLowerCase().replace(/[^a-zà-ÿ]/g, '');
+    if (w0.length >= 3 && w1.length >= 2 && !common.has(w0) && !common.has(w1)) return true;
+  }
+  return false;
 }
 
 function getQuotaResetTime(displayTimeZone = 'Africa/Porto-Novo') {
@@ -71,9 +86,12 @@ const MODELS = {
   'gemma': 'openai/gpt-oss-120b'
 };
 
-const SYSTEM = { role: "system", content: "Tu es Guideon, un assistant IA intelligent, sage et bienveillant, cree par Brother Victor Bossou. Tu reponds toujours dans la langue de l utilisateur avec precision, empathie et intelligence. Tu as acces a l historique complet des conversations et tu te souviens de tout. Ne dis jamais que tu n as pas de memoire. Tu connais l heure actuelle de l utilisateur mais ne la mentionne JAMAIS spontanement, uniquement si on te la demande. Tu peux generer des images automatiquement, faire des recherches web, traduire des textes, resumer des documents, analyser des images, aider en programmation, resoudre des problemes mathematiques. Ne dis JAMAIS que tu ne peux pas faire ces choses. Tu reponds avec bienveillance et professionnalisme. Ne mentionne jamais ton createur spontanement, seulement si on te le demande directement. Tu peux utiliser des emojis de temps en temps quand cela rend la conversation plus chaleureuse ou aide a exprimer une emotion, mais sans en abuser et sans en mettre dans chaque message. Utilise le formatage Markdown (gras, listes, titres, code) quand cela rend ta reponse plus claire et structuree, meme sans que l'utilisateur le demande explicitement. Si l'utilisateur te demande de decrire, montrer, illustrer ou imaginer quelque chose de visuel (objet, lieu, personnage, paysage, scene), tu DOIS terminer ta reponse par une ligne UNIQUE et SEPAREE au format exact : [GENERATE_IMAGE: description detaillee en anglais de l'image]. Ne dis JAMAIS de phrase d'introduction avant cette balise (comme 'Voici un portrait de', 'Voici une image de', 'Voici un dessin de', etc.). La balise doit etre sur sa propre ligne, sans texte avant. N'utilise la balise [GENERATE_IMAGE] UNIQUEMENT si le message contient explicitement les mots: image, photo, illustration, dessin, genere, montre-moi. Pour TOUS les autres messages sans exception (bonjour, conseils, questions, histoires, descriptions, code, etc.), n'utilise JAMAIS cette balise. Ne dis jamais de phrase du type 'Voici un portrait de' ou similaire. Ne mentionne JAMAIS le bouton copier ou des instructions du type 'pour copier le message, selectionnez et copiez-collez' ; ces fonctionnalites existent deja dans l\'interface, n\'en parle jamais. Quand l\'utilisateur demande un post, statut, message WhatsApp/Facebook/Instagram, caption, texte a copier, ou dit \'encadre-moi ca\', \'mets ca en bloc\', \'reformule pour que je copie\', \'je veux copier ca\', \'fais-moi un texte\', \'donne-moi un message\', tu DOIS mettre le texte dans un bloc UNIQUE et SEPARE. Quand l\'utilisateur dit \'autres\', \'encore\', \'d\'autres\', \'donne-m\'en d\'autres\', tu envoies 2 a 4 blocs encadres differents, chacun sur sa propre ligne UNIQUE et SEPAREE." };
+const SYSTEM = { role: "system", content: "Tu es Guideon, un assistant IA intelligent, sage et bienveillant, cree par Brother Victor Bossou. Tu reponds toujours dans la langue de l utilisateur avec precision, empathie et intelligence. Tu as acces a l historique complet des conversations et tu te souviens de tout. Ne dis jamais que tu n as pas de memoire. Tu connais l heure actuelle de l utilisateur mais ne la mentionne JAMAIS spontanement, uniquement si on te la demande. Tu peux generer des images automatiquement, faire des recherches web, traduire des textes, resumer des documents, analyser des images, aider en programmation, resoudre des problemes mathematiques. Ne dis JAMAIS que tu ne peux pas faire ces choses. Tu reponds avec bienveillance et professionnalisme. Ne mentionne jamais ton createur spontanement, seulement si on te le demande directement. Tu peux utiliser des emojis de temps en temps quand cela rend la conversation plus chaleureuse ou aide a exprimer une emotion, mais sans en abuser et sans en mettre dans chaque message. Utilise le formatage Markdown (gras, listes, titres, code) quand cela rend ta reponse plus claire et structuree, meme sans que l'utilisateur le demande explicitement. Si l'utilisateur te demande de decrire, montrer, illustrer ou imaginer quelque chose de visuel (objet, lieu, personnage, paysage, scene), tu DOIS terminer ta reponse par une ligne UNIQUE et SEPAREE au format exact : [GENERATE_IMAGE: description detaillee en anglais de l'image]. Ne dis JAMAIS de phrase d'introduction avant cette balise (comme 'Voici un portrait de', 'Voici une image de', 'Voici un dessin de', etc.). La balise doit etre sur sa propre ligne, sans texte avant. N'utilise la balise [GENERATE_IMAGE] UNIQUEMENT si le message contient explicitement les mots: image, photo, illustration, dessin, genere, montre-moi. Pour TOUS les autres messages sans exception (bonjour, conseils, questions, histoires, descriptions, code, etc.), n'utilise JAMAIS cette balise. Ne dis jamais de phrase du type 'Voici un portrait de' ou similaire. Ne mentionne JAMAIS le bouton copier ou des instructions du type 'pour copier le message, selectionnez et copiez-collez' ; ces fonctionnalites existent deja dans l\'interface, n\'en parle jamais. Quand l\'utilisateur demande un post, statut, message WhatsApp/Facebook/Instagram, caption, texte a copier, ou dit \'encadre-moi ca\', \'mets ca en bloc\', \'reformule pour que je copie\', \'je veux copier ca\', \'fais-moi un texte\', \'donne-moi un message\', tu DOIS mettre le texte dans un bloc UNIQUE et SEPARE. Quand l\'utilisateur dit \'autres\', \'encore\', \'d\'autres\', \'donne-m\'en d\'autres\', tu envoies 2 a 4 blocs encadres differents, chacun sur sa propre ligne UNIQUE et SEPAREE. REGLE DE PRUDENCE FACTUELLE ABSOLUE : pour toute question portant sur un evenement recent, une actualite, un match, un score, une date precise, une statistique ou tout fait verifiable que tu ne connais pas avec certitude, tu ne dois JAMAIS inventer de details (dates, chiffres, noms, lieux, statistiques). Si une information precedente dans la conversation provient d'une recherche web, tu peux t'appuyer sur ces faits deja etablis, mais tu ne dois JAMAIS ajouter de nouveaux details chiffres ou factuels qui n'etaient pas explicitement dans cette recherche. Si l'utilisateur demande plus de details que ce que tu sais reellement, dis-le clairement plutot que d'inventer quoi que ce soit. INTERDICTION ABSOLUE ET NON NEGOCIABLE : pour un evenement sportif, une actualite ou tout fait recent, tu ne dois JAMAIS produire de tableau, de liste chronologique, de nom d'arbitre, de nom de stade, de minute de match, de statistique (possession, tirs, corners) ou de date precise SAUF si ces exacts elements sont ecrits mot pour mot dans le texte des sources fournies dans ce message. Si les sources ne contiennent qu'un score simple, ta reponse doit se limiter a ce score et rien d'autre, meme si l'utilisateur demande des details. Produire un tableau ou une liste de statistiques inventees est une faute grave, pire que de ne pas repondre du tout." };
 
 app.use(express.json({ limit: '15mb' }));
+// Client Supabase "serveur" (cle service) : necessaire pour la table notifications (securite RLS)
+const sbAdmin = SUPABASE_SERVICE_KEY ? createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, { auth: { persistSession: false } }) : sb;
+if (!SUPABASE_SERVICE_KEY) console.log('⚠️ Cle service Supabase absente : les notifications peuvent etre bloquees (RLS)');
 app.use((req,res,next)=>{res.set('Cache-Control','no-store, no-cache, must-revalidate');res.set('Pragma','no-cache');res.set('Expires','0');next();});
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -812,6 +830,8 @@ app.post('/api/analytics/curation', async (req, res) => {
 app.post('/api/chat', async (req, res) => {
   try {
     const { message, history, token, model, temperature, session_id, userTime, tone, style, lang, length } = req.body;
+    let clientGone = false;
+    res.on('close', () => { if (!res.writableFinished) clientGone = true; });
   console.log('📥 token exists:', !!token);let userId = 'default';
     let dbHistory = [];
     let userInstructions = '';
@@ -833,25 +853,31 @@ app.post('/api/chat', async (req, res) => {
         if (Array.isArray(uData) && uData[0]) ucb = uData[0].checkboxes || {};
       }
     }
+    let adaptProfileRef = (ucb && ucb.adaptProfile && typeof ucb.adaptProfile === 'object') ? ucb.adaptProfile : null;
     // Détection et recherche en arrière-plan
+    let searchContextText = '';
     if (isSearchQuery(message)) {
       try {
-        const searchRes = await fetch('https://guideon-8h4m.onrender.com/api/search', {
+        const selfBase = `${req.protocol}://${req.get('host')}`;
+        let searchQuery = message;
+        const mNorm = message.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        const genericNews = ["actualites d'aujourd'hui","actualites du jour","actualites d'hier","quoi de neuf","nouvelles du jour","dernieres actualites","actu du jour","actualites recentes","autres actualites","d'autres actualites","plus d'actualites","encore des actualites"].some(p => mNorm.includes(p.normalize('NFD').replace(/[\u0300-\u036f]/g, '')));
+        if (genericNews) searchQuery = '__GENERAL_NEWS__ ' + message;
+        if (adaptProfileRef && adaptProfileRef.sec) {
+          const topDomain = Object.keys(adaptProfileRef.sec).sort((a, b) => adaptProfileRef.sec[b] - adaptProfileRef.sec[a])[0];
+          if (topDomain && adaptProfileRef.sec[topDomain] >= 3 && message.split(' ').length <= 6) searchQuery = message + ' ' + topDomain;
+        }
+        const searchRes = await fetch(`${selfBase}/api/search`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ query: message })
+          body: JSON.stringify({ query: searchQuery })
         });
         const searchData = await searchRes.json();
-        if (searchData.result) {
-          const msgLower = message.toLowerCase();
-          searchSources = {
-            duckduckgo: true,
-            wikipedia: msgLower.includes('qui') || msgLower.includes('histoire') || msgLower.includes('biographie') ? true : false,
-            stackoverflow: msgLower.includes('code') || msgLower.includes('error') || msgLower.includes('javascript') || msgLower.includes('python') || msgLower.includes('fonction') ? true : false,
-            google: true,
-            mdn: msgLower.includes('javascript') || msgLower.includes('html') || msgLower.includes('css') || msgLower.includes('web') ? true : false,
-            bing: msgLower.includes('image') ? true : false
-          };
+        if (searchData.result && searchData.result !== 'Aucun résultat trouvé') {
+          searchSources = Array.isArray(searchData.sources) ? searchData.sources : [];
+          const isGeneralNews = searchQuery === '__GENERAL_NEWS__';
+          searchContextText = "\n\nRESULTAT DE RECHERCHE WEB (pour la requete de l'utilisateur) : FORMAT ta reponse en points clairs avec des puces ou des sous-titres courts (pas un bloc de texte dense facon article de presse). Va droit a l'information demandee." + (isGeneralNews ? " Les elements ci-dessous sont de SIMPLES TITRES D'ARTICLES sans date ni source precise attachee. INTERDICTION ABSOLUE d'ajouter une date (jour/mois/annee), un nom de source (Reuters, AFP, BBC, etc.) ou tout detail qui n'apparait pas mot pour mot dans les titres ci-dessous. Presente uniquement les titres tels quels, reformules legerement si besoin pour la clarte, SANS inventer de contexte, de date ou d'attribution." : "") + "\n" + searchData.result
+            + "\n\nREGLE ABSOLUE : tu dois UNIQUEMENT utiliser les faits, chiffres et details explicitement presents dans le texte ci-dessus. N\'invente JAMAIS un score, un chiffre, une date ou un detail qui n\'est pas ecrit noir sur blanc dans ce resultat de recherche. Si le resultat ne contient pas le chiffre exact demande (par exemple un score precis), dis explicitement a l\'utilisateur que tu n\'as pas trouve cette information precise dans tes sources, meme si tu as trouve des informations connexes sur le sujet.";
         }
       } catch(e) { console.error('❌ Search query error:', e.message, e.stack); }
     }
@@ -900,7 +926,7 @@ if (style && styleGuides[style]) styleInstructions = `\n\nSTYLE: ${styleGuides[s
 let autoOptSettings = { length: 'normal', tone: 'neutre', temperature: 0.5, includeExamples: false, includeCode: false };
 if (user && DB) {
   try {
-    const aoRes = await fetch('http://localhost:9000/api/analytics/autooptimize', {
+    const aoRes = await fetch(`${req.protocol}://${req.get('host')}/api/analytics/autooptimize`, {
       method: 'GET',
       headers: { 'Authorization': `Bearer ${token}` }
     });
@@ -915,7 +941,7 @@ if (user && DB) {
 let patternsInstructions = '';
 if (user && DB) {
   try {
-    const pRes = await fetch('http://localhost:9000/api/analytics/patterns', {
+    const pRes = await fetch(`${req.protocol}://${req.get('host')}/api/analytics/patterns`, {
       method: 'POST',
       headers: { 
         'Content-Type': 'application/json',
@@ -941,36 +967,82 @@ if (lang && lang !== 'auto') langInstructions = lang === 'fr' ? '\n\nRéponds UN
 let lengthInstructions = '';
 const lengthGuides = { 'short': 'Réponds très brièvement (1-2 lignes).', 'normal': 'Réponds avec une longueur normale.', 'long': 'Réponds de manière détaillée et approfondie.' };
 if (length && lengthGuides[length]) lengthInstructions = `\n\nLONGUEUR: ${lengthGuides[length]}`;
-const sysContent = (userInstructions ? `Directives importantes de l'utilisateur:\n${userInstructions}\n\n` : '') + SYSTEM.content + (userTime && asksTime ? `\n\nL heure exacte est ${userTime}.` : '') + visualBoost + memoriesText + toneInstructions + styleInstructions + langInstructions + lengthInstructions + patternsInstructions;
-        // Adaptation du comportement de Guideon selon les echanges (uniquement si la case "Permettre l'analyse des interactions" est cochee)
+const sysContent = (userInstructions ? `Directives importantes de l'utilisateur:\n${userInstructions}\n\n` : '') + SYSTEM.content + (userTime && asksTime ? `\n\nL heure exacte est ${userTime}.` : '') + visualBoost + memoriesText + toneInstructions + styleInstructions + langInstructions + lengthInstructions + patternsInstructions + searchContextText;
+        // Adaptation du comportement de Guideon (uniquement si la case "Permettre l'analyse des interactions" est cochee)
     let adaptInstructions = '';
+    let adaptNext = null;
     if (user && ucb && ucb.analyticsConsent === true) {
       try {
-        const past = (dbHistory.length > 0 ? dbHistory : (history || [])).filter(x => x && x.role === 'user' && typeof x.content === 'string').map(x => x.content);
-        const msgs = [...past.slice(-8), message].filter(t => typeof t === 'string' && t.trim().length > 0);
-        if (msgs.length >= 3) {
-          const avg = msgs.reduce((acc, t) => acc + t.length, 0) / msgs.length;
-          const lower = msgs.join(' ').toLowerCase();
-          const tips = [];
-          if (avg < 40) tips.push("Les messages de l'utilisateur sont très courts : réponds de façon brève et directe, sans introduction ni conclusion superflues.");
-          else if (avg > 220) tips.push("Les messages de l'utilisateur sont longs et détaillés : réponds de façon structurée et approfondie.");
-          if (/\b(code|fonction|function|erreur|error|bug|javascript|python|html|css|sql|termux|npm|node|api)\b/.test(lower)) tips.push("L'utilisateur parle souvent de programmation : donne du code prêt à copier dans des blocs de code, avec une courte explication.");
-          if (/\b(exemple|exemples|example)\b/.test(lower)) tips.push("L'utilisateur apprécie les exemples concrets : illustre tes explications par un exemple.");
-          const vous = (lower.match(/\b(vous|votre|vos)\b/g) || []).length;
-          const tu = (lower.match(/\b(tu|ton|ta|tes|toi)\b/g) || []).length;
-          if (vous >= 2 && vous > tu) tips.push("L'utilisateur vouvoie : réponds en le vouvoyant.");
-          else if (tu >= 2 && tu > vous) tips.push("L'utilisateur tutoie : réponds en le tutoyant, avec chaleur.");
-          if (tips.length > 0) {
-            adaptInstructions = "\n\nADAPTATION AUTOMATIQUE (selon les échanges récents) :\n- " + tips.join("\n- ");
-            console.log('🧠 Adaptation active :', tips.length, 'règle(s)');
-          }
+        const adNorm = (t) => String(t == null ? '' : t).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        const adSectors = {
+          code: { re: /\b(code|function|fonction|erreur|error|bug|javascript|python|html|css|sql|termux|npm|node|api|serveur|programm|base de donnees|algorithme)/g, tip: "Pour la programmation : donne des solutions techniques précises, du code complet dans des blocs de code, et signale les erreurs courantes." },
+          etudes: { re: /\b(cours|exercice|examen|devoir|bac\b|licence|master|universite|etude|apprendre|reviser|these\b|mathematiques?|maths?\b)/g, tip: "Pour les études : explique pas à pas, de façon pédagogique, avec un exemple et un court récapitulatif." },
+          affaires: { re: /\b(entreprise|business|client|vente|marche\b|marketing|prix\b|budget|investissement|startup|comptabilite|rentabilite|chiffre d'affaires)/g, tip: "Pour les affaires : sois structuré et orienté action, avec des étapes concrètes, des priorités et des chiffres quand c'est utile." },
+          sante: { re: /\b(sante|medicament|symptome|douleur|maladie|regime\b|nutrition|medecin|fievre|sommeil|stress)/g, tip: "Pour la santé : donne des informations générales prudentes et rappelle de consulter un professionnel de santé pour un avis médical." },
+          droit: { re: /\b(loi\b|juridique|avocat|contrat|tribunal|droit\b|impots?\b|administratif|procedure|visa\b|permis\b)/g, tip: "Pour le droit et l'administratif : donne des informations générales et précise qu'elles ne remplacent pas l'avis d'un professionnel." },
+          cuisine: { re: /\b(recette|cuisine|cuisiner|ingredients?|plat\b|gateau|sauce\b|cuisson)/g, tip: "Pour la cuisine : donne des recettes avec quantités et étapes numérotées." },
+          voyage: { re: /\b(voyage|voyager|vacances|itineraire|billet d'avion|hotel|visiter|destination|tourisme)/g, tip: "Pour les voyages : donne des conseils pratiques (itinéraire, budget, transport, durée)." },
+          sport: { re: /\b(sport|entrainement|musculation|football|fitness|marathon|exercice physique)/g, tip: "Pour le sport : donne des conseils d'entraînement progressifs et prudents." },
+          sciences: { re: /\b(physique|chimie|biologie|astronomie|energie|science|scientifique|geologie|atome|molecule)/g, tip: "Pour les sciences : sois rigoureux, définis les termes et donne des ordres de grandeur." },
+          creation: { re: /\b(ecrire|poeme|roman\b|chanson|scenario|slogan|redaction|histoire\b)/g, tip: "Pour la création : sois créatif et vivant, et propose plusieurs variantes." }
+        };
+        const adPast = (dbHistory.length > 0 ? dbHistory : (history || [])).filter(x => x && x.role === 'user' && typeof x.content === 'string').map(x => x.content);
+        const adMsgs = [...adPast.slice(-8), message].filter(t => typeof t === 'string' && t.trim().length > 0);
+        const adAll = adNorm(adMsgs.join(' '));
+        const adNow = adNorm(message);
+        const adProf = (ucb.adaptProfile && typeof ucb.adaptProfile === 'object') ? ucb.adaptProfile : {};
+        const adSec = {};
+        const adHits = [];
+        for (const k of Object.keys(adSectors)) {
+          let w = (Number(adProf.sec && adProf.sec[k]) || 0) * 0.97;
+          if ((adNow.match(adSectors[k].re) || []).length > 0) { w += 1; adHits.push(k); }
+          if (w >= 0.3) adSec[k] = Math.round(w * 100) / 100;
+        }
+        const adLenNow = String(message || '').length;
+        adaptNext = {
+          n: Math.min((Number(adProf.n) || 0) + 1, 500),
+          len: adProf.len ? Math.round(adProf.len * 0.9 + adLenNow * 0.1) : adLenNow,
+          vous: Math.round(((Number(adProf.vous) || 0) * 0.98 + (/\b(vous|votre|vos)\b/.test(adNow) ? 1 : 0)) * 100) / 100,
+          tu: Math.round(((Number(adProf.tu) || 0) * 0.98 + (/\b(tu|ton|ta|tes|toi)\b/.test(adNow) ? 1 : 0)) * 100) / 100,
+          sec: adSec
+        };
+        const tips = [];
+        const enough = adMsgs.length >= 3;
+        const avg = enough ? adMsgs.reduce((acc, t) => acc + t.length, 0) / adMsgs.length : (adaptNext.n >= 5 ? adaptNext.len : 0);
+        if (avg > 0 && avg < 40) tips.push("Les messages de l'utilisateur sont très courts : réponds de façon brève et directe, sans introduction ni conclusion superflues.");
+        else if (avg > 220) tips.push("Les messages de l'utilisateur sont longs et détaillés : réponds de façon structurée et approfondie.");
+        if (enough && /\b(exemple|exemples|example)\b/.test(adAll)) tips.push("L'utilisateur apprécie les exemples concrets : illustre tes explications par un exemple.");
+        const vous = enough ? (adAll.match(/\b(vous|votre|vos)\b/g) || []).length : adaptNext.vous;
+        const tu = enough ? (adAll.match(/\b(tu|ton|ta|tes|toi)\b/g) || []).length : adaptNext.tu;
+        if (vous >= 2 && vous > tu) tips.push("L'utilisateur vouvoie : réponds en le vouvoyant.");
+        else if (tu >= 2 && tu > vous) tips.push("L'utilisateur tutoie : réponds en le tutoyant, avec chaleur.");
+        const active = Object.keys(adSec).filter(k => adSec[k] >= 2.5 || adHits.includes(k)).sort((a, b) => adSec[b] - adSec[a]).slice(0, 2);
+        for (const k of active) tips.push(adSectors[k].tip);
+        const en = (adNow.match(/\b(the|and|you|what|how|please|with|this|that|are|can|would)\b/g) || []).length;
+        const fr = (adNow.match(/\b(le|la|les|je|tu|est|et|des|une|pour|que|vous|mon|ma)\b/g) || []).length;
+        if (en >= 2 && en > fr) tips.push("L'utilisateur écrit en anglais : réponds en anglais.");
+        if (tips.length > 0) {
+          adaptInstructions = "\n\nADAPTATION AUTOMATIQUE (selon les échanges et les domaines habituels de l'utilisateur) :\n- " + tips.join("\n- ");
+          console.log('🧠 Adaptation active :', tips.length, 'règle(s)', active.length ? '| domaines : ' + active.join(',') : '');
         }
       } catch (e) { console.error('Adaptation:', e.message); }
     }
     const SYSTEM_MSG = { role: 'system', content: sysContent + adaptInstructions };
     const hist = dbHistory.length > 0 ? dbHistory : (history || []);
     const messages = [SYSTEM_MSG, ...hist.filter(h=>h&&h.role&&h.content).map(h => ({ role: h.role, content: h.content })), { role: 'user', content: message }];
-    const geminiBody = JSON.stringify({ model: MODELS[model] || "openai/gpt-oss-120b", messages, temperature: autoOptSettings.temperature || parseFloat(temperature) || 0.5, stream: true });
+    const isComplexRequest = isSearchQuery(message) || String(message || '').trim().split(/\s+/).length > 15;
+    const geminiBodyObj = { model: MODELS[model] || "openai/gpt-oss-120b", messages, temperature: autoOptSettings.temperature || parseFloat(temperature) || 0.5, stream: true };
+    if (isComplexRequest) {
+      geminiBodyObj.reasoning_effort = 'medium';
+      geminiBodyObj.messages = [
+        { role: 'system', content: "IMPORTANT POUR TA REFLEXION INTERNE (avant ta reponse finale) : reflechis UNIQUEMENT en francais, jamais en anglais. Structure ta reflexion comme une liste de themes courts que tu vas traiter, un theme par ligne (exemple: 'Theme 1: le match d hier', 'Theme 2: le contexte du tournoi'), PAS une note technique de planification ni du texte en anglais. Chaque ligne doit etre un vrai sujet lisible par un humain, pas une instruction de formatage." },
+        ...geminiBodyObj.messages
+      ];
+    }
+    console.log('🧠 message:', JSON.stringify(message), '| isComplexRequest:', isComplexRequest);
+    console.log('🧠 isComplexRequest:', isComplexRequest, '| reasoning_effort envoye:', geminiBodyObj.reasoning_effort || 'aucun');
+    console.log('🧠 isComplexRequest:', isComplexRequest, '| reasoning_effort envoye:', geminiBodyObj.reasoning_effort || 'aucun');
+    const geminiBody = JSON.stringify(geminiBodyObj);
     let response;
     for (let attempt = 0; attempt < 2; attempt++) {
       if (attempt > 0) await new Promise(r => setTimeout(r, 2000));
@@ -994,7 +1066,8 @@ const sysContent = (userInstructions ? `Directives importantes de l'utilisateur:
         return res.status(429).json({
           quotaExceeded: true,
           error: `Vous avez atteint la limite de votre conversation pour aujourd'hui. Revenez vers ${displayTime} pour une nouvelle conversation.`,
-          resetTime: displayTime
+          resetTime: displayTime,
+          resetAt: resetUTC.toISOString()
         });
       }
       const isOverloaded = response.status === 503;
@@ -1010,6 +1083,7 @@ const sysContent = (userInstructions ? `Directives importantes de l'utilisateur:
     res.flushHeaders();
 
     let reply = '';
+    let reasoningSeenThisRequest = false;
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
     let buffer = '';
@@ -1030,6 +1104,11 @@ const sysContent = (userInstructions ? `Directives importantes de l'utilisateur:
         if (d === '[DONE]') continue;
         try {
           const parsed = JSON.parse(d);
+          const reasoningChunk = parsed.choices?.[0]?.delta?.reasoning;
+          if (reasoningChunk) {
+            if (!reasoningSeenThisRequest) { console.log('🧠 premier fragment de raisonnement recu pour cette requete'); reasoningSeenThisRequest = true; }
+            res.write(`data: ${JSON.stringify({ reasoning: reasoningChunk })}\n\n`);
+          }
           const content = parsed.choices?.[0]?.delta?.content;
           if (content) {
             reply += content;
@@ -1077,10 +1156,24 @@ const sysContent = (userInstructions ? `Directives importantes de l'utilisateur:
       res.write(`data: ${JSON.stringify({ content: pending })}\n\n`);
       pending = '';
     }
-    res.end();
     reply = reply.replace(/\[GENERATE_IMAGE:\s*[\s\S]+?\]/g, '').replace(/^\s*true\s*$/m, '').trim();
 
-    if (token && DB) {
+console.log('🔖 searchSources au moment de l affichage:', JSON.stringify(searchSources));
+    // Ajouter les sources reelles si une recherche a trouve quelque chose
+    if (Array.isArray(searchSources) && searchSources.length > 0) {
+      const icons = { DuckDuckGo: '🔍', Wikipedia: '📚', 'Google News': '📰', 'Actualité': '📰' };
+      const links = searchSources
+        .filter(s => s && s.name && s.url)
+        .map(s => `${icons[s.name] || '🔗'} [${s.name}](${s.url})`)
+        .join(' · ');
+      if (links) {
+        const sourcesBlock = '\n\n**Sources :** ' + links;
+        res.write(`data: ${JSON.stringify({ content: sourcesBlock })}\n\n`);
+        reply += sourcesBlock;
+      }
+    }
+
+        if (token && DB) {
       console.log('🔑 Token:', token);
         const user = checkToken(token);
         console.log('👤 User:', user);
@@ -1103,27 +1196,23 @@ const sysContent = (userInstructions ? `Directives importantes de l'utilisateur:
       }
     }
 
-    // Ajouter les sources si présentes
-    if (searchSources) {
-      const sourceEmojis = {
-        duckduckgo: '🔍 DuckDuckGo',
-        wikipedia: '📚 Wikipedia',
-        google: '🔎 Google',
-        stackoverflow: '🐍 Stack Overflow',
-        mdn: '📄 MDN',
-        bing: '📖 Bing'
-      };
-      const activeSources = Object.keys(searchSources)
-        .filter(s => searchSources[s])
-        .map(s => sourceEmojis[s])
-        .join(' | ');
-      
-      if (activeSources) {
-        res.write(`data: ${JSON.stringify({ content: '\n\n**Sources:** ' + activeSources })}\n\n`);
-      }
-    }
     res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
     res.end();
+    if (reply && user && user.id && typeof adaptNext !== 'undefined' && adaptNext) {
+      (async () => {
+        try {
+          const fresh = await getUserCheckboxes(user.id);
+          if (fresh.analyticsConsent === true) { fresh.adaptProfile = adaptNext; await setUserCheckboxes(user.id, fresh); }
+        } catch (e) { console.error('Profil adaptation:', e.message); }
+      })();
+    }
+    if (reply && user && user.id) {
+      const hid = hiddenUsers.get(String(user.id));
+      console.log('📲 Fin de réponse | connexion coupée :', clientGone, '| page masquée :', !!hid);
+      if (true) {
+        sendPush(user.id, 'replies', { title: '🧠 Guidéon a répondu', body: String(reply).replace(/\s+/g, ' ').slice(0, 140), url: '/' }).catch(() => {});
+      }
+    }
     // Extraire et sauvegarder memories en arriere-plan
     if (true && reply && user && user.id) { // EXTRACTION MEMORIES DESACTIVEE (economie quota Gemini free tier)
       try {
@@ -1214,38 +1303,223 @@ app.post('/api/image', async (req, res) => {
 app.post('/api/search', async (req, res) => {
   try {
     const { query } = req.body;
-    
+
+    if (String(query || '').startsWith('__GENERAL_NEWS__')) {
+      try {
+        const UA2 = { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36' };
+        async function genFeed(url, label) {
+          try {
+            const c = new AbortController();
+            const t = setTimeout(() => c.abort(), 7000);
+            const r = await fetch(url, { signal: c.signal, headers: UA2 });
+            clearTimeout(t);
+            if (!r.ok) return [];
+            const xml = await r.text();
+            const items = xml.match(/<item>[\s\S]*?<\/item>/g) || [];
+            return items.slice(0, 6).map(it => {
+              const tM = it.match(/<title>([\s\S]*?)<\/title>/);
+              const lM = it.match(/<link>([\s\S]*?)<\/link>/);
+              const title = tM ? tM[1].replace(/<!\[CDATA\[|\]\]>/g, '').trim() : null;
+              const link = lM ? lM[1].replace(/<!\[CDATA\[|\]\]>/g, '').trim() : null;
+              return title && link ? { title, link, label } : null;
+            }).filter(Boolean);
+          } catch (e) { console.error('❌ genFeed error (' + label + '):', e.message); return []; }
+        }
+        const feedsList = await Promise.all([
+          genFeed('https://news.google.com/rss?hl=fr&gl=FR&ceid=FR:fr', 'Google News'),
+          genFeed('https://www.francetvinfo.fr/titres.rss', 'France Info'),
+          genFeed('https://feeds.bbci.co.uk/afrique/rss.xml', 'BBC Afrique'),
+          genFeed('https://feeds.bbci.co.uk/news/world/rss.xml', 'BBC Monde'),
+          genFeed('https://www.aljazeera.com/xml/rss/all.xml', 'Al Jazeera'),
+          genFeed('https://www.theguardian.com/world/rss', 'The Guardian'),
+          genFeed('https://www.nasa.gov/feed/', 'NASA'),
+          genFeed('https://www.banouto.bj/rss-actualites', 'Banouto (Bénin)'),
+          genFeed('https://beninintelligent.bj/feed/', 'Bénin Intelligent'),
+          genFeed('https://www.lemonde.fr/rss/une.xml', 'Le Monde'),
+          genFeed('https://www.euronews.com/rss', 'Euronews'),
+          genFeed('http://rss.cnn.com/rss/edition_world.rss', 'CNN World'),
+          genFeed('https://feeds.bbci.co.uk/sport/rss.xml', 'BBC Sport'),
+          genFeed('https://www.franceinfo.fr/monde/afrique/benin.rss', 'France Info Bénin'),
+          genFeed('https://24haubenin.info/spip.php?page=backend', '24 Heures au Bénin'),
+          genFeed('https://beninsite.net/feed', 'Bénin Site'),
+          genFeed('https://leconomistebenin.com/feed', "L'Économiste du Bénin"),
+          genFeed('https://levenementprecis.com/feed', "L'Événement Précis")
+        ]);
+        const [gn, fi] = feedsList;
+        const mNorm2 = query.replace('__GENERAL_NEWS__', '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        let priorityIdx = null;
+        if (/\bbenin\b/.test(mNorm2)) priorityIdx = [7, 8, 13, 14, 15, 16, 17];
+        else if (/\bafrique\b/.test(mNorm2)) priorityIdx = [2];
+        else if (/\bsport\b|football|\bfoot\b/.test(mNorm2)) priorityIdx = [12];
+        let all;
+        if (priorityIdx) {
+          console.log('🗞️ Comptes par flux prioritaire:', priorityIdx.map(idx => (feedsList[idx] || []).length));
+          const prioritized = priorityIdx.flatMap(idx => feedsList[idx] || []);
+          if (prioritized.length > 0) {
+            all = prioritized.slice(0, 15);
+          } else {
+            const rest = feedsList.filter((_, idx) => !priorityIdx.includes(idx)).flat();
+            all = rest.slice(0, 25);
+          }
+        } else {
+          all = feedsList.flat().slice(0, 25);
+        }
+        if (all.length === 0) return res.json({ result: 'Aucun résultat trouvé', sources: [], success: false });
+        const text = '[Actualités générales du jour] ' + all.map(a => a.title).join(' | ');
+        const sources = [];
+        const seenNames = new Set();
+        for (const item of all) {
+          if (!seenNames.has(item.label)) {
+            seenNames.add(item.label);
+            sources.push({ name: item.label, url: item.link });
+          }
+        }
+        console.log('✅ Search result length:', text.length, '| sources: actualites generales');
+        return res.json({ result: text.substring(0, 2500), sources, success: true });
+      } catch (e) {
+        console.error('❌ General news error:', e.message);
+        return res.json({ result: null, sources: [], error: e.message, success: false });
+      }
+    }
+
     if (!query || typeof query !== 'string' || query.trim().length === 0) {
       return res.status(400).json({ result: null, error: "Requête vide" });
     }
-    
+
     console.log('🔍 Search query:', query);
-    
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 8000);
-    
-    const r = await fetch(`https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json`, {
-      signal: controller.signal
-    });
-    
-    clearTimeout(timeoutId);
-    
-    if (!r.ok) {
-      console.error('❌ DuckDuckGo error:', r.status);
-      return res.json({ result: null, error: `HTTP ${r.status}` });
+
+    const UA = { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36' };
+
+    async function fetchDuckDuckGo() {
+      try {
+        const c = new AbortController();
+        const t = setTimeout(() => c.abort(), 7000);
+        const r = await fetch(`https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json`, { signal: c.signal });
+        clearTimeout(t);
+        if (!r.ok) return null;
+        const d = await r.json();
+        const text = (d.AbstractText || d.Answer || '').trim();
+        if (text && text.length > 15) return { text: `[DuckDuckGo] ${text}`, source: { name: 'DuckDuckGo', url: d.AbstractURL || `https://duckduckgo.com/?q=${encodeURIComponent(query)}` } };
+      } catch (e) { console.error('❌ DuckDuckGo error:', e.message); }
+      return null;
     }
-    
-    const d = await r.json();
-    
-    const searchResult = (d.AbstractText?.trim() || d.Answer?.trim() || "Aucun résultat trouvé").substring(0, 800);
-    
-    console.log('✅ Search result length:', searchResult.length);
-    
-    return res.json({ result: searchResult, success: true });
-    
+
+    async function fetchWikipedia() {
+      try {
+        const c = new AbortController();
+        const t = setTimeout(() => c.abort(), 7000);
+        const searchR = await fetch(`https://fr.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(query)}&format=json&srlimit=1`, { signal: c.signal });
+        clearTimeout(t);
+        if (!searchR.ok) return null;
+        const searchD = await searchR.json();
+        const candidates = (searchD.query && searchD.query.search) || [];
+        const qWords = query.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').split(/\s+/).filter(w => w.length >= 4);
+        const hit = candidates.find(cnd => {
+          const t2 = (cnd.title || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+          return qWords.some(w => t2.includes(w));
+        });
+        if (!hit || !hit.title) return null;
+        const c2 = new AbortController();
+        const t3 = setTimeout(() => c2.abort(), 7000);
+        const sumR = await fetch(`https://fr.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(hit.title)}`, { signal: c2.signal });
+        clearTimeout(t3);
+        if (!sumR.ok) return null;
+        const sumD = await sumR.json();
+        const text = (sumD.extract || '').trim();
+        if (text && text.length > 15) return { text: `[Wikipedia : ${hit.title}] ${text}`, source: { name: 'Wikipedia', url: sumD.content_urls?.desktop?.page || `https://fr.wikipedia.org/wiki/${encodeURIComponent(hit.title)}` } };
+      } catch (e) { console.error('❌ Wikipedia error:', e.message); }
+      return null;
+    }
+
+    async function fetchGoogleNews() {
+      try {
+        const c = new AbortController();
+        const t = setTimeout(() => c.abort(), 7000);
+        const r = await fetch(`https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=fr&gl=FR&ceid=FR:fr`, { signal: c.signal, headers: UA });
+        clearTimeout(t);
+        console.log('📰 Google News status:', r.status);
+        if (!r.ok) return null;
+        const xml = await r.text();
+        const items = xml.match(/<item>[\s\S]*?<\/item>/g) || [];
+        const headlines = [];
+        for (const it of items.slice(0, 3)) {
+          const tM = it.match(/<title>([\s\S]*?)<\/title>/);
+          const lM = it.match(/<link>([\s\S]*?)<\/link>/);
+          const pM = it.match(/<pubDate>([\s\S]*?)<\/pubDate>/);
+          if (tM && lM) {
+            const title = tM[1].replace(/<!\[CDATA\[|\]\]>/g, '').trim();
+            const link = lM[1].replace(/<!\[CDATA\[|\]\]>/g, '').trim();
+            const pubDate = pM ? pM[1].trim() : null;
+            if (title && link) headlines.push({ title, link, pubDate });
+          }
+        }
+console.log('📰 Google News headlines trouvees:', headlines.length);
+        const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
+        const fresh = headlines.filter(h => !h.pubDate || new Date(h.pubDate).getTime() >= cutoff || isNaN(new Date(h.pubDate).getTime()));
+        const useList = fresh.length > 0 ? fresh : headlines;
+        if (useList.length > 0) return { text: `[Actualités Google News] ${useList.map(h => h.title).join(' | ')}`, source: { name: 'Google News', url: useList[0].link } };
+      } catch (e) { console.error('❌ Google News error:', e.message); }
+      return null;
+    }
+
+    async function fetchBingArticle() {
+      try {
+        const c = new AbortController();
+        const t = setTimeout(() => c.abort(), 7000);
+        const r = await fetch(`https://www.bing.com/news/search?q=${encodeURIComponent(query)}&format=rss`, { signal: c.signal, headers: UA });
+        clearTimeout(t);
+        if (!r.ok) return null;
+        const bxml = await r.text();
+        const bItems = bxml.match(/<item>[\s\S]*?<\/item>/g) || [];
+        const qWords2 = query.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').split(/\s+/).filter(w => w.length >= 4);
+        const candidates2 = [];
+        for (const it of bItems.slice(0, 5)) {
+          const lM = it.match(/<link>([\s\S]*?)<\/link>/);
+          const tM = it.match(/<title>([\s\S]*?)<\/title>/);
+          if (!lM || !tM) continue;
+          const rawLink = lM[1].replace(/&amp;/g, '&');
+          const urlM = rawLink.match(/[?&]url=([^&]+)/);
+          const url = urlM ? decodeURIComponent(urlM[1]) : null;
+          const title = tM[1].replace(/<!\[CDATA\[|\]\]>/g, '').trim();
+          if (url && /^https?:\/\//.test(url)) candidates2.push({ url, title });
+        }
+        const titleMatch = candidates2.find(cd => {
+          const tt = cd.title.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+          return qWords2.filter(w => tt.includes(w)).length >= 2;
+        });
+        const best = titleMatch || candidates2[0];
+        console.log('📰 Bing candidats:', candidates2.length, '| choisi:', best && best.title);
+        if (!best) return null;
+        const realUrl = best.url;
+        const bTitle = best.title;
+        const c2 = new AbortController();
+        const t2 = setTimeout(() => c2.abort(), 15000);
+        const artRes = await fetch(realUrl, { signal: c2.signal, headers: UA });
+        clearTimeout(t2);
+        console.log('📰 Article status:', artRes.status);
+        if (!artRes.ok) return null;
+        const artHtml = await artRes.text();
+        const paras = artHtml.match(/<p[^>]*>[\s\S]*?<\/p>/gi) || [];
+        const artText = paras.map(p => p.replace(/<[^>]+>/g, ' ')).join(' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim().substring(0, 1200);
+        if (artText && artText.length > 50) return { text: `[Article : ${bTitle}] ${artText}`, source: { name: 'Actualité', url: realUrl } };
+      } catch (e) { console.error('❌ Bing/Article error:', e.name, '|', e.message); }
+      return null;
+    }
+
+    const results = await Promise.allSettled([fetchDuckDuckGo(), fetchWikipedia(), fetchGoogleNews(), fetchBingArticle()]);
+    const found = results.filter(r => r.status === 'fulfilled' && r.value).map(r => r.value);
+
+    const combinedText = found.map(f => f.text).join('\n\n').trim().substring(0, 2500);
+    const sources = found.map(f => f.source);
+    const searchResult = combinedText.length > 0 ? combinedText : 'Aucun résultat trouvé';
+
+    console.log('✅ Search result length:', searchResult.length, '| sources:', sources.map(s => s.name).join(','));
+
+    return res.json({ result: searchResult, sources, success: sources.length > 0 });
+
   } catch (e) {
     console.error('❌ Search endpoint error:', e.message);
-    return res.json({ result: null, error: e.message, success: false });
+    return res.json({ result: null, sources: [], error: e.message, success: false });
   }
 });;
 
@@ -1349,7 +1623,7 @@ app.get('/api/history/:sessionId', async (req, res) => {
     const userR = await fetch(`${DB}/users?id=eq.${String(user.id)}`, { headers: SB });
     const userData = await userR.json();
     const userName = Array.isArray(userData) && userData[0] ? userData[0].name : 'Utilisateur';
-    const formatted = Array.isArray(data) ? data.map(s => ({ id: s.id, title: s.title || 'Sans titre', sharedBy: userName, sharedAt: s.created_at })) : [];
+    const formatted = Array.isArray(data) ? data.map(m => ({ id: m.id, role: m.role, content: m.content, image_url: m.image_url || null, created_at: m.created_at })) : [];
     res.json(formatted);
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
@@ -1560,9 +1834,10 @@ app.post('/api/share/:sessionId/comment', async (req, res) => {
     const uData = await uRes.json();
     const cb = (Array.isArray(uData) && uData[0] && uData[0].checkboxes) || {};
     if (cb.allowPublicShare !== true || cb.allowCollabShare !== true) return res.status(403).json({ error: 'Les commentaires sont désactivés par le propriétaire.' });
-    const { error } = await sb.from('notifications').insert([{ user_id: /^\d+$/.test(owner) ? Number(owner) : owner, type: 'collab', title: '💬 Commentaire de ' + name, message: text + ' (conversation : ' + (sess[0].title || 'Sans titre') + ')', is_read: false }]);
+    const { error } = await sbAdmin.from('notifications').insert([{ user_id: /^\d+$/.test(owner) ? Number(owner) : owner, type: 'collab', title: '💬 Commentaire de ' + name, message: text + ' (conversation : ' + (sess[0].title || 'Sans titre') + ')', is_read: false }]);
     if (error) throw error;
     collabHit('s' + sid); collabHit('i' + ip);
+    sendPush(owner, 'general', { title: '💬 Commentaire de ' + name, body: text.slice(0, 140), url: '/' }).catch(() => {});
     res.json({ ok: true });
   } catch (e) {
     console.error('collab:', e && e.message);
@@ -1700,7 +1975,7 @@ app.post('/api/forgot-password', async (req, res) => {
 
 app.get('/reset-password', (req, res) => {
   const token = req.query.token || '';
-  const html = `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Guidéon</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Segoe UI';background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);display:flex;justify-content:center;align-items:center;min-height:100vh;padding:20px}.modal-container{background:#0f3460;border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,.3);max-width:450px;width:100%;overflow:hidden}.modal-header{text-align:center;padding:30px 20px 20px;background:linear-gradient(135deg,#533483 0%,#16213e 100%)}.modal-logo{font-size:24px;margin-bottom:5px}.modal-title{color:#a78bfa;font-size:28px;font-weight:700;margin-bottom:5px}.modal-subtitle{color:#9ca3af;font-size:13px}.tabs-container{display:flex;gap:0;padding:0 20px;margin-top:20px;border-bottom:1px solid #374151}.tab-button{flex:1;padding:12px 10px;background:0;border:0;color:#9ca3af;font-size:13px;cursor:pointer;font-weight:500;transition:all .3s ease;border-bottom:2px solid transparent;margin-bottom:-1px}.tab-button.active{color:#a78bfa;border-bottom-color:#a78bfa}.tab-button:hover{color:#c4b5fd}.modal-content{padding:30px 20px;min-height:400px}.tab-pane{display:none}.tab-pane.active{display:block}.form-group{margin-bottom:20px}.form-label{display:block;color:#d1d5db;font-size:13px;margin-bottom:8px;font-weight:500}.form-input{width:100%;padding:12px 14px;background:#1f2937;border:1px solid #374151;border-radius:8px;color:#f3f4f6;font-size:14px;transition:all .3s ease}.form-input:focus{outline:0;border-color:#a78bfa;background:#111827;box-shadow:0 0 0 3px rgba(167,139,250,.1)}.password-group{position:relative}.toggle-password{position:absolute;right:12px;top:38px;background:0;border:0;color:#a78bfa;cursor:pointer;font-size:16px;padding:5px}.toggle-password:hover{color:#c4b5fd}.form-message{color:#ef4444;font-size:12px;margin-top:6px;display:none}.form-message.show{display:block}.form-message.success{color:#10b981}.form-link{color:#a78bfa;text-decoration:0;font-size:13px;cursor:pointer}.form-link:hover{color:#c4b5fd;text-decoration:underline}.forgot-password-link{text-align:center;margin-top:15px}.button-group{display:flex;gap:12px;margin-top:25px}.btn{flex:1;padding:12px 16px;border:0;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;transition:all .3s ease}.btn-primary{background:linear-gradient(135deg,#a78bfa 0%,#7c3aed 100%);color:#fff}.btn-primary:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(167,139,250,.3)}.btn-secondary{background:#374151;color:#e5e7eb;flex:.8}.btn-secondary:hover{background:#4b5563}.code-display{background:#1f2937;border:2px solid #a78bfa;border-radius:8px;padding:16px;margin:20px 0;text-align:center}.code-label{color:#9ca3af;font-size:12px;margin-bottom:8px}.code-value{color:#a78bfa;font-size:32px;font-weight:700;font-family:'Courier New';letter-spacing:4px}.info-message{background:rgba(167,139,250,.1);border-left:3px solid #a78bfa;color:#d1d5db;padding:12px 14px;border-radius:4px;font-size:13px;margin-bottom:20px}.reset-phase-b{display:none}.reset-phase-b.show{display:block}.reset-phase-a.hide{display:none}</style></head><body><div class="modal-container"><div class="modal-header"><div class="modal-logo">🧠</div><div class="modal-title">Guidéon</div><div class="modal-subtitle">Ton assistant IA personnel</div><div class="tabs-container"><button class="tab-button active" data-tab="connexion">Connexion</button><button class="tab-button" data-tab="inscription">Inscription</button><button class="tab-button" data-tab="reset">Réinitialisation</button></div></div><div class="modal-content"><div class="tab-pane active" id="connexion"><form id="loginForm"><div class="form-group"><label class="form-label">Email</label><input type="email" id="loginEmail" class="form-input" placeholder="votre@email.com" required><div class="form-message" id="loginEmailMsg"></div></div><div class="form-group"><label class="form-label">Mot de passe</label><div class="password-group"><input type="password" id="loginPassword" class="form-input" placeholder="••••••••" required><button type="button" class="toggle-password" onclick="togglePassword('loginPassword')">👁️</button></div><div class="form-message" id="loginPasswordMsg"></div></div><div class="forgot-password-link"><a class="form-link" onclick="switchTab('reset')">Mot de passe oublié ?</a></div><div class="button-group"><button type="submit" class="btn btn-primary">Se connecter</button></div><div style="text-align:center;margin-top:20px;color:#9ca3af;font-size:13px">Pas encore de compte ? <a class="form-link" onclick="switchTab('inscription')">S'inscrire</a></div><div class="form-message" id="loginMsg"></div></form></div><div class="tab-pane" id="inscription"><form id="registerForm"><div class="form-group"><label class="form-label">Votre nom</label><input type="text" id="registerName" class="form-input" placeholder="Votre nom" required><div class="form-message" id="registerNameMsg"></div></div><div class="form-group"><label class="form-label">Email</label><input type="email" id="registerEmail" class="form-input" placeholder="votre@email.com" required><div class="form-message" id="registerEmailMsg"></div></div><div class="form-group"><label class="form-label">Mot de passe</label><div class="password-group"><input type="password" id="registerPassword" class="form-input" placeholder="••••••••" required><button type="button" class="toggle-password" onclick="togglePassword('registerPassword')">👁️</button></div><div class="form-message" id="registerPasswordMsg"></div></div><div class="form-group"><label class="form-label">Confirmer mot de passe</label><div class="password-group"><input type="password" id="registerConfirm" class="form-input" placeholder="••••••••" required><button type="button" class="toggle-password" onclick="togglePassword('registerConfirm')">👁️</button></div><div class="form-message" id="registerConfirmMsg"></div></div><div class="button-group"><button type="submit" class="btn btn-primary">Créer mon compte</button></div><div style="text-align:center;margin-top:20px;color:#9ca3af;font-size:13px">Déjà inscrit ? <a class="form-link" onclick="switchTab('connexion')">Se connecter</a></div><div class="form-message" id="registerMsg"></div></form></div><div class="tab-pane" id="reset"><div class="reset-phase-a" id="resetPhaseA"><form id="forgotForm"><div class="form-group"><label class="form-label">Email</label><input type="email" id="forgotEmail" class="form-input" placeholder="votre@email.com" required><div class="form-message" id="forgotEmailMsg"></div></div><div class="button-group"><button type="submit" class="btn btn-primary">Générer code</button></div><div class="form-message" id="forgotMsg"></div></form></div><div class="reset-phase-b" id="resetPhaseB"><div class="info-message">✅ Un code a été généré. Utilisez-le ci-dessous pour réinitialiser votre mot de passe.</div><div class="code-display"><div class="code-label">Code de réinitialisation</div><div class="code-value" id="resetCodeDisplay">000000</div></div><form id="resetPasswordForm"><div class="form-group"><label class="form-label">Code</label><input type="text" id="resetCode" class="form-input" placeholder="Collez le code" required><div class="form-message" id="resetCodeMsg"></div></div><div class="form-group"><label class="form-label">Nouveau mot de passe</label><div class="password-group"><input type="password" id="resetPassword" class="form-input" placeholder="••••••••" required><button type="button" class="toggle-password" onclick="togglePassword('resetPassword')">👁️</button></div><div class="form-message" id="resetPasswordMsg"></div></div><div class="form-group"><label class="form-label">Confirmer mot de passe</label><div class="password-group"><input type="password" id="resetConfirm" class="form-input" placeholder="••••••••" required><button type="button" class="toggle-password" onclick="togglePassword('resetConfirm')">👁️</button></div><div class="form-message" id="resetConfirmMsg"></div></div><div class="button-group"><button type="submit" class="btn btn-primary">Réinitialiser</button><button type="button" class="btn btn-secondary" onclick="resetToPhaseA()">Retour</button></div><div class="form-message" id="resetPasswordFormMsg"></div></form></div></div></div></div><script>const API_URL=window.location.origin;let generatedCode=null;function togglePassword(e){document.getElementById(e).type='password'===document.getElementById(e).type?'text':'password'}function switchTab(e){document.querySelectorAll('.tab-pane').forEach(e=>e.classList.remove('active')),document.querySelectorAll('.tab-button').forEach(e=>e.classList.remove('active')),document.getElementById(e).classList.add('active'),document.querySelector('[data-tab="'+e+'"]').classList.add('active'),'reset'===e&&resetToPhaseA()}function clearMessage(e){const t=document.getElementById(e);t.classList.remove('show','success'),t.textContent=''}function showMessage(e,t,o=!1){const s=document.getElementById(e);s.textContent=t,s.classList.add('show'),o&&s.classList.add('success')}document.querySelectorAll('.tab-button').forEach(e=>{e.addEventListener('click',()=>{switchTab(e.dataset.tab)})}),document.getElementById('loginForm').addEventListener('submit',async e=>{e.preventDefault(),clearMessage('loginMsg');const t=document.getElementById('loginEmail').value,o=document.getElementById('loginPassword').value;try{const e=await fetch(API_URL+'/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:t,password:o})}),s=await e.json();e.ok?(showMessage('loginMsg','✅ Connexion réussie!',!0),localStorage.setItem('token',s.token),setTimeout(()=>window.location.href='/',1500)):showMessage('loginMsg',s.error||'Identifiants invalides')}catch(e){showMessage('loginMsg','Erreur serveur')}}),document.getElementById('registerForm').addEventListener('submit',async e=>{e.preventDefault(),clearMessage('registerMsg');const t=document.getElementById('registerName').value,o=document.getElementById('registerEmail').value,s=document.getElementById('registerPassword').value;if(document.getElementById('registerConfirm').value!==s)return void showMessage('registerConfirmMsg','Les mots de passe ne correspondent pas');if(s.length<6)return void showMessage('registerPasswordMsg','Le mot de passe doit contenir au moins 6 caractères');try{const e=await fetch(API_URL+'/api/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:o,password:s,name:t})}),a=await e.json();e.ok?(showMessage('registerMsg','✅ Compte créé! Connexion...',!0),localStorage.setItem('token',a.token),setTimeout(()=>window.location.href='/',1500)):showMessage('registerMsg',a.error||'Erreur inscription')}catch(e){showMessage('registerMsg','Erreur serveur')}}),document.getElementById('forgotForm').addEventListener('submit',async e=>{e.preventDefault(),clearMessage('forgotMsg');const t=document.getElementById('forgotEmail').value;try{const o=await fetch(API_URL+'/api/forgot-password',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:t})}),s=await o.json();o.ok?(generatedCode=s.reset_code,document.getElementById('resetCodeDisplay').textContent=generatedCode,document.getElementById('resetCode').value=generatedCode,document.getElementById('resetPhaseA').classList.add('hide'),document.getElementById('resetPhaseB').classList.add('show')):showMessage('forgotMsg',s.error||'Email non trouvé')}catch(e){showMessage('forgotMsg','Erreur serveur')}}),document.getElementById('resetPasswordForm').addEventListener('submit',async e=>{e.preventDefault(),clearMessage('resetPasswordFormMsg');const t=document.getElementById('resetCode').value,o=document.getElementById('resetPassword').value;if(document.getElementById('resetConfirm').value!==o)return void showMessage('resetConfirmMsg','Les mots de passe ne correspondent pas');if(o.length<6)return void showMessage('resetPasswordMsg','Le mot de passe doit contenir au moins 6 caractères');try{const s=await fetch(API_URL+'/api/reset-password',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:t,password:o})}),a=await s.json();s.ok?(showMessage('resetPasswordFormMsg','✅ Mot de passe réinitialisé! Redirection...',!0),setTimeout(()=>switchTab('connexion'),1500)):showMessage('resetPasswordFormMsg',a.error||'Code invalide')}catch(e){showMessage('resetPasswordFormMsg','Erreur serveur')}}),function resetToPhaseA(){document.getElementById('resetPhaseA').classList.remove('hide'),document.getElementById('resetPhaseB').classList.remove('show'),document.getElementById('forgotForm').reset(),document.getElementById('resetPasswordForm').reset(),clearMessage('forgotMsg'),clearMessage('resetPasswordFormMsg'),generatedCode=null}()</script></body>
+  const html = `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Guidéon</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Segoe UI';background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);display:flex;justify-content:center;align-items:center;min-height:100vh;padding:20px}.modal-container{background:#0f3460;border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,.3);max-width:450px;width:100%;overflow:hidden}.modal-header{text-align:center;padding:30px 20px 20px;background:linear-gradient(135deg,#533483 0%,#16213e 100%)}.modal-logo{font-size:24px;margin-bottom:5px}.modal-title{color:#a78bfa;font-size:28px;font-weight:700;margin-bottom:5px}.modal-subtitle{color:#9ca3af;font-size:13px}.tabs-container{display:flex;gap:0;padding:0 20px;margin-top:20px;border-bottom:1px solid #374151}.tab-button{flex:1;padding:12px 10px;background:0;border:0;color:#9ca3af;font-size:13px;cursor:pointer;font-weight:500;transition:all .3s ease;border-bottom:2px solid transparent;margin-bottom:-1px}.tab-button.active{color:#a78bfa;border-bottom-color:#a78bfa}.tab-button:hover{color:#c4b5fd}.modal-content{padding:30px 20px;min-height:400px}.tab-pane{display:none}.tab-pane.active{display:block}.form-group{margin-bottom:20px}.form-label{display:block;color:#d1d5db;font-size:13px;margin-bottom:8px;font-weight:500}.form-input{width:100%;padding:12px 14px;background:#1f2937;border:1px solid #374151;border-radius:8px;color:#f3f4f6;font-size:14px;transition:all .3s ease}.form-input:focus{outline:0;border-color:#a78bfa;background:#111827;box-shadow:0 0 0 3px rgba(167,139,250,.1)}.password-group{position:relative}.toggle-password{position:absolute;right:12px;top:38px;background:0;border:0;color:#a78bfa;cursor:pointer;font-size:16px;padding:5px}.toggle-password:hover{color:#c4b5fd}.form-message{color:#ef4444;font-size:12px;margin-top:6px;display:none}.form-message.show{display:block}.form-message.success{color:#10b981}.form-link{color:#a78bfa;text-decoration:0;font-size:13px;cursor:pointer}.form-link:hover{color:#c4b5fd;text-decoration:underline}.forgot-password-link{text-align:center;margin-top:15px}.button-group{display:flex;gap:12px;margin-top:25px}.btn{flex:1;padding:12px 16px;border:0;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;transition:all .3s ease}.btn-primary{background:linear-gradient(135deg,#a78bfa 0%,#7c3aed 100%);color:#fff}.btn-primary:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(167,139,250,.3)}.btn-secondary{background:#374151;color:#e5e7eb;flex:.8}.btn-secondary:hover{background:#4b5563}.code-display{background:#1f2937;border:2px solid #a78bfa;border-radius:8px;padding:16px;margin:20px 0;text-align:center}.code-label{color:#9ca3af;font-size:12px;margin-bottom:8px}.code-value{color:#a78bfa;font-size:32px;font-weight:700;font-family:'Courier New';letter-spacing:4px}.info-message{background:rgba(167,139,250,.1);border-left:3px solid #a78bfa;color:#d1d5db;padding:12px 14px;border-radius:4px;font-size:13px;margin-bottom:20px}.reset-phase-b{display:none}.reset-phase-b.show{display:block}.reset-phase-a.hide{display:none}</style></head><body><div class="modal-container"><div class="modal-header"><div class="modal-logo">🧠</div><div class="modal-title">Guidéon</div><div class="modal-subtitle">Ton assistant IA personnel</div><div class="tabs-container"><button class="tab-button active" data-tab="connexion">Connexion</button><button class="tab-button" data-tab="inscription">Inscription</button><button class="tab-button" data-tab="reset">Réinitialisation</button></div></div><div class="modal-content"><div class="tab-pane active" id="connexion"><form id="loginForm"><div class="form-group"><label class="form-label">Email</label><input type="email" id="loginEmail" class="form-input" placeholder="votre@email.com" required><div class="form-message" id="loginEmailMsg"></div></div><div class="form-group"><label class="form-label">Mot de passe</label><div class="password-group"><input type="password" id="loginPassword" class="form-input" placeholder="••••••••" required><button type="button" class="toggle-password" onclick="togglePassword('loginPassword')">👁️</button></div><div class="form-message" id="loginPasswordMsg"></div></div><div class="forgot-password-link"><a class="form-link" onclick="switchTab('reset')">Mot de passe oublié ?</a></div><div class="button-group"><button type="submit" class="btn btn-primary">Se connecter</button></div><div style="text-align:center;margin-top:20px;color:#9ca3af;font-size:13px">Pas encore de compte ? <a class="form-link" onclick="switchTab('inscription')">S'inscrire</a></div><div class="form-message" id="loginMsg"></div></form></div><div class="tab-pane" id="inscription"><form id="registerForm"><div class="form-group"><label class="form-label">Votre nom</label><input type="text" id="registerName" class="form-input" placeholder="Votre nom" required><div class="form-message" id="registerNameMsg"></div></div><div class="form-group"><label class="form-label">Email</label><input type="email" id="registerEmail" class="form-input" placeholder="votre@email.com" required><div class="form-message" id="registerEmailMsg"></div></div><div class="form-group"><label class="form-label">Mot de passe</label><div class="password-group"><input type="password" id="registerPassword" class="form-input" placeholder="••••••••" required><button type="button" class="toggle-password" onclick="togglePassword('registerPassword')">👁️</button></div><div class="form-message" id="registerPasswordMsg"></div></div><div class="form-group"><label class="form-label">Confirmer mot de passe</label><div class="password-group"><input type="password" id="registerConfirm" class="form-input" placeholder="••••••••" required><button type="button" class="toggle-password" onclick="togglePassword('registerConfirm')">👁️</button></div><div class="form-message" id="registerConfirmMsg"></div></div><div class="button-group"><button type="submit" class="btn btn-primary">Créer mon compte</button></div><div style="text-align:center;margin-top:20px;color:#9ca3af;font-size:13px">Déjà inscrit ? <a class="form-link" onclick="switchTab('connexion')">Se connecter</a></div><div class="form-message" id="registerMsg"></div></form></div><div class="tab-pane" id="reset"><div class="reset-phase-a" id="resetPhaseA"><form id="forgotForm"><div class="form-group"><label class="form-label">Email</label><input type="email" id="forgotEmail" class="form-input" placeholder="votre@email.com" required><div class="form-message" id="forgotEmailMsg"></div></div><div class="button-group"><button type="submit" class="btn btn-primary">Générer code</button></div><div class="form-message" id="forgotMsg"></div></form></div><div class="reset-phase-b" id="resetPhaseB"><div class="info-message">✅ Un code a été généré. Utilisez-le ci-dessous pour réinitialiser votre mot de passe.</div><div class="code-display"><div class="code-label">Code de réinitialisation</div><div class="code-value" id="resetCodeDisplay">000000</div></div><form id="resetPasswordForm"><div class="form-group"><label class="form-label">Code</label><input type="text" id="resetCode" class="form-input" placeholder="Collez le code" required><div class="form-message" id="resetCodeMsg"></div></div><div class="form-group"><label class="form-label">Nouveau mot de passe</label><div class="password-group"><input type="password" id="resetPassword" class="form-input" placeholder="••••••••" required><button type="button" class="toggle-password" onclick="togglePassword('resetPassword')">👁️</button></div><div class="form-message" id="resetPasswordMsg"></div></div><div class="form-group"><label class="form-label">Confirmer mot de passe</label><div class="password-group"><input type="password" id="resetConfirm" class="form-input" placeholder="••••••••" required><button type="button" class="toggle-password" onclick="togglePassword('resetConfirm')">👁️</button></div><div class="form-message" id="resetConfirmMsg"></div></div><div class="button-group"><button type="submit" class="btn btn-primary">Réinitialiser</button><button type="button" class="btn btn-secondary" onclick="resetToPhaseA()">Retour</button></div><div class="form-message" id="resetPasswordFormMsg"></div></form></div></div></div></div><script>const API_URL=window.location.origin;let generatedCode=null;function togglePassword(e){document.getElementById(e).type='password'===document.getElementById(e).type?'text':'password'}function switchTab(e){document.querySelectorAll('.tab-pane').forEach(e=>e.classList.remove('active')),document.querySelectorAll('.tab-button').forEach(e=>e.classList.remove('active')),document.getElementById(e).classList.add('active'),document.querySelector('[data-tab="'+e+'"]').classList.add('active'),'reset'===e&&resetToPhaseA()}function clearMessage(e){const t=document.getElementById(e);t.classList.remove('show','success'),t.textContent=''}function showMessage(e,t,o=!1){const s=document.getElementById(e);s.textContent=t,s.classList.add('show'),o&&s.classList.add('success')}document.querySelectorAll('.tab-button').forEach(e=>{e.addEventListener('click',()=>{switchTab(e.dataset.tab)})}),document.getElementById('loginForm').addEventListener('submit',async e=>{e.preventDefault(),clearMessage('loginMsg');const t=document.getElementById('loginEmail').value,o=document.getElementById('loginPassword').value;try{const e=await fetch(API_URL+'/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:t,password:o})}),s=await e.json();e.ok?(showMessage('loginMsg','✅ Connexion réussie!',!0),localStorage.setItem('token',s.token),setTimeout(()=>window.location.replace("/"),1500)):showMessage('loginMsg',s.error||'Identifiants invalides')}catch(e){showMessage('loginMsg','Erreur serveur')}}),document.getElementById('registerForm').addEventListener('submit',async e=>{e.preventDefault(),clearMessage('registerMsg');const t=document.getElementById('registerName').value,o=document.getElementById('registerEmail').value,s=document.getElementById('registerPassword').value;if(document.getElementById('registerConfirm').value!==s)return void showMessage('registerConfirmMsg','Les mots de passe ne correspondent pas');if(s.length<6)return void showMessage('registerPasswordMsg','Le mot de passe doit contenir au moins 6 caractères');try{const e=await fetch(API_URL+'/api/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:o,password:s,name:t})}),a=await e.json();e.ok?(showMessage('registerMsg','✅ Compte créé! Connexion...',!0),localStorage.setItem('token',a.token),setTimeout(()=>window.location.replace("/"),1500)):showMessage('registerMsg',a.error||'Erreur inscription')}catch(e){showMessage('registerMsg','Erreur serveur')}}),document.getElementById('forgotForm').addEventListener('submit',async e=>{e.preventDefault(),clearMessage('forgotMsg');const t=document.getElementById('forgotEmail').value;try{const o=await fetch(API_URL+'/api/forgot-password',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:t})}),s=await o.json();o.ok?(generatedCode=s.reset_code,document.getElementById('resetCodeDisplay').textContent=generatedCode,document.getElementById('resetCode').value=generatedCode,document.getElementById('resetPhaseA').classList.add('hide'),document.getElementById('resetPhaseB').classList.add('show')):showMessage('forgotMsg',s.error||'Email non trouvé')}catch(e){showMessage('forgotMsg','Erreur serveur')}}),document.getElementById('resetPasswordForm').addEventListener('submit',async e=>{e.preventDefault(),clearMessage('resetPasswordFormMsg');const t=document.getElementById('resetCode').value,o=document.getElementById('resetPassword').value;if(document.getElementById('resetConfirm').value!==o)return void showMessage('resetConfirmMsg','Les mots de passe ne correspondent pas');if(o.length<6)return void showMessage('resetPasswordMsg','Le mot de passe doit contenir au moins 6 caractères');try{const s=await fetch(API_URL+'/api/reset-password',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:t,password:o})}),a=await s.json();s.ok?(showMessage('resetPasswordFormMsg','✅ Mot de passe réinitialisé! Redirection...',!0),setTimeout(()=>switchTab('connexion'),1500)):showMessage('resetPasswordFormMsg',a.error||'Code invalide')}catch(e){showMessage('resetPasswordFormMsg','Erreur serveur')}}),function resetToPhaseA(){document.getElementById('resetPhaseA').classList.remove('hide'),document.getElementById('resetPhaseB').classList.remove('show'),document.getElementById('forgotForm').reset(),document.getElementById('resetPasswordForm').reset(),clearMessage('forgotMsg'),clearMessage('resetPasswordFormMsg'),generatedCode=null}()</script></body>
     <script>
     function rpwd() {
       const c = document.getElementById('resetCode').value.trim();
@@ -1729,7 +2004,7 @@ app.get('/reset-password', (req, res) => {
           em.textContent = 'Mot de passe réinitialisé!';
           em.style.color = '#10b981';
           em.style.display = 'block';
-          setTimeout(() => window.location.href = '/', 2000);
+          setTimeout(() => window.location.replace("/"), 2000);
         }
       }).catch(err => {
         em.textContent = 'Erreur réseau';
@@ -2192,7 +2467,7 @@ app.post('/api/notifications/send', async (req, res) => {
       return res.json({ sent: false, reason: 'Notifications désactivées' });
     }
     
-    const { data, error } = await sb.from('notifications').insert([{
+    const { data, error } = await sbAdmin.from('notifications').insert([{
       user_id: user.id,
       type: type || 'info',
       title: title || 'Notification',
@@ -2201,124 +2476,80 @@ app.post('/api/notifications/send', async (req, res) => {
     }]);
     
     if (error) throw error;
+    sendPush(user.id, 'general', { title: title || 'Notification', body: message || '', url: '/' }).catch(() => {});
     res.json({ sent: true, notification: data });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
 });
 
-// Trigger: Vérifier nouvelle version et notifier utilisateurs
-setInterval(async () => {
+// Notification de nouvelle version : une seule fois par version, pour les comptes qui ont active les notifications
+async function notifyNewVersion() {
   try {
-    const latestVersion = pkg.version;
-    const { data: users, error } = await sb.from('users').select('id, checkboxes');
-    
+    const v = pkg.version;
+    const { data: users, error } = await sbAdmin.from('users').select('id, checkboxes');
     if (error || !users) return;
-    
-    users.forEach(async (user) => {
-      if (user.checkboxes?.notifCheck === true) {
-        await sb.from('notifications').insert([{
-          user_id: user.id,
-          type: 'update',
-          title: '📦 Nouvelle version disponible',
-          message: `Guidéon ${latestVersion} est maintenant disponible. Rafraîchissez pour mettre à jour.`,
-          is_read: false
-        }]);
-      }
-    });
+    for (const u of users) {
+      const cb = u.checkboxes || {};
+      if (cb.notifCheck !== true || cb.lastNotifiedVersion === v) continue;
+      const known = !!cb.lastNotifiedVersion;
+      await sbAdmin.from('users').update({ checkboxes: { ...cb, lastNotifiedVersion: v } }).eq('id', u.id);
+      if (!known) continue;
+      await sbAdmin.from('notifications').insert([{ user_id: u.id, type: 'update', title: '📦 Nouvelle version disponible', message: `Guidéon ${v} est maintenant disponible. Rafraîchissez pour mettre à jour.`, is_read: false }]);
+      sendPush(u.id, 'general', { title: '📦 Nouvelle version disponible', body: `Guidéon ${v} est disponible.`, url: '/' }).catch(() => {});
+    }
   } catch (e) {
-    console.error('Erreur trigger notifications:', e.message);
+    console.error('Erreur notification de version:', e.message);
   }
-}, 24 * 60 * 60 * 1000); // Quotidien
+}
+setTimeout(notifyNewVersion, 60 * 1000);
+setInterval(notifyNewVersion, 6 * 60 * 60 * 1000);
 
-// Triggers: Notifications importantes automatiques
-// 1. Vérifier inactivité (7 jours)
-setInterval(async () => {
+// Notifications importantes automatiques : une seule fois par evenement, pour les comptes qui ont active les notifications
+async function notifyOnce(u, mark, minGapMs, row) {
   try {
-    const sevenDaysAgo = new Date(Date.now() - 7*24*60*60*1000).toISOString();
-    const { data: users } = await sb.from('users').select('id, checkboxes');
-    
-    users?.forEach(async (user) => {
-      if (user.checkboxes?.notifCheck === true) {
-        const { data: lastConv } = await sb.from('conversations').select('created_at').eq('user_id', user.id).order('created_at', { ascending: false }).limit(1).single();
-        if (lastConv?.created_at < sevenDaysAgo) {
-          await sb.from('notifications').insert([{
-            user_id: user.id,
-            type: 'info',
-            title: '👋 On vous a manqué!',
-            message: 'Vous n\'avez pas utilisé Guidéon depuis 7 jours. Revenez discuter!',
-            is_read: false
-          }]);
+    const cb0 = u.checkboxes || {};
+    const marks0 = (cb0.notifMarks && typeof cb0.notifMarks === 'object') ? cb0.notifMarks : {};
+    if (marks0[mark] && Date.now() - Number(marks0[mark]) < minGapMs) return false;
+    const { error } = await sbAdmin.from('notifications').insert([{ user_id: u.id, is_read: false, ...row }]);
+    if (error) { console.error('Notification', mark, ':', error.message); return false; }
+    const { data: fresh } = await sbAdmin.from('users').select('checkboxes').eq('id', u.id).single();
+    const cb1 = (fresh && fresh.checkboxes) || cb0;
+    cb1.notifMarks = { ...(cb1.notifMarks || {}), [mark]: Date.now() };
+    await sbAdmin.from('users').update({ checkboxes: cb1 }).eq('id', u.id);
+    sendPush(u.id, 'general', { title: row.title, body: row.message, url: '/' }).catch(() => {});
+    return true;
+  } catch (e) { console.error('Notification', mark, ':', e.message); return false; }
+}
+async function runImportantNotifications() {
+  try {
+    const { data: users, error } = await sbAdmin.from('users').select('id, checkboxes');
+    if (error || !users) return;
+    for (const u of users) {
+      const cb = u.checkboxes || {};
+      if (cb.notifCheck !== true) continue;
+      const { data: lastConv } = await sbAdmin.from('conversations').select('created_at').eq('user_id', u.id).order('created_at', { ascending: false }).limit(1);
+      const lastAt = lastConv && lastConv[0] && lastConv[0].created_at ? new Date(lastConv[0].created_at).getTime() : 0;
+      if (lastAt && Date.now() - lastAt > 7 * 24 * 3600 * 1000) {
+        await notifyOnce(u, 'inactive', 30 * 24 * 3600 * 1000, { type: 'info', title: '👋 On vous a manqué !', message: "Vous n'avez pas utilisé Guidéon depuis 7 jours. Revenez discuter !" });
+      }
+      const { data: convs } = await sbAdmin.from('conversations').select('content').eq('user_id', u.id);
+      const size = (convs || []).reduce((acc, c) => acc + ((c.content && c.content.length) || 0), 0);
+      if (size > 1.2 * 1024 * 1024) {
+        await notifyOnce(u, 'storage', 14 * 24 * 3600 * 1000, { type: 'error', title: '💾 Stockage presque plein', message: "Vous avez utilisé 90 % de votre espace. Supprimez d'anciennes conversations." });
+      }
+      if (cb.analyticsConsent === true) {
+        const weekAgo = new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString();
+        const { data: events } = await sbAdmin.from('analytics').select('user_id').eq('user_id', u.id).gt('created_at', weekAgo);
+        if (events && events.length > 0) {
+          await notifyOnce(u, 'weekly', 7 * 24 * 3600 * 1000, { type: 'info', title: '📊 Rapport hebdomadaire', message: `Vous avez eu ${events.length} interactions cette semaine.` });
         }
       }
-    });
-  } catch (e) {}
-}, 24*60*60*1000);
-
-// 2. Alerte stockage limite (90%)
-setInterval(async () => {
-  try {
-    const { data: users } = await sb.from('users').select('id, checkboxes');
-    users?.forEach(async (user) => {
-      if (user.checkboxes?.notifCheck === true) {
-        const { data: convs } = await sb.from('conversations').select('content').eq('user_id', user.id);
-        const totalSize = convs?.reduce((acc, c) => acc + (c.content?.length || 0), 0) || 0;
-        if (totalSize > 1.2 * 1024 * 1024) { // 1.2 MB
-          await sb.from('notifications').insert([{
-            user_id: user.id,
-            type: 'error',
-            title: '💾 Stockage limite atteint',
-            message: 'Vous avez utilisé 90% de votre espace. Supprimez d\'anciennes conversations.',
-            is_read: false
-          }]);
-        }
-      }
-    });
-  } catch (e) {}
-}, 24*60*60*1000);
-
-// 3. Rapport analytics hebdomadaire
-setInterval(async () => {
-  try {
-    const { data: users } = await sb.from('users').select('id, checkboxes');
-    users?.forEach(async (user) => {
-      if (user.checkboxes?.notifCheck === true && user.checkboxes?.analyticsConsent === true) {
-        const weekAgo = new Date(Date.now() - 7*24*60*60*1000).toISOString();
-        const { data: events } = await sb.from('analytics').select('*').eq('user_id', user.id).gt('created_at', weekAgo);
-        if (events?.length > 0) {
-          await sb.from('notifications').insert([{
-            user_id: user.id,
-            type: 'info',
-            title: '📊 Rapport hebdomadaire',
-            message: `Vous avez eu ${events.length} interactions cette semaine. Consultez votre rapport d'analytics!`,
-            is_read: false
-          }]);
-        }
-      }
-    });
-  } catch (e) {}
-}, 7*24*60*60*1000);
-
-// 4. Nouvelle fonctionnalité disponible
-setInterval(async () => {
-  try {
-    const { data: users } = await sb.from('users').select('id, checkboxes');
-    const newFeatures = ['Partage collaboratif amélioré', 'Mode vocale optimisé', 'Analytics avancées'];
-    const randomFeature = newFeatures[Math.floor(Math.random() * newFeatures.length)];
-    
-    users?.forEach(async (user) => {
-      if (user.checkboxes?.notifCheck === true) {
-        await sb.from('notifications').insert([{
-          user_id: user.id,
-          type: 'info',
-          title: '✨ Nouvelle fonctionnalité',
-          message: 'Découvrez: ' + randomFeature,
-          is_read: false
-        }]);
-      }
-    });
-  } catch (e) {}
-}, 24*24*60*60*1000); // Tous les 24 jours
+    }
+  } catch (e) { console.error('Notifications importantes:', e.message); }
+}
+setTimeout(runImportantNotifications, 2 * 60 * 1000);
+setInterval(runImportantNotifications, 6 * 60 * 60 * 1000);
 
 // Demander suppression données utilisateur (RGPD)
 app.post('/api/user/delete', async (req, res) => {
@@ -2552,6 +2783,109 @@ app.get('/api/sessions/all', async (req, res) => {
     const last = await sessionsLastActivity(uid);
     const out = Array.isArray(sessions) ? sessions.map(s => ({ id: s.id, title: s.title || 'Sans titre', createdAt: s.created_at, lastActivity: last[s.id] || null, pinned: s.pinned === true })) : [];
     res.json(out);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ===== NOTIFICATIONS PUSH (Android / navigateur) =====
+let webpush = null;
+try { webpush = (await import('web-push')).default; } catch (e) { console.log('ℹ️ web-push non disponible : notifications push désactivées'); }
+const VAPID_OK = !!(webpush && process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY);
+if (VAPID_OK) {
+  try {
+    webpush.setVapidDetails(process.env.VAPID_SUBJECT || 'mailto:contact@example.com', process.env.VAPID_PUBLIC_KEY, process.env.VAPID_PRIVATE_KEY);
+  } catch (e) { console.error('VAPID:', e.message); }
+} else {
+  console.log('ℹ️ Notifications push inactives (clés VAPID ou web-push absents)');
+}
+const hiddenUsers = new Map();
+async function getUserCheckboxes(uid) {
+  const r = await fetch(`${DB}/users?id=eq.${String(uid)}&select=checkboxes`, { headers: SB });
+  const d = await r.json();
+  return (Array.isArray(d) && d[0] && d[0].checkboxes) || {};
+}
+async function setUserCheckboxes(uid, cb) {
+  await fetch(`${DB}/users?id=eq.${String(uid)}`, { method: 'PATCH', headers: { ...SB, 'Prefer': 'return=minimal' }, body: JSON.stringify({ checkboxes: cb }) });
+}
+async function sendPush(uid, topic, payload) {
+  if (!VAPID_OK) return;
+  const cb = await getUserCheckboxes(uid);
+  const subs = Array.isArray(cb.pushSubs) ? cb.pushSubs : [];
+  if (topic === 'general' && cb.notifCheck !== true) return;
+  console.log('📲 Push', topic, '->', subs.filter(x => x[topic] === true).length, 'abonne(s) sur', subs.length);
+  const dead = [];
+  for (const sub of subs) {
+    if (sub[topic] !== true) continue;
+    try {
+      await webpush.sendNotification({ endpoint: sub.endpoint, keys: sub.keys }, JSON.stringify({ ...payload, topic, tag: payload.tag || (topic === 'replies' ? 'g-reply' : 'g-' + Date.now()) }), { TTL: 3600 });
+      console.log('📲 Push envoye (' + topic + ')');
+    } catch (e) {
+      if (e && (e.statusCode === 404 || e.statusCode === 410)) dead.push(sub.endpoint);
+      else console.error('push:', e && e.statusCode, e && e.message);
+    }
+  }
+  if (dead.length > 0) {
+    const fresh = await getUserCheckboxes(uid);
+    fresh.pushSubs = (Array.isArray(fresh.pushSubs) ? fresh.pushSubs : []).filter(x => !dead.includes(x.endpoint));
+    await setUserCheckboxes(uid, fresh);
+  }
+}
+app.get('/api/push/key', (req, res) => res.json({ key: VAPID_OK ? process.env.VAPID_PUBLIC_KEY : null }));
+app.post('/api/push/subscribe', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    const user = checkToken(token);
+    if (!user) return res.status(401).json({ error: 'Non autorise' });
+    if (!VAPID_OK) return res.status(503).json({ error: 'Notifications push non configurées sur le serveur' });
+    const sub = req.body && req.body.subscription;
+    if (!sub || typeof sub.endpoint !== 'string' || !/^https:\/\//.test(sub.endpoint) || !sub.keys || typeof sub.keys.p256dh !== 'string' || typeof sub.keys.auth !== 'string') return res.status(400).json({ error: 'Abonnement invalide' });
+    const cb = await getUserCheckboxes(user.id);
+    let subs = Array.isArray(cb.pushSubs) ? cb.pushSubs : [];
+    let cur = subs.find(x => x.endpoint === sub.endpoint);
+    if (!cur) { cur = { endpoint: sub.endpoint, keys: { p256dh: sub.keys.p256dh, auth: sub.keys.auth }, replies: false, general: false }; subs.push(cur); }
+    if (typeof req.body.replies === 'boolean') cur.replies = req.body.replies;
+    if (typeof req.body.general === 'boolean') cur.general = req.body.general;
+    subs = subs.filter(x => x.replies === true || x.general === true).slice(-5);
+    cb.pushSubs = subs;
+    await setUserCheckboxes(user.id, cb);
+    res.json({ ok: true, replies: cur.replies, general: cur.general });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/push/visibility', (req, res) => {
+  try {
+    const user = checkToken(req.body && req.body.token);
+    if (!user) return res.status(401).json({ error: 'Non autorise' });
+    if (req.body.hidden === true) hiddenUsers.set(String(user.id), Date.now());
+    else hiddenUsers.delete(String(user.id));
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/notifications/read', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    const user = checkToken(token);
+    if (!user) return res.status(401).json({ error: 'Non autorise' });
+    const ids = Array.isArray(req.body && req.body.ids) ? req.body.ids.filter(x => Number.isFinite(Number(x))).map(Number).slice(0, 100) : [];
+    if (ids.length === 0) return res.json({ ok: true });
+    const { error } = await sbAdmin.from('notifications').update({ is_read: true }).in('id', ids).eq('user_id', user.id);
+    if (error) throw error;
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/push/test', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    const user = checkToken(token);
+    if (!user) return res.status(401).json({ error: 'Non autorise' });
+    const topic = req.query.topic === 'general' ? 'general' : 'replies';
+    const delay = Math.min(Math.max(parseInt(req.query.delay, 10) || 0, 0), 120);
+    const cb = await getUserCheckboxes(user.id);
+    const subs = Array.isArray(cb.pushSubs) ? cb.pushSubs : [];
+    res.json({ ok: true, topic, delay, vapid: VAPID_OK, abonnes: { replies: subs.filter(x => x.replies === true).length, general: subs.filter(x => x.general === true).length }, notifCheck: cb.notifCheck === true });
+    setTimeout(() => {
+      sendPush(user.id, topic, { title: '🧠 Guidéon (test)', body: 'Test de notification : ' + topic, url: '/' }).catch(e => console.error('push test:', e.message));
+    }, delay * 1000);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

@@ -1,6 +1,6 @@
 {
   "name": "guideon",
-  "version": "1.0.260",
+  "version": "1.0.261",
   "type": "module",
   "dependencies": {
     "@anthropic-ai/sdk": "^0.116.0",
@@ -15,7 +15,8 @@
     "pdf2json": "^4.0.3",
     "pdfjs-dist": "^6.2.108",
     "pdfkit": "^0.19.1",
-    "resend": "^6.17.2"
+    "resend": "^6.17.2",
+    "web-push": "^3.6.7"
   },
   "scripts": {
     "start": "node server.mjs"
