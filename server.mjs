@@ -50,6 +50,7 @@ function generateUserId(id) {
 
 function isSearchQuery(message) {
   const m = String(message || '').toLowerCase();
+  if (/\b(quel|quelle|quels|quelles)\s+(est|sont)\s+(mon|ma|mes|notre|nos)\b/.test(m)) return false;
   const searchWords = ['qui est', 'cherche', 'recherche', "c'est quoi", 'qui a', 'quel est', 'donne-moi', 'explique', 'raconte',
     'actuellement', 'en ce moment', 'derniere', 'dernier', 'nouveau', 'nouvelle', "aujourd'hui", 'recent', 'recente',
     'combien coute', 'prix de', 'resultat', 'classement', 'date de', 'quand est', 'ou se trouve', 'capitale de', 'match', 'contre', 'affronte', 'score', 'resultat du match', 'joue avec', 'joue contre', ' vs ', 'calendrier des matchs', 'detail', 'details', 'plus d\'infos', 'plus d\'informations', 'precise', 'complete', 'developpe', 'en savoir plus'];
@@ -1217,7 +1218,7 @@ console.log('🔖 searchSources au moment de l affichage:', JSON.stringify(searc
       }
     }
     // Extraire et sauvegarder memories en arriere-plan
-    if (true && reply && user && user.id) { // EXTRACTION MEMORIES DESACTIVEE (economie quota Gemini free tier)
+    if (reply && user && user.id) { // EXTRACTION MEMORIES ACTIVE (via Groq, modele gpt-oss-20b)
       try {
         const extractRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
           method: 'POST',
@@ -1235,12 +1236,27 @@ console.log('🔖 searchSources au moment de l affichage:', JSON.stringify(searc
         const facts = extractData.choices?.[0]?.message?.content?.trim() || '';
         if (facts && facts !== 'AUCUN') {
           const lines = facts.split('\n').filter(l => l.startsWith('-')).map(l => l.slice(1).trim()).filter(Boolean);
+          const existRes = await fetch(`${DB}/memories?user_id=eq.${user.id}&select=id,content`, { headers: SB });
+          const existingMems = await existRes.json();
+          const existingList = Array.isArray(existingMems) ? existingMems : [];
           for (const fact of lines) {
-            await fetch(`${DB}/memories`, {
-              method: 'POST',
-              headers: { ...SB, 'Prefer': 'return=minimal' },
-              body: JSON.stringify({ user_id: user.id, content: fact })
-            });
+            const normFact = fact.toLowerCase().trim();
+            const match = existingList.find(m => String(m.content || '').toLowerCase().trim() === normFact);
+            if (match) {
+              const upRes = await fetch(`${DB}/memories?id=eq.${match.id}`, {
+                method: 'PATCH',
+                headers: { ...SB, 'Prefer': 'return=minimal' },
+                body: JSON.stringify({ updated_at: new Date().toISOString() })
+              });
+              if (!upRes.ok) console.error('memories update error:', upRes.status, await upRes.text());
+            } else {
+              const insRes = await fetch(`${DB}/memories`, {
+                method: 'POST',
+                headers: { ...SB, 'Prefer': 'return=minimal' },
+                body: JSON.stringify({ user_id: user.id, content: fact })
+              });
+              if (!insRes.ok) console.error('memories insert error:', insRes.status, await insRes.text());
+            }
           }
         }
       } catch(e) { console.error('memories save error:', e.message); }
