@@ -22,6 +22,9 @@ const SUPABASE_KEY = process.env.SUPABASE_KEY;
 const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
 const SECRET = process.env.JWT_SECRET || 'guideon2026';
+const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN;
+const WHATSAPP_PHONE_NUMBER_ID = process.env.WHATSAPP_PHONE_NUMBER_ID;
+const WHATSAPP_VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN;
 const pkg = JSON.parse(fs.readFileSync(__dirname + '/package.json', 'utf-8'));
 const VERSION = pkg.version;
 
@@ -2769,6 +2772,98 @@ app.post('/api/send-complaint-email', async (req, res) => {
   }
 });
 
+
+// ===== WhatsApp Business Cloud API =====
+async function sendWhatsAppMessage(to, text) {
+  try {
+    await fetch(`https://graph.facebook.com/v21.0/${WHATSAPP_PHONE_NUMBER_ID}/messages`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${WHATSAPP_TOKEN}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messaging_product: 'whatsapp', to, type: 'text', text: { body: text } })
+    });
+  } catch (e) { console.error('WhatsApp send error:', e.message); }
+}
+
+app.get('/api/whatsapp/webhook', (req, res) => {
+  const mode = req.query['hub.mode'];
+  const verifyToken = req.query['hub.verify_token'];
+  const challenge = req.query['hub.challenge'];
+  if (mode === 'subscribe' && verifyToken === WHATSAPP_VERIFY_TOKEN) {
+    res.status(200).send(challenge);
+  } else {
+    res.sendStatus(403);
+  }
+});
+
+app.post('/api/whatsapp/webhook', async (req, res) => {
+  res.sendStatus(200);
+  try {
+    const entry = req.body.entry && req.body.entry[0];
+    const change = entry && entry.changes && entry.changes[0];
+    const msg = change && change.value && change.value.messages && change.value.messages[0];
+    if (!msg || msg.type !== 'text') return;
+    const from = msg.from;
+    const text = ((msg.text && msg.text.body) || '').trim();
+    if (!text) return;
+
+    const { data: existing } = await sbAdmin.from('whatsapp_users').select('*').eq('phone', from).single();
+    let wu = existing;
+    if (!wu) {
+      const { data: created } = await sbAdmin.from('whatsapp_users').insert([{ phone: from, status: 'active', history: [] }]).select().single();
+      wu = created;
+    }
+    if (!wu) return;
+
+    const lower = text.toLowerCase();
+    if (['stop', 'pause', 'desactiver', 'd\u00e9sactiver'].includes(lower)) {
+      await sbAdmin.from('whatsapp_users').update({ status: 'paused' }).eq('phone', from);
+      await sendWhatsAppMessage(from, '\u23f8\ufe0f Guid\u00e9on est en pause. \u00c9crivez \"activer\" pour me r\u00e9activer \u00e0 tout moment.');
+      return;
+    }
+    if (['activer', 'start', 'reprendre'].includes(lower)) {
+      await sbAdmin.from('whatsapp_users').update({ status: 'active' }).eq('phone', from);
+      await sendWhatsAppMessage(from, '\u2705 Je suis r\u00e9activ\u00e9, je suis de nouveau \u00e0 votre \u00e9coute !');
+      return;
+    }
+    if (wu.status === 'paused') return;
+
+    const hist = Array.isArray(wu.history) ? wu.history : [];
+    const base = process.env.APP_URL || 'https://guideon-8h4m.onrender.com';
+    const r = await fetch(`${base}/api/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: text, history: hist.slice(-20) })
+    });
+    let full = '';
+    if (r.body && r.body.getReader) {
+      const reader = r.body.getReader();
+      const dec = new TextDecoder();
+      let buf = '';
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += dec.decode(value, { stream: true });
+        const lines = buf.split('\n');
+        buf = lines.pop();
+        for (const line of lines) {
+          const t = line.trim();
+          if (!t.startsWith('data: ')) continue;
+          const dd = t.slice(6);
+          try {
+            const p = JSON.parse(dd);
+            if (p.content) full += p.content;
+          } catch (e) {}
+        }
+      }
+    }
+    const reply = full || "D\u00e9sol\u00e9, je n'ai pas pu g\u00e9n\u00e9rer de r\u00e9ponse pour le moment.";
+
+    const newHist = hist.concat([{ role: 'user', content: text }, { role: 'assistant', content: reply }]).slice(-20);
+    await sbAdmin.from('whatsapp_users').update({ history: newHist, last_message_at: new Date().toISOString() }).eq('phone', from);
+
+    await sendWhatsAppMessage(from, reply);
+  } catch (e) { console.error('WhatsApp webhook error:', e.message); }
+});
 
 app.listen(process.env.PORT || 9000, () => console.log("Guideon actif !"));
 
