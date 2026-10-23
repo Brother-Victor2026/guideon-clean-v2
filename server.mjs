@@ -1666,7 +1666,7 @@ app.get('/api/memory/view', async (req, res) => {
         const user = checkToken(token);
         console.log('👤 User:', user);
     if (!user) return res.status(401).json({ error: 'Non autorise' });
-    const r = await fetch(`${DB}/users?id=eq.${user.id}&select=name,email,instructions,created_at`, { headers: SB });
+    const r = await fetch(`${DB}/users?id=eq.${user.id}&select=name,email,instructions,created_at,checkboxes`, { headers: SB });
     const data = await r.json();
     console.log("✅ Checkboxes chargés de la BD:", data);
     res.json(Array.isArray(data) ? data[0] : {});
