@@ -2519,7 +2519,7 @@ async function notifyNewVersion() {
       await sbAdmin.from('users').update({ checkboxes: { ...cb, lastNotifiedVersion: v } }).eq('id', u.id);
       if (!known) continue;
       await sbAdmin.from('notifications').insert([{ user_id: u.id, type: 'update', title: '📦 Nouvelle version disponible', message: `Guidéon ${v} est maintenant disponible. Rafraîchissez pour mettre à jour.`, is_read: false }]);
-      sendPush(u.id, 'general', { title: '📦 Nouvelle version disponible', body: `Guidéon ${v} est disponible.`, url: '/' }).catch(() => {});
+      sendPush(u.id, 'general', { title: '📦 Nouvelle version disponible', body: `Guidéon ${v} est disponible.`, url: '/', updateAction: true }).catch(() => {});
     }
   } catch (e) {
     console.error('Erreur notification de version:', e.message);

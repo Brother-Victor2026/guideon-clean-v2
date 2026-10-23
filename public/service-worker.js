@@ -16,7 +16,7 @@ self.addEventListener('push', event => {
       tag: d.tag || ('g-' + Date.now()),
       vibrate: [200, 100, 200],
       data: { url: d.url || '/' },
-      actions: d.installAction ? [{ action: 'install', title: '📲 Installer' }] : []
+      actions: d.installAction ? [{ action: 'install', title: '📲 Installer' }] : (d.updateAction ? [{ action: 'verify', title: '🔄 Vérifier' }] : [])
     });
   })());
 });
@@ -26,12 +26,14 @@ self.addEventListener('notificationclick', event => {
   const data = event.notification.data || {};
   const wantActivate = event.action === 'activate' || data.activate === true;
   const wantInstall = event.action === 'install';
+  const wantVerify = event.action === 'verify';
   const url = wantActivate ? '/?activerNotifs=1' : (wantInstall ? '/?triggerInstall=1' : (data.url || '/'));
   event.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
     for (const c of list) {
       if ('focus' in c) {
         if (wantActivate) c.postMessage({ type: 'ACTIVATE_REPLIES' });
         if (wantInstall) c.postMessage({ type: 'TRIGGER_INSTALL' });
+        if (wantVerify) c.postMessage({ type: 'RELOAD_PAGE' });
         return c.focus();
       }
     }
