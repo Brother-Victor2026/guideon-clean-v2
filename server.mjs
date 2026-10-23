@@ -2345,6 +2345,10 @@ app.post('/api/checkboxes/save', async (req, res) => {
       body: JSON.stringify({ checkboxes: updated })
     });
 
+    if (checkboxData.pwaInstalled === true && existing.pwaInstalled !== true) {
+      sendPush(user.id, 'general', { title: '🎉 Installation réussie !', body: "Guidéon est maintenant installé sur votre appareil. Retrouvez-le directement depuis votre écran d'accueil, à tout moment.", url: '/' }).catch(() => {});
+    }
+
     res.json({ success: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
