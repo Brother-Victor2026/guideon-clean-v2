@@ -3045,11 +3045,15 @@ app.post('/api/push/test', async (req, res) => {
     if (!user) return res.status(401).json({ error: 'Non autorise' });
     const topic = req.query.topic === 'general' ? 'general' : 'replies';
     const delay = Math.min(Math.max(parseInt(req.query.delay, 10) || 0, 0), 120);
+    const action = req.query.action === 'install' ? 'install' : (req.query.action === 'verify' ? 'verify' : null);
     const cb = await getUserCheckboxes(user.id);
     const subs = Array.isArray(cb.pushSubs) ? cb.pushSubs : [];
-    res.json({ ok: true, topic, delay, vapid: VAPID_OK, abonnes: { replies: subs.filter(x => x.replies === true).length, general: subs.filter(x => x.general === true).length }, notifCheck: cb.notifCheck === true });
+    res.json({ ok: true, topic, delay, action, vapid: VAPID_OK, abonnes: { replies: subs.filter(x => x.replies === true).length, general: subs.filter(x => x.general === true).length }, notifCheck: cb.notifCheck === true });
     setTimeout(() => {
-      sendPush(user.id, topic, { title: '🧠 Guidéon (test)', body: 'Test de notification : ' + topic, url: '/' }).catch(e => console.error('push test:', e.message));
+      const payload = { title: action === 'install' ? '📲 Guidéon (test installation)' : (action === 'verify' ? '📦 Guidéon (test mise à jour)' : '🧠 Guidéon (test)'), body: 'Test de notification : ' + topic, url: '/' };
+      if (action === 'install') payload.installAction = true;
+      if (action === 'verify') payload.updateAction = true;
+      sendPush(user.id, topic, payload).catch(e => console.error('push test:', e.message));
     }, delay * 1000);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
