@@ -1557,7 +1557,7 @@ app.get('/api/sessions', async (req, res) => {
     const userData = await userR.json();
     const userName = Array.isArray(userData) && userData[0] ? userData[0].name : 'Utilisateur';
     const lastMap = await sessionsLastActivity(String(user.id));
-    const formatted = Array.isArray(data) ? data.map(s => ({ id: s.id, title: s.title || 'Sans titre', sharedBy: userName, sharedAt: s.created_at, created_at: s.created_at, pinned: s.pinned === true, lastActivity: lastMap[s.id] || null })) : [];
+    const formatted = Array.isArray(data) ? data.filter(s => lastMap[s.id]).map(s => ({ id: s.id, title: s.title || 'Sans titre', sharedBy: userName, sharedAt: s.created_at, created_at: s.created_at, pinned: s.pinned === true, lastActivity: lastMap[s.id] || null })) : [];
     res.json(formatted);
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
@@ -2947,7 +2947,7 @@ app.get('/api/sessions/all', async (req, res) => {
     const sRes = await fetch(`${DB}/sessions?user_id=eq.${uid}&order=created_at.desc`, { headers: SB });
     const sessions = await sRes.json();
     const last = await sessionsLastActivity(uid);
-    const out = Array.isArray(sessions) ? sessions.map(s => ({ id: s.id, title: s.title || 'Sans titre', createdAt: s.created_at, lastActivity: last[s.id] || null, pinned: s.pinned === true })) : [];
+    const out = Array.isArray(sessions) ? sessions.filter(s => last[s.id]).map(s => ({ id: s.id, title: s.title || 'Sans titre', createdAt: s.created_at, lastActivity: last[s.id] || null, pinned: s.pinned === true })) : [];
     res.json(out);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
