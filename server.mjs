@@ -3072,7 +3072,7 @@ app.get('/api/memories', async (req, res) => {
     const userR = await fetch(`${DB}/users?id=eq.${String(user.id)}`, { headers: SB });
     const userData = await userR.json();
     const userName = Array.isArray(userData) && userData[0] ? userData[0].name : 'Utilisateur';
-    const formatted = Array.isArray(data) ? data.map(s => ({ id: s.id, title: s.title || 'Sans titre', sharedBy: userName, sharedAt: s.created_at })) : [];
+    const formatted = Array.isArray(data) ? data.map(m => ({ id: m.id, content: m.content, createdAt: m.created_at, updatedAt: m.updated_at })) : [];
     res.json(formatted);
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
@@ -3085,11 +3085,8 @@ app.post('/api/memory/add', async (req, res) => {
     if (!user) return res.status(401).json({ error: 'Non autorisé' });
     if (!content) return res.status(400).json({ error: 'Contenu requis' });
     
-    await fetch(`${DB}/memories`, {
-      method: 'POST',
-      headers: { ...SB, 'Prefer': 'return=minimal' },
-      body: JSON.stringify({ user_id: user.id, content, category: category || 'general' })
-    });
+    const sbRes = await fetch(`${DB}/memories`, { method: 'POST', headers: { ...SB, 'Prefer': 'return=minimal' }, body: JSON.stringify({ user_id: user.id, content }) });
+    if (!sbRes.ok) { const errText = await sbRes.text(); console.error('memory/add Supabase error:', sbRes.status, errText); return res.status(500).json({ error: 'Echec enregistrement: ' + errText }); }
     res.json({ success: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
@@ -3101,6 +3098,18 @@ app.delete('/api/memory/:id', async (req, res) => {
     if (!user) return res.status(401).json({ error: 'Non autorisé' });
     
     await fetch(`${DB}/memories?id=eq.${req.params.id}&user_id=eq.${String(user.id)}`, { method: 'DELETE', headers: SB });
+    res.json({ success: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.put('/api/memory/:id', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    const user = checkToken(token);
+    if (!user) return res.status(401).json({ error: 'Non autorisé' });
+    const { content, category } = req.body;
+    if (!content) return res.status(400).json({ error: 'Contenu requis' });
+    await fetch(`${DB}/memories?id=eq.${req.params.id}&user_id=eq.${String(user.id)}`, { method: 'PATCH', headers: { ...SB, 'Prefer': 'return=minimal' }, body: JSON.stringify({ content, updated_at: new Date().toISOString() }) });
     res.json({ success: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
