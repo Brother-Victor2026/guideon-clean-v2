@@ -2617,7 +2617,8 @@ async function runInstallReminders() {
       const cb = u.checkboxes || {};
       if (cb.notifCheck !== true) continue;
       if (cb.pwaInstalled === true) continue;
-      await notifyOnce(u, slot.mark, 20 * 60 * 60 * 1000, { type: 'info', title: slot.title, message: slot.message }, { installAction: true });
+      const reminderMsg = slot.message + " Vous retrouverez aussi ce bouton à tout moment dans les Paramètres de Guidéon.";
+      await notifyOnce(u, slot.mark, 20 * 60 * 60 * 1000, { type: 'info', title: slot.title, message: reminderMsg }, { installAction: true });
     }
   } catch (e) { console.error('Rappels installation:', e.message); }
 }
