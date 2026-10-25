@@ -220,23 +220,31 @@ async function callStabilityAI(rawPrompt) {
     const transResp = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
       headers: { "Authorization": `Bearer ${API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ model: "openai/gpt-oss-20b", messages: [{ role: "user", content: `Rewrite this as a short vivid visual scene description in English for an AI image generator. Do not use words like draw, generate, picture of, image of, illustration of - describe the subject and scene directly. Reply with ONLY the description, no quotes: "${rawPrompt}"` }], max_tokens: 500, reasoning_effort: "low" })
+      body: JSON.stringify({ model: "openai/gpt-oss-20b", messages: [{ role: "user", content: `Rewrite this as a short vivid visual scene description in English for an AI image generator, aiming for a photorealistic result (natural lighting, realistic textures, real-world proportions, like an actual photograph) unless the original request clearly asked for another art style (cartoon, anime, painting, drawing, etc.), in which case follow that requested style instead. Do not use words like draw, generate, picture of, image of, illustration of - describe the subject and scene directly. Reply with ONLY the description, no quotes: "${rawPrompt}"` }], max_tokens: 500, reasoning_effort: "low" })
     });
     const transData = await transResp.json();
     const englishPrompt = transData.choices?.[0]?.message?.content?.trim() || rawPrompt;
     console.error('Prompt envoye a Pollinations:', englishPrompt);
-    const pollinationsUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(englishPrompt)}?width=1024&height=1024&nologo=true`;
-    let imgResp;
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000);
-    try {
-      imgResp = await fetch(pollinationsUrl, { signal: controller.signal });
-    } finally {
-      clearTimeout(timeoutId);
+    const pollinationsUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(englishPrompt)}?width=1024&height=1024&nologo=true&enhance=true`;
+    let imgResp = null;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      if (attempt > 0) { console.error('Pollinations: nouvelle tentative...'); await new Promise(r => setTimeout(r, 2000)); }
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000);
+      try {
+        imgResp = await fetch(pollinationsUrl, { signal: controller.signal });
+      } catch (fetchErr) {
+        console.error(`Pollinations fetch echec (tentative ${attempt + 1}/2):`, fetchErr.message);
+        imgResp = null;
+      } finally {
+        clearTimeout(timeoutId);
+      }
+      if (imgResp && imgResp.ok) break;
     }
-    if (!imgResp.ok) {
-      const errText = await imgResp.text();
-      console.error('Pollinations erreur:', imgResp.status, errText.slice(0, 300));
+    if (!imgResp || !imgResp.ok) {
+      const errText = imgResp ? await imgResp.text() : 'Aucune reponse (timeout ou erreur reseau)';
+      console.error('Pollinations erreur finale:', imgResp ? imgResp.status : 'N/A', errText.slice(0, 300));
+      if (imgResp && imgResp.status === 402 && errText.includes('FREE_LIMIT')) return '__RATE_LIMIT_45S__';
       return null;
     }
     const contentType = imgResp.headers.get('content-type') || 'image/jpeg';
@@ -847,12 +855,12 @@ app.post('/api/chat', async (req, res) => {
       if (user) {
         userId = String(user.id);
         const [hRes, uRes] = await Promise.all([
-          fetch(`${DB}/conversations?user_id=eq.${userId}&session_id=eq.${session_id}&order=id.asc&limit=10`, { headers: SB }),
+          fetch(`${DB}/conversations?user_id=eq.${userId}&session_id=eq.${session_id}&order=id.desc&limit=10`, { headers: SB }),
           fetch(`${DB}/users?id=eq.${userId}&select=instructions,checkboxes`, { headers: SB })
         ]);
         const hData = await hRes.json();
         const uData = await uRes.json();
-        if (Array.isArray(hData)) dbHistory = hData;
+        if (Array.isArray(hData)) dbHistory = hData.reverse();
         if (Array.isArray(uData) && uData[0]) userInstructions = uData[0].instructions || '';
         if (Array.isArray(uData) && uData[0]) ucb = uData[0].checkboxes || {};
       }
@@ -1127,8 +1135,12 @@ const sysContent = (userInstructions ? `Directives importantes de l'utilisateur:
               if (desc && wantsVisual) {
                 try {
                   const imgUrl = await callStabilityAI(desc);
-                  if (imgUrl) res.write(`data: ${JSON.stringify({ image: imgUrl })}\n\n`);
-              if (imgUrl) savedImageUrl = imgUrl;
+                  if (imgUrl === '__RATE_LIMIT_45S__') {
+                    res.write(`data: ${JSON.stringify({ content: "\n\n⏳ Generation d'image limitee a une toutes les 45 secondes avec le service gratuit, reessaie dans un instant." })}\n\n`);
+                  } else if (imgUrl) {
+                    res.write(`data: ${JSON.stringify({ image: imgUrl })}\n\n`);
+                    savedImageUrl = imgUrl;
+                  }
                 } catch (e) {}
               }
               imageDone = true;
@@ -1224,7 +1236,7 @@ console.log('🔖 searchSources au moment de l affichage:', JSON.stringify(searc
           method: 'POST',
           headers: { 'Authorization': `Bearer ${API_KEY}`, 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            model: 'openai/gpt-oss-20b',
+            model: 'qwen/qwen3.8-27b',
             max_tokens: 250,
             messages: [
               { role: 'system', content: 'Tu es un extracteur de memoires. Analyse la conversation et extrait UNIQUEMENT les faits importants sur l utilisateur (prenom, profession, preferences, habitudes, objectifs). Reponds avec une liste de faits courts, un par ligne, commencant par "-". Si aucun fait important, reponds "AUCUN".' },
@@ -1232,8 +1244,11 @@ console.log('🔖 searchSources au moment de l affichage:', JSON.stringify(searc
             ]
           })
         });
-        const extractData = await extractRes.json();
-        const facts = extractData.choices?.[0]?.message?.content?.trim() || '';
+        if (!extractRes.ok) {
+          console.error('EXTRACTION GROQ ERROR:', extractRes.status, await extractRes.text());
+        }
+        const extractData = extractRes.ok ? await extractRes.json() : null;
+        const facts = extractData?.choices?.[0]?.message?.content?.trim() || '';
         if (facts && facts !== 'AUCUN') {
           const lines = facts.split('\n').filter(l => l.startsWith('-')).map(l => l.slice(1).trim()).filter(Boolean);
           const existRes = await fetch(`${DB}/memories?user_id=eq.${user.id}&select=id,content`, { headers: SB });
@@ -1295,6 +1310,7 @@ app.post('/api/image', async (req, res) => {
     const transData = await transResp.json();
     const englishPrompt = transData.choices?.[0]?.message?.content?.trim() || prompt;
     const imgUrl = await callStabilityAI(englishPrompt);
+    if (imgUrl === '__RATE_LIMIT_45S__') return res.status(429).json({ error: "Le service gratuit de generation d'image limite a 1 image toutes les 45 secondes. Reessaie dans un instant." });
     if (!imgUrl) return res.status(500).json({ error: 'Image non generee' });
     let comment = 'Voici votre image !';
     try {
@@ -2224,7 +2240,7 @@ app.post('/api/analyze-pdf', multer({storage: multer.memoryStorage(), limits: {f
     console.log(`[PDF] Texte extrait: ${textToAnalyze.length} chars`);
 
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 5000);
+    const timeout = setTimeout(() => controller.abort(), 30000);
 
     const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
@@ -2233,10 +2249,10 @@ app.post('/api/analyze-pdf', multer({storage: multer.memoryStorage(), limits: {f
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
+        model: 'openai/gpt-oss-120b',
         messages: [{
           role: 'user',
-          content: `Résume en 3 points ce PDF:\n${textToAnalyze}`
+          content: `Resume ce document PDF de facon claire et structuree, puis termine toujours par 2 ou 3 questions pertinentes pour aider l'utilisateur a avancer dans ce qu'il cherche a faire avec ce document (par exemple: veut-il une reformulation, un extrait precis, un texte pret a copier, ou une explication d'un point particulier). Document:\n${textToAnalyze}`
         }],
         max_tokens: 512
       }),
@@ -2300,20 +2316,29 @@ app.post('/api/analyze', async (req, res) => {
     console.log('🖼️ Analyse image');
     
     // Appeler Groq avec vision si dispo, sinon répondre génériquement
-    const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    const r = await fetch('https://api.mistral.ai/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': 'Bearer ' + process.env.GROQ_API_KEY,
+        'Authorization': 'Bearer ' + process.env.MISTRAL_API_KEY,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: 'llama-3.1-8b-instant',
+        model: 'ministral-8b-2512',
         messages: [
-          {role: 'user', content: prompt + '\n\n[Image: ' + (imageUrl || 'fichier uploadé') + ']'}
+          {role: 'user', content: [
+            { type: 'text', text: prompt },
+            { type: 'image_url', image_url: img }
+          ]}
         ],
         max_tokens: 800
       })
     });
+
+    if (!r.ok) {
+      const errText = await r.text();
+      console.error('Mistral analyse image erreur:', r.status, errText.slice(0, 300));
+      return res.status(500).json({ error: "Erreur du service d'analyse d'image: " + errText.slice(0, 200) });
+    }
     
     const d = await r.json();
     const reply = d.choices?.[0]?.message?.content || 'Image analysée mais pas de réponse détaillée.';
