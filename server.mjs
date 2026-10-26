@@ -14,7 +14,7 @@ import PDFDocument from 'pdfkit';
 import pdfParse from 'pdf-parse';
 
 const app = express();
-app.use(compression());
+app.use(compression({ filter: (req, res) => req.path === '/api/chat' ? false : compression.filter(req, res) }));
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const API_KEY = process.env.GROQ_API_KEY;
 const SUPABASE_URL = process.env.SUPABASE_URL;
@@ -51,9 +51,9 @@ function generateUserId(id) {
 function isSearchQuery(message) {
   const m = String(message || '').toLowerCase();
   if (/\b(quel|quelle|quels|quelles)\s+(est|sont)\s+(mon|ma|mes|notre|nos)\b/.test(m)) return false;
-  const searchWords = ['qui est', 'cherche', 'recherche', "c'est quoi", 'qui a', 'quel est', 'donne-moi', 'explique', 'raconte',
+  const searchWords = ['qui est', 'cherche', 'recherche', "c'est quoi", 'qui a', 'quel est', 'donne-moi', 'explique',
     'actuellement', 'en ce moment', 'derniere', 'dernier', 'nouveau', 'nouvelle', "aujourd'hui", 'recent', 'recente',
-    'combien coute', 'prix de', 'resultat', 'classement', 'date de', 'quand est', 'ou se trouve', 'capitale de', 'match', 'contre', 'affronte', 'score', 'resultat du match', 'joue avec', 'joue contre', ' vs ', 'calendrier des matchs', 'detail', 'details', 'plus d\'infos', 'plus d\'informations', 'precise', 'complete', 'developpe', 'en savoir plus'];
+    'combien coute', 'prix de', 'resultat', 'classement', 'date de', 'quand est', 'ou se trouve', 'capitale de', 'match', 'contre', 'affronte', 'score', 'resultat du match', 'joue avec', 'joue contre', ' vs ', 'calendrier des matchs', 'detail', 'details', 'plus d\'infos', 'plus d\'informations', 'precise', 'complete', 'developpe', 'en savoir plus', 'actualit', 'news'];
   if (searchWords.some(w => m.includes(w))) return true;
   if (/\b(19|20)\d{2}\b/.test(m)) return true;
   if (/[A-ZÀ-Ý][a-zà-ÿ]+\s+[A-ZÀ-Ý][a-zà-ÿ]+/.test(String(message || ''))) return true;
@@ -844,6 +844,10 @@ app.post('/api/chat', async (req, res) => {
     const { message, history, token, model, temperature, session_id, userTime, tone, style, lang, length } = req.body;
     let clientGone = false;
     res.on('close', () => { if (!res.writableFinished) clientGone = true; });
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.flushHeaders();
   console.log('📥 token exists:', !!token);let userId = 'default';
     let dbHistory = [];
     let userInstructions = '';
@@ -869,6 +873,7 @@ app.post('/api/chat', async (req, res) => {
     // Détection et recherche en arrière-plan
     let searchContextText = '';
     if (isSearchQuery(message)) {
+      res.write(`data: ${JSON.stringify({ reasoning: "Recherche web en cours...\n" })}\n\n`);
       try {
         const selfBase = `${req.protocol}://${req.get('host')}`;
         let searchQuery = message;
@@ -885,6 +890,7 @@ app.post('/api/chat', async (req, res) => {
           body: JSON.stringify({ query: searchQuery })
         });
         const searchData = await searchRes.json();
+        res.write(`data: ${JSON.stringify({ reasoning: "Analyse des resultats...\n" })}\n\n`);
         if (searchData.result && searchData.result !== 'Aucun résultat trouvé') {
           searchSources = Array.isArray(searchData.sources) ? searchData.sources : [];
           const isGeneralNews = searchQuery === '__GENERAL_NEWS__';
@@ -1056,6 +1062,7 @@ const sysContent = (userInstructions ? `Directives importantes de l'utilisateur:
     console.log('🧠 isComplexRequest:', isComplexRequest, '| reasoning_effort envoye:', geminiBodyObj.reasoning_effort || 'aucun');
     const geminiBody = JSON.stringify(geminiBodyObj);
     let response;
+    res.write(`data: ${JSON.stringify({ reasoning: "Redaction de la reponse...\n" })}\n\n`);
     for (let attempt = 0; attempt < 2; attempt++) {
       if (attempt > 0) await new Promise(r => setTimeout(r, 2000));
       response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
@@ -1075,24 +1082,23 @@ const sysContent = (userInstructions ? `Directives importantes de l'utilisateur:
       const isQuotaExceeded = response.status === 429 || errData.error?.code === 429;
       if (isQuotaExceeded) {
         const { displayTime } = getQuotaResetTime();
-        return res.status(429).json({
-          quotaExceeded: true,
-          error: `Vous avez atteint la limite de votre conversation pour aujourd'hui. Revenez vers ${displayTime} pour une nouvelle conversation.`,
-          resetTime: displayTime,
-          resetAt: resetUTC.toISOString()
-        });
+        const quotaMsg = `Vous avez atteint la limite de votre conversation pour aujourd'hui. Revenez vers ${displayTime} pour une nouvelle conversation.`;
+        res.write(`data: ${JSON.stringify({ quotaExceeded: true, error: quotaMsg, resetTime: displayTime, resetAt: resetUTC.toISOString() })}\n\n`);
+        res.end();
+        return;
       }
       const isOverloaded = response.status === 503;
       if (isOverloaded) {
-        return res.status(503).json({ overloaded: true, error: "Guidéon est momentanément surchargé. Réessayez dans quelques secondes." });
+        res.write(`data: ${JSON.stringify({ overloaded: true, error: "Guid\u00e9on est momentan\u00e9ment surcharg\u00e9. R\u00e9essayez dans quelques secondes." })}\n\n`);
+        res.end();
+        return;
       }
-      return res.status(500).json({ error: errData.error?.message || JSON.stringify(errData) });
+      res.write(`data: ${JSON.stringify({ error: errData.error?.message || JSON.stringify(errData) })}\n\n`);
+      res.end();
+      return;
     }
 
-    res.setHeader('Content-Type', 'text/event-stream');
-    res.setHeader('Cache-Control', 'no-cache');
-    res.setHeader('Connection', 'keep-alive');
-    res.flushHeaders();
+    
 
     let reply = '';
     let reasoningSeenThisRequest = false;
