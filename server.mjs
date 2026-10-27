@@ -1049,7 +1049,7 @@ const sysContent = (userInstructions ? `Directives importantes de l'utilisateur:
     const hist = dbHistory.length > 0 ? dbHistory : (history || []);
     const messages = [SYSTEM_MSG, ...hist.filter(h=>h&&h.role&&h.content).map(h => ({ role: h.role, content: h.content })), { role: 'user', content: message }];
     const isComplexRequest = isSearchQuery(message) || String(message || '').trim().split(/\s+/).length > 15;
-    const geminiBodyObj = { model: MODELS[model] || "openai/gpt-oss-120b", messages, temperature: autoOptSettings.temperature || parseFloat(temperature) || 0.5, stream: true };
+    const geminiBodyObj = { model: MODELS[model] || "openai/gpt-oss-120b", messages, temperature: (!isNaN(parseFloat(temperature)) ? parseFloat(temperature) : (autoOptSettings.temperature || 0.5)), stream: true };
     if (isComplexRequest) {
       geminiBodyObj.reasoning_effort = 'medium';
       geminiBodyObj.messages = [
