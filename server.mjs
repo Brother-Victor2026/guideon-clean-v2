@@ -841,7 +841,7 @@ app.post('/api/analytics/curation', async (req, res) => {
 
 app.post('/api/chat', async (req, res) => {
   try {
-    const { message, history, token, model, temperature, session_id, userTime, tone, style, lang, length } = req.body;
+    const { message, history, token, model, temperature, session_id, userTime, tone, style, lang, length, deepResearch, deepThink } = req.body;
     let clientGone = false;
     res.on('close', () => { if (!res.writableFinished) clientGone = true; });
     res.setHeader('Content-Type', 'text/event-stream');
@@ -874,7 +874,51 @@ app.post('/api/chat', async (req, res) => {
     let adaptProfileRef = (ucb && ucb.adaptProfile && typeof ucb.adaptProfile === 'object') ? ucb.adaptProfile : null;
     // Détection et recherche en arrière-plan
     let searchContextText = '';
-    if (isSearchQuery(message)) {
+    if (deepThink) {
+      searchContextText = "\n\nRedige une reponse TRES detaillee, approfondie et bien structuree (avec des sous-titres courts si pertinent) sur ce sujet, en te basant UNIQUEMENT sur tes propres connaissances. N'effectue aucune recherche web et ne mentionne aucune source.";
+    } else if (deepResearch) {
+      res.write(`data: ${JSON.stringify({ reasoning: "Recherche approfondie en cours...\n" })}\n\n`);
+      try {
+        const selfBase = `${req.protocol}://${req.get('host')}`;
+        let subQueries = null;
+        try {
+          const qRes = await fetch("https://api.groq.com/openai/v1/chat/completions", { method: "POST", headers: { "Authorization": `Bearer ${API_KEY}`, "Content-Type": "application/json" }, body: JSON.stringify({ model: "openai/gpt-oss-20b", messages: [{ role: "user", content: `Pour ce sujet : "${message}"\n\nSi ce sujet est purement personnel, conceptuel ou une demande de conseil/reflexion/opinion qui n'a besoin d'AUCUNE information factuelle, actuelle ou chiffree du web, reponds avec un tableau JSON vide : []\n\nSinon, genere exactement 3 requetes de recherche web differentes et complementaires (en francais, courtes, sans guillemets) pour bien couvrir ce sujet sous plusieurs angles.\n\nReponds UNIQUEMENT avec un tableau JSON. Exemples valides: ["requete 1","requete 2","requete 3"] ou []` }], max_tokens: 200, reasoning_effort: "low" }) });
+          const qData = await qRes.json();
+          const qText = qData.choices?.[0]?.message?.content?.trim() || '';
+          const qMatch = qText.match(/\[[\s\S]*\]/);
+          if (qMatch) {
+            subQueries = JSON.parse(qMatch[0]).filter(s => typeof s === 'string' && s.trim()).slice(0, 3);
+          }
+        } catch (e) { console.error('Erreur generation sous-requetes:', e.message); }
+        if (subQueries === null) subQueries = [message];
+
+        res.write(`data: ${JSON.stringify({ reasoning: subQueries.length > 0 ? ("Recherche sur " + subQueries.length + " angles differents...\n") : "Analyse directe du sujet, pas de recherche web necessaire...\n" })}\n\n`);
+
+        const searchResultsDR = subQueries.length > 0 ? await Promise.allSettled(subQueries.map(q =>
+          fetch(`${selfBase}/api/search`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query: q }) }).then(r => r.json())
+        )) : [];
+
+        const textsDR = [];
+        const sourcesMapDR = new Map();
+        searchResultsDR.forEach(r => {
+          if (r.status === 'fulfilled' && r.value && r.value.result && r.value.result !== 'Aucun résultat trouvé') {
+            textsDR.push(r.value.result);
+            (r.value.sources || []).forEach(s => { if (s && s.url && !sourcesMapDR.has(s.url)) sourcesMapDR.set(s.url, s); });
+          }
+        });
+
+        if (textsDR.length > 0) {
+          res.write(`data: ${JSON.stringify({ reasoning: "Synthese des resultats...\n" })}\n\n`);
+          searchSources = Array.from(sourcesMapDR.values());
+          searchContextText = "\n\nRESULTATS DE RECHERCHE APPROFONDIE (plusieurs angles de recherche combines) : redige une reponse TRES detaillee et bien structuree (avec des sous-titres courts si pertinent) en te basant UNIQUEMENT sur les faits presents ci-dessous. N'invente JAMAIS un chiffre, une date ou un detail qui n'est pas ecrit noir sur blanc dans ce qui suit.\n\n" + textsDR.join('\n\n').substring(0, 4000);
+        } else {
+          searchContextText = "\n\nAucune information web pertinente n'a ete trouvee pour ce sujet. Redige quand meme une reponse TRES detaillee, approfondie et bien structuree (avec des sous-titres courts si pertinent) a partir de tes propres connaissances, sans mentionner l'absence de recherche web.";
+        }
+      } catch (e) {
+        console.error('Erreur recherche approfondie:', e.message);
+        searchContextText = "\n\nRedige une reponse tres detaillee et approfondie a partir de tes propres connaissances.";
+      }
+    } else if (isSearchQuery(message)) {
       res.write(`data: ${JSON.stringify({ reasoning: "Recherche web en cours...\n" })}\n\n`);
       try {
         const selfBase = `${req.protocol}://${req.get('host')}`;
