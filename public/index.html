@@ -2066,6 +2066,13 @@ function addUploadBtn(){
             <span style="font-size:11px;color:#9ca3af;">Rapport détaillé multi-sources</span>
           </span>
         </button>
+        <button onclick="document.getElementById('attachMenuModal').remove();exportChatMenu();" style="display:flex;align-items:center;gap:10px;background:none;border:none;color:#e0e0e0;padding:8px;cursor:pointer;text-align:left;border-radius:8px;">
+          <span style="font-size:18px;flex-shrink:0;">📥</span>
+          <span style="display:flex;flex-direction:column;">
+            <span style="font-size:14px;color:#e0e0e0;">Exporter</span>
+            <span style="font-size:11px;color:#9ca3af;">Télécharger en Markdown ou PDF</span>
+          </span>
+        </button>
       </div>
     </div>`;
     document.body.appendChild(m);
