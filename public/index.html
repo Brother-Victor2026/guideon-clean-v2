@@ -130,7 +130,7 @@ header{background:linear-gradient(135deg,#1a0533,#0d1f4d);padding:14px 16px;disp
 @keyframes barPulse2 { 0%, 100% { height: 12px; } 50% { height: 20px; } }
 @keyframes barPulse3 { 0%, 100% { height: 16px; } 50% { height: 24px; } }
 @keyframes barPulse4 { 0%, 100% { height: 10px; } 50% { height: 18px; } }
-</style>
+[data-theme="light"] header{background:#f3f4f6!important}[data-theme="light"] .hi h1{color:#7c3aed!important}[data-theme="light"] .hi p{color:#5b21b6!important}[data-theme="light"] .ib{color:#6d28d9!important}[data-theme="light"] .pl{background:#f3f4f6!important}[data-theme="light"] .pl .pb{background:#ffffff!important;border-color:#c4b5fd!important;color:#1e1b4b!important}[data-theme="light"] .ia{background:#f3f4f6!important;border-top-color:#e5e7eb!important}[data-theme="light"] #ui{background:#ffffff!important;border-color:#c4b5fd!important;color:#1e1b4b!important}[data-theme="light"] .mb{background:#ffffff!important;border-color:#c4b5fd!important;color:#6d28d9!important}[data-theme="light"] #msel{background:#ffffff!important;color:#6d28d9!important;border-color:#c4b5fd!important}[data-theme="light"] #voiceModalBtn{background:#ffffff!important;border-color:#c4b5fd!important}[data-theme="light"] .upload-btn-g{background:#ffffff!important;border-color:#c4b5fd!important;color:#6d28d9!important}[data-theme="light"] #gQuotePreview{background:#ffffff!important}[data-theme="light"] #gQuotePreview [style*="color:#c4b5fd"]{color:#1e1b4b!important}[data-theme="light"] #gQuotePreview [style*="color:#a78bfa"]{color:#6d28d9!important}[data-theme="light"] #gQuotePreview [style*="color:#9ca3af"]{color:#1e1b4b!important}</style>
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js">
 
 function loadRealtime(){
@@ -1761,6 +1761,7 @@ function changeThemeAndReload(theme){
 function applyTheme(theme){
   localStorage.setItem('gtheme', theme);
   const root = document.documentElement;
+  root.setAttribute('data-theme', theme);
   if(theme==='light'){
     document.body.style.background='#f0f2f5';
     document.body.style.color='#111827';
@@ -2025,7 +2026,7 @@ function addUploadBtn(){
   };
 
   const btn=document.createElement('button');btn.id='uploadBtn';btn.textContent='+';
-  btn.style.cssText='background:#1a1a2e;border:1px solid #2a2a4a;color:#a78bfa;width:44px;height:44px;border-radius:50%;font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;';
+  btn.style.cssText='background:#1a1a2e;border:1px solid #2a2a4a;color:#a78bfa;width:44px;height:44px;border-radius:50%;font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;';btn.className='upload-btn-g';
   btn.onclick=()=>window.openAttachMenu();
   msel.parentNode.insertBefore(btn,msel);
 }
