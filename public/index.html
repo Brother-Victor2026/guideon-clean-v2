@@ -171,6 +171,7 @@ header{background:linear-gradient(135deg,#1a0533,#0d1f4d);padding:14px 16px;disp
 [data-theme="light"] #privacyReportModal [style*="color:#9ca3af"],[data-theme="light"] #cniFormularModal [style*="color:#9ca3af"]{color:#1e1b4b!important}
 [data-theme="light"] #privacyReportModal [style*="color:#a78bfa"],[data-theme="light"] #cniFormularModal [style*="color:#a78bfa"]{color:#6d28d9!important}
 [data-theme="light"] #privacyReportModal [style*="color:#f59e0b"],[data-theme="light"] #cniFormularModal [style*="color:#f59e0b"]{color:#b45309!important}
+[data-theme="light"] .sug button{background:#ffffff!important;border-color:#c4b5fd!important;color:#1e1b4b!important}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js">
 
@@ -1151,7 +1152,7 @@ window.addEventListener('load', () => {
   setTimeout(() => { displayChatHistory(); }, 500);
 });
 
-function addSug(){const chat=document.getElementById('chat');const d=document.createElement('div');d.className='sug';d.innerHTML='<button onclick="useSug(this.dataset.t)" data-t="Crée une image ">🎨 Crée une image</button><button onclick="useSug(this.dataset.t)" data-t="Résume ce texte ">📝 Résume ce texte</button><button onclick="useSug(this.dataset.t)" data-t="Donne-moi des conseils ">🎓 Donne-moi des conseils</button><button onclick="sendSug(this.dataset.t)" data-t="Aide-moi à élaborer un plan pour organiser mon projet">💡 Aide-moi à élaborer un plan pour organiser mon projet</button><button onclick="sendSug(this.dataset.t)" data-t="Aide-moi à rédiger un email professionnel">✍️ Aide-moi à rédiger un email professionnel</button><button onclick="useSug(this.dataset.t)" data-t="Aide-moi à analyser ">📊 Aide-moi à analyser</button><button onclick="sendSug(this.dataset.t)" data-t="Propose-moi des idées créatives pour ce week-end">🔮 Propose-moi des idées créatives pour ce week-end</button><button onclick="sendSug(this.dataset.t)" data-t="Surprends-moi avec une anecdote intéressante">🎁 Surprends-moi avec une anecdote intéressante</button><button onclick="useSug(this.dataset.t)" data-t="Analyse cette image que je vais t&#39;envoyer">👁️ Analyse cette image que je vais t&#39;envoyer</button>';chat.appendChild(d);}
+function addSug(){const chat=document.getElementById('chat');const old=chat.querySelector('.sug');if(old)old.remove();const d=document.createElement('div');d.className='sug';d.innerHTML='<button onclick="useSug(this.dataset.t)" data-t="Crée une image ">🎨 Crée une image</button><button onclick="useSug(this.dataset.t)" data-t="Résume ce texte ">📝 Résume ce texte</button><button onclick="useSug(this.dataset.t)" data-t="Donne-moi des conseils ">🎓 Donne-moi des conseils</button><button onclick="sendSug(this.dataset.t)" data-t="Aide-moi à élaborer un plan pour organiser mon projet">💡 Aide-moi à élaborer un plan pour organiser mon projet</button><button onclick="sendSug(this.dataset.t)" data-t="Aide-moi à rédiger un email professionnel">✍️ Aide-moi à rédiger un email professionnel</button><button onclick="useSug(this.dataset.t)" data-t="Aide-moi à analyser ">📊 Aide-moi à analyser</button><button onclick="sendSug(this.dataset.t)" data-t="Propose-moi des idées créatives pour ce week-end">🔮 Propose-moi des idées créatives pour ce week-end</button><button onclick="sendSug(this.dataset.t)" data-t="Surprends-moi avec une anecdote intéressante">🎁 Surprends-moi avec une anecdote intéressante</button><button onclick="useSug(this.dataset.t)" data-t="Analyse cette image que je vais t&#39;envoyer">👁️ Analyse cette image que je vais t&#39;envoyer</button>';chat.appendChild(d);}
 function hideFooter(){const f=document.getElementById("app-footer");if(f)f.style.display="none";}
 let gReplyQuote=null;
 function gShowQuotePreview(text){
@@ -2124,8 +2125,6 @@ function fb(btn,val){
     fetch('/api/feedback',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tok},body:JSON.stringify({message:text,rating:val})});
   }catch(e){}
 }
-undefined
-if(document.querySelector('.wl'))addSug();
 function shareMsg(btn){try{const text=btn.closest('.mc').querySelector('.bub').innerText;if(navigator.share){navigator.share({text:text});}else{const ta=document.createElement('textarea');ta.value=text;ta.style.position='fixed';ta.style.top='-9999px';ta.style.left='-9999px';document.body.appendChild(ta);ta.focus();ta.select();try{document.execCommand('copy');}catch(e){}document.body.removeChild(ta);btn.textContent='OK';setTimeout(()=>{btn.textContent='Partager';},2000);}}catch(e){}}
 function addCopyButtons(el){
   if(el&&!el.querySelector('.post-copy-block')){
