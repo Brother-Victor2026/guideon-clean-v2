@@ -1201,7 +1201,8 @@ const sysContent = (userRealName ? `Prenom reel de l'utilisateur (donnee fiable 
           const content = parsed.choices?.[0]?.delta?.content;
           if (content) {
             reply += content;
-            res.write(`data: ${JSON.stringify({ content: content })}\n\n`);await new Promise(r => setTimeout(r, 10));
+            pending += content;
+            await new Promise(r => setTimeout(r, 10));
             let fullMatch = pending.match(/\[GENERATE_IMAGE:\s*([\s\S]+?)\]/);
             while (fullMatch && !imageDone) {
               const before = pending.slice(0, fullMatch.index);
