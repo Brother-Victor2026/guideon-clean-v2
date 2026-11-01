@@ -19,8 +19,11 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const API_KEY = process.env.GROQ_API_KEY;
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_KEY;
-const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
+// Toutes les requêtes Supabase de ce serveur sont faites côté backend (jamais depuis le navigateur),
+// l'autorisation est déjà vérifiée par checkToken() dans chaque route. On utilise donc la clé service
+// (qui contourne RLS) plutôt que la clé anonyme, pour rester cohérent avec RLS activé sur les tables.
+const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY || SUPABASE_KEY);
 const SECRET = process.env.JWT_SECRET || 'guideon2026';
 const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN;
 const WHATSAPP_PHONE_NUMBER_ID = process.env.WHATSAPP_PHONE_NUMBER_ID;
@@ -29,7 +32,7 @@ const pkg = JSON.parse(fs.readFileSync(__dirname + '/package.json', 'utf-8'));
 const VERSION = pkg.version;
 
 const DB = SUPABASE_URL ? `${SUPABASE_URL}/rest/v1` : null;
-const SB = { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json' };
+const SB = { 'apikey': (SUPABASE_SERVICE_KEY || SUPABASE_KEY), 'Authorization': `Bearer ${SUPABASE_SERVICE_KEY || SUPABASE_KEY}`, 'Content-Type': 'application/json' };
 
 function hashPwd(p) { return crypto.createHash('sha256').update(p + SECRET).digest('hex'); }
 function makeToken(id, email) {
@@ -156,7 +159,7 @@ app.post('/api/register', async (req, res) => {
     const checkR = await fetch(`${DB}/users?email=eq.${encodeURIComponent(email)}`, { headers: SB });
     const checkData = await checkR.json();
     if (Array.isArray(checkData) && checkData.length > 0) return res.status(400).json({ error: 'Email deja utilise' });
-    const SB_SERVICE = { 'apikey': process.env.SUPABASE_KEY, 'Authorization': `Bearer ${process.env.SUPABASE_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=representation' };
+    const SB_SERVICE = { 'apikey': (SUPABASE_SERVICE_KEY || SUPABASE_KEY), 'Authorization': `Bearer ${SUPABASE_SERVICE_KEY || SUPABASE_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=representation' };
     const r = await fetch(`${DB}/users`, { method: 'POST', headers: SB_SERVICE, body: JSON.stringify({ email, password: hashPwd(password), name }) });
     const data = await r.json();
     if (!Array.isArray(data) || !data[0]) return res.status(400).json({ error: data.message || 'Erreur inscription' });
