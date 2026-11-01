@@ -3227,7 +3227,9 @@ async function createReminderRow(userId, message, remindAtDate, sessionId) {
   let pushEnabled = false;
   try {
     const cb = await getUserCheckboxes(userId);
-    pushEnabled = Array.isArray(cb.pushSubs) && cb.pushSubs.some(s => s && s.general === true);
+    // sendPush() ignore tout push "general" si notifCheck n'est pas active (interrupteur general),
+    // meme si un abonnement avec general:true existe : il faut verifier les deux conditions.
+    pushEnabled = cb.notifCheck === true && Array.isArray(cb.pushSubs) && cb.pushSubs.some(s => s && s.general === true);
   } catch (e) {}
   return { reminder: data, pushEnabled };
 }
