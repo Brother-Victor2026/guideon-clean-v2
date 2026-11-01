@@ -3163,6 +3163,69 @@ app.post('/api/push/test', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// ===== RAPPELS / ALARMES =====
+app.post('/api/reminders', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    const user = checkToken(token);
+    if (!user) return res.status(401).json({ error: 'Non autorise' });
+    const message = typeof req.body?.message === 'string' ? req.body.message.trim().slice(0, 300) : '';
+    const remindAt = req.body?.remind_at ? new Date(req.body.remind_at) : null;
+    if (!message) return res.status(400).json({ error: 'Message de rappel requis' });
+    if (!remindAt || isNaN(remindAt.getTime())) return res.status(400).json({ error: 'Date/heure invalide' });
+    if (remindAt.getTime() <= Date.now()) return res.status(400).json({ error: 'La date doit être dans le futur' });
+    const sessionId = Number.isFinite(Number(req.body?.session_id)) ? Number(req.body.session_id) : null;
+    const { data, error } = await sbAdmin.from('reminders').insert({
+      user_id: String(user.id), message, remind_at: remindAt.toISOString(), session_id: sessionId
+    }).select().single();
+    if (error) throw error;
+    res.json({ ok: true, reminder: data });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/api/reminders', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    const user = checkToken(token);
+    if (!user) return res.status(401).json({ error: 'Non autorise' });
+    const { data, error } = await sbAdmin.from('reminders')
+      .select('id,message,remind_at,sent,created_at')
+      .eq('user_id', String(user.id)).eq('sent', false)
+      .order('remind_at', { ascending: true }).limit(50);
+    if (error) throw error;
+    res.json({ ok: true, reminders: data || [] });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.delete('/api/reminders/:id', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    const user = checkToken(token);
+    if (!user) return res.status(401).json({ error: 'Non autorise' });
+    const id = Number(req.params.id);
+    if (!Number.isFinite(id)) return res.status(400).json({ error: 'Identifiant invalide' });
+    const { error } = await sbAdmin.from('reminders').delete().eq('id', id).eq('user_id', String(user.id));
+    if (error) throw error;
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+async function checkDueReminders() {
+  try {
+    const nowIso = new Date().toISOString();
+    const { data, error } = await sbAdmin.from('reminders')
+      .select('id,user_id,message').eq('sent', false).lte('remind_at', nowIso).limit(50);
+    if (error) throw error;
+    for (const r of (data || [])) {
+      try {
+        await sendPush(r.user_id, 'general', { title: '⏰ Rappel Guidéon', body: r.message, url: '/' });
+      } catch (e) { console.error('reminder push:', e.message); }
+      await sbAdmin.from('reminders').update({ sent: true }).eq('id', r.id);
+    }
+  } catch (e) { console.error('checkDueReminders:', e.message); }
+}
+setInterval(checkDueReminders, 60 * 1000);
+
 // ===== SYSTÈME DE MÉMOIRE AMÉLIORÉ =====
 
 app.get('/api/memories', async (req, res) => {
