@@ -1346,6 +1346,12 @@ imgHtml='<br><img src="'+p.image+'" loading="lazy" style="max-width:220px;border
 if(!el){rty();el=am('guideon','');mc=el.querySelector('.mc');bub=el.querySelector('.bub');}
 if(bub)bub.innerHTML=marked.parse(full)+imgHtml;shown=full;
 gSmartScroll();
+}else if(p.reminder){
+var _rm=p.reminder;var _rdt=new Date(_rm.remind_at).toLocaleString('fr-FR');
+imgHtml+='<div style="margin-top:8px;padding:8px 10px;background:#1a1a2e;border:1px solid #2d1b69;border-radius:10px;font-size:13px;color:#c4b5fd;">⏰ Rappel programmé pour le '+_rdt+(_rm.pushEnabled===false?'<br><span style="color:#f59e0b;font-size:11.5px;">Active les notifications (Paramètres) pour le recevoir.</span>':'')+'</div>';
+if(!el){rty();el=am('guideon','');mc=el.querySelector('.mc');bub=el.querySelector('.bub');}
+if(bub)bub.innerHTML=marked.parse(full)+imgHtml;shown=full;
+gSmartScroll();
 }else if(p.suggestions){
 gSuggestions=p.suggestions;
 }
