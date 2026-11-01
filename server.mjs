@@ -3276,14 +3276,19 @@ app.delete('/api/reminders/:id', async (req, res) => {
 async function checkDueReminders() {
   try {
     const nowIso = new Date().toISOString();
+    // IMPORTANT : plusieurs instances du serveur (ex: production Render + test local) peuvent
+    // tourner en meme temps sur la meme base. On "reclame" les rappels dus en une seule requete
+    // atomique (UPDATE ... WHERE sent=false ... RETURNING) pour qu'un seul serveur a la fois
+    // marque et envoie chaque rappel, et evite d'envoyer la meme notification deux fois.
     const { data, error } = await sbAdmin.from('reminders')
-      .select('id,user_id,message').eq('sent', false).lte('remind_at', nowIso).limit(50);
+      .update({ sent: true })
+      .eq('sent', false).lte('remind_at', nowIso)
+      .select('id,user_id,message');
     if (error) throw error;
     for (const r of (data || [])) {
       try {
         await sendPush(r.user_id, 'general', { title: '⏰ Rappel Guidéon', body: r.message, url: '/' });
       } catch (e) { console.error('reminder push:', e.message); }
-      await sbAdmin.from('reminders').update({ sent: true }).eq('id', r.id);
     }
   } catch (e) { console.error('checkDueReminders:', e.message); }
 }
