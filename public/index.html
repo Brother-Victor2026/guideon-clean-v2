@@ -1350,7 +1350,7 @@ if(bub)bub.innerHTML=marked.parse(full)+imgHtml;shown=full;
 gSmartScroll();
 }else if(p.reminder){
 var _rm=p.reminder;var _rdt=new Date(_rm.remind_at).toLocaleString('fr-FR');
-imgHtml+='<div style="margin-top:8px;padding:8px 10px;background:#1a1a2e;border:1px solid #2d1b69;border-radius:10px;font-size:13px;color:#c4b5fd;">⏰ Rappel programmé pour le '+_rdt+(_rm.pushEnabled===false?'<br><span style="color:#f59e0b;font-size:11.5px;">⚠️ Notifications desactivees, tu ne recevras pas l\'alerte.</span><br><button onclick="window.gActivateReminderPush&&window.gActivateReminderPush().then(function(r){alert(r.ok?\'✅ Notifications activées ! Guidéon te rappellera par notification à l\\\'heure prévue.\':(r.error||\'Erreur\'));})" style="margin-top:6px;background:#2d1b69;color:#fff;border:none;border-radius:6px;padding:5px 10px;font-size:11.5px;cursor:pointer;">Activer les notifications</button>':'')+'</div>';
+imgHtml+='<div style="margin-top:8px;padding:8px 10px;background:#1a1a2e;border:1px solid #2d1b69;border-radius:10px;font-size:13px;color:#c4b5fd;">⏰ Rappel programmé pour le '+_rdt+(_rm.pushEnabled===false?'<span class="gRemWarn"><br><span style="color:#f59e0b;font-size:11.5px;">⚠️ Notifications desactivees, tu ne recevras pas l\'alerte.</span><br><button onclick="window.gOnActivateReminder&&window.gOnActivateReminder(this)" style="margin-top:6px;background:#2d1b69;color:#fff;border:none;border-radius:6px;padding:5px 10px;font-size:11.5px;cursor:pointer;">Activer les notifications</button></span>':'')+'</div>';
 if(!el){rty();el=am('guideon','');mc=el.querySelector('.mc');bub=el.querySelector('.bub');}
 if(bub)bub.innerHTML=marked.parse(full)+imgHtml;shown=full;
 gSmartScroll();
@@ -3211,6 +3211,21 @@ setTimeout(updateInstructionsPlaceholder, 500);
     var ncEl = document.getElementById('notifCheck');
     if (ncEl) ncEl.checked = true;
     return { ok: true };
+  };
+  // Gere le clic sur "Activer les notifications" dans la carte de rappel du chat : remplace
+  // directement l'avertissement + le bouton par un message de confirmation inline (plus d'alert()
+  // de succes, qui laissait le bouton visible comme si rien n'avait change).
+  window.gOnActivateReminder = async function(btn){
+    if (!window.gActivateReminderPush) return;
+    var wrap = btn.closest('.gRemWarn');
+    btn.disabled = true;
+    var r = await window.gActivateReminderPush();
+    if (r.ok) {
+      if (wrap) wrap.innerHTML = '<br><span style="color:#10b981;font-size:11.5px;">✅ Notifications activées : Guidéon te rappellera par notification à l\'heure prévue.</span>';
+    } else {
+      btn.disabled = false;
+      alert(r.error || 'Activation impossible.');
+    }
   };
   function pushWanted(){
     var nc = document.getElementById('notifCheck');
