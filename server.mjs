@@ -900,6 +900,12 @@ app.post('/api/chat', async (req, res) => {
         if (Array.isArray(uData) && uData[0]) userInstructions = uData[0].instructions || '';
         if (Array.isArray(uData) && uData[0]) ucb = uData[0].checkboxes || {};
         if (Array.isArray(uData) && uData[0]) userRealName = uData[0].name || '';
+        // Retient sur quelle origine (local ou production) l'utilisateur travaille actuellement, pour
+        // que sendPush() puisse limiter la livraison d'un rappel a cette seule origine (voir sendPush).
+        const curHost = req.get('host') || null;
+        if (curHost && ucb.lastActiveHost !== curHost) {
+          mergeUserCheckboxes(user.id, { lastActiveHost: curHost }).catch(() => {});
+        }
       }
     }
     let adaptProfileRef = (ucb && ucb.adaptProfile && typeof ucb.adaptProfile === 'object') ? ucb.adaptProfile : null;
@@ -3139,11 +3145,20 @@ async function mergeUserCheckboxes(uid, patch) {
   if (error) throw error;
   return data;
 }
-async function sendPush(uid, topic, payload) {
+async function sendPush(uid, topic, payload, opts) {
   if (!VAPID_OK) return;
   const cb = await getUserCheckboxes(uid);
-  const subs = Array.isArray(cb.pushSubs) ? cb.pushSubs : [];
+  let subs = Array.isArray(cb.pushSubs) ? cb.pushSubs : [];
   if (topic === 'general' && cb.notifCheck !== true) return;
+  // Pour un rappel precis (opts.sameOriginOnly), on ne livre QUE sur le navigateur/environnement
+  // (local ou production) ou l'utilisateur travaille actuellement (cb.lastActiveHost, mis a jour a
+  // chaque message de chat) : un meme compte teste a la fois en local et sur Render ne doit pas
+  // recevoir le rappel deux fois, une fois sur chaque origine. Les notifications diffusees a tous
+  // les appareils (nouvelle version, installation PWA reussie) n'utilisent PAS ce filtre.
+  if (opts && opts.sameOriginOnly && cb.lastActiveHost) {
+    const matching = subs.filter(x => x.host === cb.lastActiveHost);
+    if (matching.length > 0) subs = matching;
+  }
   console.log('📲 Push', topic, '->', subs.filter(x => x[topic] === true).length, 'abonne(s) sur', subs.length);
   const dead = [];
   for (const sub of subs) {
@@ -3175,6 +3190,7 @@ app.post('/api/push/subscribe', async (req, res) => {
     let subs = Array.isArray(cb.pushSubs) ? cb.pushSubs : [];
     let cur = subs.find(x => x.endpoint === sub.endpoint);
     if (!cur) { cur = { endpoint: sub.endpoint, keys: { p256dh: sub.keys.p256dh, auth: sub.keys.auth }, replies: false, general: false }; subs.push(cur); }
+    cur.host = req.get('host') || cur.host || null;
     if (typeof req.body.replies === 'boolean') cur.replies = req.body.replies;
     if (typeof req.body.general === 'boolean') cur.general = req.body.general;
     subs = subs.filter(x => x.replies === true || x.general === true).slice(-5);
@@ -3299,7 +3315,7 @@ async function checkDueReminders() {
     if (error) throw error;
     for (const r of (data || [])) {
       try {
-        await sendPush(r.user_id, 'general', { title: '⏰ Rappel Guidéon', body: r.message, url: '/' });
+        await sendPush(r.user_id, 'general', { title: '⏰ Rappel Guidéon', body: r.message, url: '/' }, { sameOriginOnly: true });
       } catch (e) { console.error('reminder push:', e.message); }
     }
   } catch (e) { console.error('checkDueReminders:', e.message); }
