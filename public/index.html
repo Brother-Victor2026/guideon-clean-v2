@@ -1965,6 +1965,12 @@ const codeObs=new MutationObserver(mutations=>{
       bubs.forEach(bub=>{
         if(bub.dataset.fmt)return;bub.dataset.fmt='1';
         let html=bub.innerHTML;
+        // Ne reecrire le HTML de la bulle (ce qui detruit et recree ses balises <img>, forcant un
+        // nouveau telechargement reseau de l'image depuis Supabase a chaque affichage) que si elle
+        // contient reellement un bloc de code ``` a mettre en forme. Sans cette garde, une image deja
+        // chargee pouvait disparaitre de maniere intermittente (selon que le re-telechargement reussit
+        // ou non) a chaque rafraichissement de page ou changement de session.
+        if(!html.includes('```'))return;
         html=html.replace(/`{3}(\w*)<br>([\s\S]*?)`{3}/g,(match,lang,code)=>{
           const clean=code.replace(/<br>/g,'\n').replace(/<[^>]*>/g,'').trim();
           const esc=clean.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
