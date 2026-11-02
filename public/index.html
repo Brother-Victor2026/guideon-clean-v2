@@ -172,6 +172,7 @@ header{background:linear-gradient(135deg,#1a0533,#0d1f4d);padding:14px 16px;disp
 [data-theme="light"] #privacyReportModal [style*="color:#a78bfa"],[data-theme="light"] #cniFormularModal [style*="color:#a78bfa"]{color:#6d28d9!important}
 [data-theme="light"] #privacyReportModal [style*="color:#f59e0b"],[data-theme="light"] #cniFormularModal [style*="color:#f59e0b"]{color:#b45309!important}
 [data-theme="light"] .sug button{background:#ffffff!important;border-color:#c4b5fd!important;color:#1e1b4b!important}
+[data-theme="light"] .gFollowSug{background:#ffffff!important;border-color:#c4b5fd!important;color:#1e1b4b!important}
 [data-theme="light"] .gRemCard,[data-theme="light"] #gNotifCard{background:#f3eefc!important;border-color:#c4b5fd!important;color:#5b21b6!important}
 [data-theme="light"] .gRemCard [style*="color:#f59e0b"]{color:#b45309!important}
 [data-theme="light"] .gRemCard [style*="color:#10b981"]{color:#047857!important}
@@ -1373,7 +1374,7 @@ gRemoveReasoning();
 if(!el){rty();if(full)el=am('guideon',full);}else{if(bub)bub.innerHTML=marked.parse(full)+imgHtml;
 addCopyButtons(bub);}const _bub=el&&el.querySelector('.bub');if(_bub){const _old=_bub.innerHTML;const _new=_old.replace(/Voici (un|une) (portrait|image|dessin|tableau|illustration|aperçu) de[^.!?\n]*[.!?]?\s*/gi,'');if(_new!==_old){_bub.innerHTML=_new;_bub.querySelectorAll('.post-copy-block,.copy-code-btn').forEach(function(x){x.remove();});try{addCopyButtons(_bub);}catch(e){}}}
 chatHistory.push({role:'user',content:msg});localStorage.setItem('gchatHistory',JSON.stringify(chatHistory));chatHistory.push({role:'assistant',content:full});ve=false;gSetStreaming(false);
-if(gSuggestions&&gSuggestions.length>0&&mc){const sgBox=document.createElement('div');sgBox.style.cssText='display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;';gSuggestions.forEach(function(s){const sgBtn=document.createElement('button');sgBtn.textContent=s;sgBtn.style.cssText='background:#1a1a2e;border:1px solid #4c3a8f;color:#c4b5fd;border-radius:14px;padding:6px 12px;font-size:12.5px;cursor:pointer;text-align:left;';sgBtn.onclick=function(){sgBox.remove();gShowQuotePreview(s);};sgBox.appendChild(sgBtn);});mc.appendChild(sgBox);}
+if(gSuggestions&&gSuggestions.length>0&&mc){const sgBox=document.createElement('div');sgBox.style.cssText='display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;';gSuggestions.forEach(function(s){const sgBtn=document.createElement('button');sgBtn.className='gFollowSug';sgBtn.textContent=s;sgBtn.style.cssText='background:#1a1a2e;border:1px solid #4c3a8f;color:#c4b5fd;border-radius:14px;padding:6px 12px;font-size:12.5px;cursor:pointer;text-align:left;';sgBtn.onclick=function(){sgBox.remove();gShowQuotePreview(s);};sgBox.appendChild(sgBtn);});mc.appendChild(sgBox);}
 }catch(e){
 rty();gRemoveReasoning();
 if(e&&e.name==='AbortError'){
@@ -1828,6 +1829,10 @@ function applyTheme(theme){
   localStorage.setItem('gtheme', theme);
   const root = document.documentElement;
   root.setAttribute('data-theme', theme);
+  // Couleur de la barre du navigateur (barre d'etat Android / barre d'adresse Chrome) : sans ca, le
+  // navigateur lui-meme reste sombre meme quand le contenu de la page passe en mode clair.
+  const tc = document.querySelector('meta[name="theme-color"]');
+  if (tc) tc.setAttribute('content', theme === 'light' ? '#f0f2f5' : '#1a0f3a');
   if(theme==='light'){
     document.body.style.background='#f0f2f5';
     document.body.style.color='#111827';
