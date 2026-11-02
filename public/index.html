@@ -172,6 +172,14 @@ header{background:linear-gradient(135deg,#1a0533,#0d1f4d);padding:14px 16px;disp
 [data-theme="light"] #privacyReportModal [style*="color:#a78bfa"],[data-theme="light"] #cniFormularModal [style*="color:#a78bfa"]{color:#6d28d9!important}
 [data-theme="light"] #privacyReportModal [style*="color:#f59e0b"],[data-theme="light"] #cniFormularModal [style*="color:#f59e0b"]{color:#b45309!important}
 [data-theme="light"] .sug button{background:#ffffff!important;border-color:#c4b5fd!important;color:#1e1b4b!important}
+[data-theme="light"] .gRemCard,[data-theme="light"] #gNotifCard{background:#f3eefc!important;border-color:#c4b5fd!important;color:#5b21b6!important}
+[data-theme="light"] .gRemCard [style*="color:#f59e0b"]{color:#b45309!important}
+[data-theme="light"] .gRemCard [style*="color:#10b981"]{color:#047857!important}
+[data-theme="light"] .gRemCard button{background:#6d28d9!important;color:#fff!important}
+[data-theme="light"] #gNotifCard [style*="color:#fff"]{color:#1e1b4b!important}
+[data-theme="light"] #gNotifCard [style*="color:#9ca3af"]{color:#5b21b6!important}
+[data-theme="light"] #gNotifX{color:#5b21b6!important}
+[data-theme="light"] #gNotifGo{border-color:#6d28d9!important;color:#6d28d9!important}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js">
 
@@ -1350,7 +1358,7 @@ if(bub)bub.innerHTML=marked.parse(full)+imgHtml;shown=full;
 gSmartScroll();
 }else if(p.reminder){
 var _rm=p.reminder;var _rdt=new Date(_rm.remind_at).toLocaleString('fr-FR');
-imgHtml+='<div style="margin-top:8px;padding:8px 10px;background:#1a1a2e;border:1px solid #2d1b69;border-radius:10px;font-size:13px;color:#c4b5fd;">⏰ Rappel programmé pour le '+_rdt+(_rm.pushEnabled===false?'<span class="gRemWarn"><br><span style="color:#f59e0b;font-size:11.5px;">⚠️ Notifications desactivees, tu ne recevras pas l\'alerte.</span><br><button onclick="window.gOnActivateReminder&&window.gOnActivateReminder(this)" style="margin-top:6px;background:#2d1b69;color:#fff;border:none;border-radius:6px;padding:5px 10px;font-size:11.5px;cursor:pointer;">Activer les notifications</button></span>':'')+'</div>';
+imgHtml+='<div class="gRemCard" style="margin-top:8px;padding:8px 10px;background:#1a1a2e;border:1px solid #2d1b69;border-radius:10px;font-size:13px;color:#c4b5fd;">⏰ Rappel programmé pour le '+_rdt+(_rm.pushEnabled===false?'<span class="gRemWarn"><br><span style="color:#f59e0b;font-size:11.5px;">⚠️ Notifications desactivees, tu ne recevras pas l\'alerte.</span><br><button onclick="window.gOnActivateReminder&&window.gOnActivateReminder(this)" style="margin-top:6px;background:#2d1b69;color:#fff;border:none;border-radius:6px;padding:5px 10px;font-size:11.5px;cursor:pointer;">Activer les notifications</button></span>':'')+'</div>';
 if(!el){rty();el=am('guideon','');mc=el.querySelector('.mc');bub=el.querySelector('.bub');}
 if(bub)bub.innerHTML=marked.parse(full)+imgHtml;shown=full;
 gSmartScroll();

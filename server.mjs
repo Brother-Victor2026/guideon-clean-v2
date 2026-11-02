@@ -1341,7 +1341,7 @@ console.log('🔖 searchSources au moment de l affichage:', JSON.stringify(searc
       (async () => {
         try {
           const fresh = await getUserCheckboxes(user.id);
-          if (fresh.analyticsConsent === true) { fresh.adaptProfile = adaptNext; await setUserCheckboxes(user.id, fresh); }
+          if (fresh.analyticsConsent === true) { await mergeUserCheckboxes(user.id, { adaptProfile: adaptNext }); }
         } catch (e) { console.error('Profil adaptation:', e.message); }
       })();
     }
@@ -2496,17 +2496,13 @@ app.post('/api/checkboxes/save', async (req, res) => {
     if (!user) return res.status(401).json({ error: 'Token invalide' });
 
     const checkboxData = req.body;
-    
-    const currentResp = await fetch(`${DB}/users?id=eq.${user.id}`, { headers: SB });
-    const currentData = await currentResp.json();
-    const existing = currentData[0]?.checkboxes || {};
-    const updated = { ...existing, ...checkboxData };
 
-    await fetch(`${DB}/users?id=eq.${user.id}`, {
-      method: 'PATCH',
-      headers: { ...SB, 'Prefer': 'return=minimal' },
-      body: JSON.stringify({ checkboxes: updated })
-    });
+    // Lecture seulement pour detecter la transition pwaInstalled false->true ci-dessous.
+    // L'ecriture utilise une fusion JSONB ATOMIQUE cote base (merge_user_checkboxes), pour ne pas
+    // ecraser une cle (ex: pushSubs) modifiee en parallele par /api/push/subscribe lors du meme clic
+    // (ex: activation/desactivation des notifications, qui declenche les deux routes a la fois).
+    const existing = await getUserCheckboxes(user.id);
+    await mergeUserCheckboxes(user.id, checkboxData);
 
     if (checkboxData.pwaInstalled === true && existing.pwaInstalled !== true) {
       sendPush(user.id, 'general', { title: '🎉 Installation réussie !', body: "Guidéon est maintenant installé sur votre appareil. Retrouvez-le directement depuis votre écran d'accueil, à tout moment.", url: '/' }).catch(() => {});
@@ -3132,8 +3128,16 @@ async function getUserCheckboxes(uid) {
   const d = await r.json();
   return (Array.isArray(d) && d[0] && d[0].checkboxes) || {};
 }
-async function setUserCheckboxes(uid, cb) {
-  await fetch(`${DB}/users?id=eq.${String(uid)}`, { method: 'PATCH', headers: { ...SB, 'Prefer': 'return=minimal' }, body: JSON.stringify({ checkboxes: cb }) });
+// Fusionne uniquement les cles fournies dans "patch" avec celles deja presentes dans users.checkboxes,
+// de maniere ATOMIQUE cote base de donnees (UPDATE ... SET checkboxes = checkboxes || patch). Contrairement
+// a l'ancien pattern lecture-puis-ecriture-complete de l'objet depuis le serveur
+// Node), deux appels concurrents a mergeUserCheckboxes() sur des cles differentes (ex: /api/checkboxes/save
+// qui modifie notifCheck pendant que /api/push/subscribe modifie pushSubs, declenches par le meme clic)
+// ne peuvent plus s'ecraser l'un l'autre : chaque appel ne touche que ses propres cles.
+async function mergeUserCheckboxes(uid, patch) {
+  const { data, error } = await sb.rpc('merge_user_checkboxes', { p_user_id: Number(uid), p_patch: patch });
+  if (error) throw error;
+  return data;
 }
 async function sendPush(uid, topic, payload) {
   if (!VAPID_OK) return;
@@ -3154,8 +3158,8 @@ async function sendPush(uid, topic, payload) {
   }
   if (dead.length > 0) {
     const fresh = await getUserCheckboxes(uid);
-    fresh.pushSubs = (Array.isArray(fresh.pushSubs) ? fresh.pushSubs : []).filter(x => !dead.includes(x.endpoint));
-    await setUserCheckboxes(uid, fresh);
+    const cleaned = (Array.isArray(fresh.pushSubs) ? fresh.pushSubs : []).filter(x => !dead.includes(x.endpoint));
+    await mergeUserCheckboxes(uid, { pushSubs: cleaned });
   }
 }
 app.get('/api/push/key', (req, res) => res.json({ key: VAPID_OK ? process.env.VAPID_PUBLIC_KEY : null }));
@@ -3174,8 +3178,7 @@ app.post('/api/push/subscribe', async (req, res) => {
     if (typeof req.body.replies === 'boolean') cur.replies = req.body.replies;
     if (typeof req.body.general === 'boolean') cur.general = req.body.general;
     subs = subs.filter(x => x.replies === true || x.general === true).slice(-5);
-    cb.pushSubs = subs;
-    await setUserCheckboxes(user.id, cb);
+    await mergeUserCheckboxes(user.id, { pushSubs: subs });
     res.json({ ok: true, replies: cur.replies, general: cur.general });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
