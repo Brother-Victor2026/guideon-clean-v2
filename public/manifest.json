@@ -21,5 +21,21 @@
       "type": "image/png",
       "purpose": "any"
     }
+  ],
+  "shortcuts": [
+    {
+      "name": "Nouvelle conversation",
+      "short_name": "Nouveau",
+      "description": "Démarrer une nouvelle conversation avec Guidéon",
+      "url": "/?newChat=1",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Mode vocal",
+      "short_name": "Vocal",
+      "description": "Ouvrir Guidéon en mode vocal",
+      "url": "/?openVoice=1",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    }
   ]
 }
