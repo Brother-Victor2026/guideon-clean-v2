@@ -30,6 +30,11 @@ const WHATSAPP_PHONE_NUMBER_ID = process.env.WHATSAPP_PHONE_NUMBER_ID;
 const WHATSAPP_VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN;
 const pkg = JSON.parse(fs.readFileSync(__dirname + '/package.json', 'utf-8'));
 const VERSION = pkg.version;
+// Identifiant de CET environnement serveur (local ou production), utilise par notifyNewVersion() pour
+// que local et Render notifient chacun separement une nouvelle version, au lieu de partager un seul
+// indicateur "deja notifie" par utilisateur (ce qui faisait que le premier des deux a verifier "consommait"
+// la notification et l'autre ne l'envoyait jamais). RENDER_EXTERNAL_HOSTNAME est fourni automatiquement par Render.
+const SERVER_HOST = process.env.RENDER_EXTERNAL_HOSTNAME || ('localhost:' + (process.env.PORT || 9000));
 
 const DB = SUPABASE_URL ? `${SUPABASE_URL}/rest/v1` : null;
 const SB = { 'apikey': (SUPABASE_SERVICE_KEY || SUPABASE_KEY), 'Authorization': `Bearer ${SUPABASE_SERVICE_KEY || SUPABASE_KEY}`, 'Content-Type': 'application/json' };
@@ -2671,7 +2676,10 @@ app.post('/api/notifications/send', async (req, res) => {
   }
 });
 
-// Notification de nouvelle version : une seule fois par version, pour les comptes qui ont active les notifications
+// Notification de nouvelle version : une seule fois par version ET par environnement (local/production),
+// pour les comptes qui ont active les notifications. cb.lastNotifiedVersionByHost est une map
+// { "localhost:9000": "1.0.292", "guideon-xxxx.onrender.com": "1.0.292" } : chaque environnement suit sa
+// propre progression, independamment de l'autre (voir SERVER_HOST ci-dessus).
 async function notifyNewVersion() {
   try {
     const v = pkg.version;
@@ -2679,9 +2687,10 @@ async function notifyNewVersion() {
     if (error || !users) return;
     for (const u of users) {
       const cb = u.checkboxes || {};
-      if (cb.notifCheck !== true || cb.lastNotifiedVersion === v) continue;
-      const known = !!cb.lastNotifiedVersion;
-      await sbAdmin.from('users').update({ checkboxes: { ...cb, lastNotifiedVersion: v } }).eq('id', u.id);
+      const byHost = (cb.lastNotifiedVersionByHost && typeof cb.lastNotifiedVersionByHost === 'object') ? cb.lastNotifiedVersionByHost : {};
+      if (cb.notifCheck !== true || byHost[SERVER_HOST] === v) continue;
+      const known = !!byHost[SERVER_HOST];
+      await mergeUserCheckboxes(u.id, { lastNotifiedVersionByHost: { ...byHost, [SERVER_HOST]: v } });
       if (!known) continue;
       await sbAdmin.from('notifications').insert([{ user_id: u.id, type: 'update', title: '📦 Nouvelle version disponible', message: `Guidéon ${v} est maintenant disponible. Rafraîchissez pour mettre à jour.`, is_read: false }]);
       sendPush(u.id, 'general', { title: '📦 Nouvelle version disponible', body: `Guidéon ${v} est disponible.`, url: '/', updateAction: true }).catch(() => {});
