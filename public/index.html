@@ -181,6 +181,8 @@ header{background:linear-gradient(135deg,#1a0533,#0d1f4d);padding:14px 16px;disp
 [data-theme="light"] #gNotifCard [style*="color:#9ca3af"]{color:#5b21b6!important}
 [data-theme="light"] #gNotifX{color:#5b21b6!important}
 [data-theme="light"] #gNotifGo{border-color:#6d28d9!important;color:#6d28d9!important}
+[data-theme="light"] .msg.user .bub{background:linear-gradient(135deg,#7c3aed,#4f46e5)!important;color:#fff!important}
+[data-theme="light"] .msg.user .mt{color:#6b7280!important}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js">
 
@@ -1837,7 +1839,7 @@ function applyTheme(theme){
     document.body.style.background='#f0f2f5';
     document.body.style.color='#111827';
     document.querySelectorAll('.msg-ai').forEach(el=>{el.style.background='#ffffff';el.style.color='#1e1b4b';el.style.border='1px solid #c4b5fd';el.querySelectorAll('p,li,strong,em,h1,h2,h3,span,td,th,blockquote').forEach(c=>{c.style.color='#1e1b4b';});});document.querySelectorAll('.msg.g .bub').forEach(el=>{el.style.color='#1e1b4b';});document.querySelectorAll('.post-copy-block,pre').forEach(el=>{el.style.background='#f3f4f6';el.style.color='#1e1b4b';el.style.border='1px solid #c4b5fd';});
-    document.querySelectorAll('.msg-user').forEach(el=>{el.style.color='#fff';});
+    document.querySelectorAll('.msg.user .bub').forEach(el=>{el.style.color='#fff';});
     const chat=document.getElementById('chat');if(chat){chat.style.background='#f0f2f5';}
     const sidebar=document.getElementById('sidebar');if(sidebar){sidebar.style.background='#e8e4f9';sidebar.querySelectorAll('div').forEach(el=>{if(el.style.cssText&&el.style.cssText.includes('border-radius:8px'))el.style.color='#1e1b4b';});}
     document.querySelectorAll('button[onclick="openAllConversations()"],button[onclick="openProjectsModal()"],button[onclick="showProfile()"]').forEach(el=>{el.style.color='#1e1b4b';});
@@ -1850,7 +1852,7 @@ function applyTheme(theme){
     document.querySelectorAll('.msg-ai').forEach(el=>{el.style.background='';el.style.color='';el.style.border='';el.querySelectorAll('p,li,strong,em,h1,h2,h3,span,td,th,blockquote').forEach(c=>{c.style.color='';});});
     document.querySelectorAll('.msg.g .bub').forEach(el=>{el.style.color='';});
     document.querySelectorAll('.post-copy-block,pre').forEach(el=>{el.style.background='';el.style.color='';el.style.border='';});
-    document.querySelectorAll('.msg-user').forEach(el=>{el.style.color='';});
+    document.querySelectorAll('.msg.user .bub').forEach(el=>{el.style.color='';});
     const chat=document.getElementById('chat');if(chat)chat.style.background='';
     const sidebar=document.getElementById('sidebar');if(sidebar){sidebar.style.background='#0f0f1a';sidebar.querySelectorAll('div').forEach(el=>{if(el.style.cssText&&el.style.cssText.includes('border-radius:8px'))el.style.color='';});}
     document.querySelectorAll('button[onclick="openAllConversations()"],button[onclick="openProjectsModal()"],button[onclick="showProfile()"]').forEach(el=>{el.style.color='#e5e7eb';});
