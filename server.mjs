@@ -2436,15 +2436,55 @@ app.post('/api/user/location-by-ip', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// Actualites REELLES : reutilise (appel interne, sans toucher la route) les flux RSS deja utilises par
+// la recherche du chat (voir /api/search __GENERAL_NEWS__). Remplace l'ancienne version factice qui
+// renvoyait toujours "Actualité <categorie>" / "Description" / "News".
 app.get('/api/realtime/news', async (req, res) => {
-  const cat = req.query.category || 'tech';
-  res.json({ category: cat, articles: [{ title: 'Actualité ' + cat, description: 'Description', source: 'News' }], timestamp: new Date().toISOString() });
+  try {
+    const c = new AbortController();
+    const t = setTimeout(() => c.abort(), 9000);
+    const r = await fetch(`http://localhost:${process.env.PORT || 9000}/api/search`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query: '__GENERAL_NEWS__' }), signal: c.signal });
+    clearTimeout(t);
+    const d = await r.json();
+    if (!d || !d.success || !d.result) return res.status(502).json({ error: 'Actualités indisponibles pour le moment' });
+    const titles = String(d.result).replace('[Actualités générales du jour] ', '').split(' | ').filter(Boolean);
+    const sources = Array.isArray(d.sources) ? d.sources : [];
+    const articles = titles.slice(0, 8).map((title, i) => ({ title, source: (sources[i] && sources[i].name) || 'Actualités' }));
+    if (articles.length === 0) return res.status(502).json({ error: 'Actualités indisponibles pour le moment' });
+    res.json({ articles, timestamp: new Date().toISOString() });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// Cotations REELLES (Yahoo Finance, endpoint public sans cle, largement utilise pour des cotations
+// simples). Remplace l'ancienne version factice (Math.random()).
 app.get('/api/realtime/stocks', async (req, res) => {
-  const syms = (req.query.symbols || 'AAPL,GOOGL').split(',');
-  const stocks = syms.map(s => ({ symbol: s.trim(), price: (Math.random()*300+50).toFixed(2) + '$', change_percent: (Math.random()*5-2.5).toFixed(2) + '%' }));
-  res.json({ stocks, timestamp: new Date().toISOString() });
+  try {
+    const syms = String(req.query.symbols || 'AAPL,GOOGL').split(',').map(s => s.trim()).filter(Boolean).slice(0, 10);
+    const UA = { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36' };
+    const results = await Promise.all(syms.map(async (sym) => {
+      try {
+        const c = new AbortController();
+        const t = setTimeout(() => c.abort(), 7000);
+        const r = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}`, { signal: c.signal, headers: UA });
+        clearTimeout(t);
+        if (!r.ok) return null;
+        const d = await r.json();
+        const meta = d && d.chart && d.chart.result && d.chart.result[0] && d.chart.result[0].meta;
+        if (!meta || typeof meta.regularMarketPrice !== 'number') return null;
+        const prevClose = typeof meta.previousClose === 'number' ? meta.previousClose : meta.chartPreviousClose;
+        const price = meta.regularMarketPrice;
+        const changePct = (typeof prevClose === 'number' && prevClose !== 0) ? ((price - prevClose) / prevClose * 100) : null;
+        return {
+          symbol: sym,
+          price: price.toFixed(2) + ' ' + (meta.currency || 'USD'),
+          change_percent: changePct !== null ? (changePct >= 0 ? '+' : '') + changePct.toFixed(2) + '%' : 'n/d'
+        };
+      } catch (e) { return null; }
+    }));
+    const stocks = results.filter(Boolean);
+    if (stocks.length === 0) return res.status(502).json({ error: 'Cotations indisponibles pour le moment' });
+    res.json({ stocks, timestamp: new Date().toISOString() });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.get('/api-test', (req, res) => { res.sendFile('/data/data/com.termux/files/home/my-ai/test_phase1.html'); });
