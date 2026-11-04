@@ -1834,7 +1834,21 @@ app.get('/api/memory/view', async (req, res) => {
     const r = await fetch(`${DB}/users?id=eq.${user.id}&select=name,email,instructions,created_at,checkboxes`, { headers: SB });
     const data = await r.json();
     console.log("✅ Checkboxes chargés de la BD:", data);
-    res.json(Array.isArray(data) ? data[0] : {});
+    const row = Array.isArray(data) ? data[0] : {};
+    // Cette route est appelee a chaque "connexion"/ouverture d'app (chargement des parametres, du
+    // bouton d'installation, de la position, etc.) : on en profite, SANS bloquer la reponse, pour (1)
+    // verifier/envoyer le briefing quotidien si ce n'est pas encore fait aujourd'hui, et (2) detecter
+    // automatiquement par IP une position par defaut si l'utilisateur n'en a jamais enregistre (sans
+    // lui demander d'autorisation, contrairement au GPS) ; il pourra toujours la preciser lui-meme.
+    if (row && row.checkboxes) {
+      maybeSendDailyBriefing({ id: user.id, checkboxes: row.checkboxes }).catch(e => console.error('maybeSendDailyBriefing (connexion):', e.message));
+      if (typeof row.checkboxes.userLat !== 'number') {
+        geolocateByIp(getClientIp(req)).then(g => {
+          if (g) mergeUserCheckboxes(user.id, { userLat: g.lat, userLon: g.lon, userLocationLabel: g.label }).catch(() => {});
+        }).catch(() => {});
+      }
+    }
+    res.json(row);
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -2364,6 +2378,41 @@ app.post('/api/user/location-by-city', async (req, res) => {
     if (!city) return res.status(400).json({ error: 'Ville requise' });
     const g = await geocodeCity(city);
     if (!g) return res.status(404).json({ error: 'Ville introuvable' });
+    await mergeUserCheckboxes(user.id, { userLat: g.lat, userLon: g.lon, userLocationLabel: g.label });
+    res.json({ success: true, label: g.label });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Localise une adresse IP via ipapi.co (gratuit, sans cle, HTTPS, ~1000 requetes/jour). Moins precis
+// qu'une position GPS mais ne demande AUCUNE autorisation navigateur : sert de detection automatique
+// silencieuse par defaut (voir le hook dans /api/memory/view plus bas), avant que l'utilisateur ne
+// precise sa position via GPS ou saisie manuelle de ville.
+async function geolocateByIp(ip) {
+  try {
+    if (!ip || ip === 'x' || ip === 'unknown' || ip === '::1' || ip.startsWith('127.') || ip.startsWith('192.168.') || ip.startsWith('10.')) return null; // IP locale/privee : non geolocalisable
+    const c = new AbortController();
+    const t = setTimeout(() => c.abort(), 7000);
+    const r = await fetch(`https://ipapi.co/${encodeURIComponent(ip)}/json/`, { signal: c.signal });
+    clearTimeout(t);
+    if (!r.ok) return null;
+    const d = await r.json();
+    if (d.error || typeof d.latitude !== 'number' || typeof d.longitude !== 'number') return null;
+    const label = d.city ? (d.country_name ? `${d.city}, ${d.country_name}` : d.city) : (d.country_name || null);
+    return { lat: d.latitude, lon: d.longitude, label };
+  } catch (e) { console.error('geolocateByIp:', e.message); return null; }
+}
+function getClientIp(req) {
+  return String(req.headers['x-forwarded-for'] || req.ip || 'x').split(',')[0].trim();
+}
+// Permet a l'utilisateur de redeclencher lui-meme la detection par IP (bouton Parametres).
+app.post('/api/user/location-by-ip', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    if (!token) return res.status(401).json({ error: 'Token manquant' });
+    const user = checkToken(token);
+    if (!user) return res.status(401).json({ error: 'Token invalide' });
+    const g = await geolocateByIp(getClientIp(req));
+    if (!g) return res.status(404).json({ error: "Impossible de localiser votre adresse IP (IP locale ou service indisponible). Essayez le GPS ou saisissez votre ville." });
     await mergeUserCheckboxes(user.id, { userLat: g.lat, userLon: g.lon, userLocationLabel: g.label });
     res.json({ success: true, label: g.label });
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -2952,17 +3001,32 @@ async function buildDailyBriefingMessage(u) {
   return parts.join('\n');
 }
 
+// Envoie le briefing du jour a UN utilisateur si : notifications activees, il est 7h ou plus (heure du
+// Benin), et il ne l'a pas deja recu aujourd'hui (cb.lastBriefingDate). Appelee (1) en arriere-plan
+// toutes les 10 minutes pour tout le monde (voir runDailyBriefing), et (2) a chaque "connexion" d'un
+// utilisateur (voir le hook dans /api/memory/view) : les deux partagent cette meme fonction, donc le
+// resultat est identique (un seul envoi par jour) quelle que soit la maniere dont il se declenche. La
+// date est marquee AVANT l'envoi (ecriture JSONB atomique cote base) pour reduire le risque de doublon
+// si les deux declencheurs tombent en meme temps.
+async function maybeSendDailyBriefing(u) {
+  const cb = u.checkboxes || {};
+  if (cb.notifCheck !== true) return;
+  if (getBeninHour() < DAILY_BRIEFING_HOUR) return;
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Porto-Novo' }).format(new Date());
+  if (cb.lastBriefingDate === today) return;
+  const message = await buildDailyBriefingMessage(u);
+  if (!message) return;
+  await mergeUserCheckboxes(u.id, { lastBriefingDate: today });
+  const { error } = await sbAdmin.from('notifications').insert([{ user_id: u.id, type: 'info', title: '☀️ Votre briefing du jour', message, is_read: false }]);
+  if (error) { console.error('Briefing insert:', error.message); return; }
+  sendPush(u.id, 'general', { title: '☀️ Votre briefing du jour', body: message, url: '/' }).catch(() => {});
+}
 async function runDailyBriefing() {
   try {
-    if (getBeninHour() !== DAILY_BRIEFING_HOUR) return;
     const { data: users, error } = await sbAdmin.from('users').select('id, checkboxes');
     if (error || !users) return;
     for (const u of users) {
-      const cb = u.checkboxes || {};
-      if (cb.notifCheck !== true) continue;
-      const message = await buildDailyBriefingMessage(u);
-      if (!message) continue;
-      await notifyOnce(u, 'daily_briefing', 20 * 60 * 60 * 1000, { type: 'info', title: '☀️ Votre briefing du jour', message });
+      await maybeSendDailyBriefing(u).catch(e => console.error('Briefing quotidien (' + u.id + '):', e.message));
     }
   } catch (e) { console.error('Briefing quotidien:', e.message); }
 }
