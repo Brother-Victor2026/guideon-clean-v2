@@ -2320,7 +2320,8 @@ async function geocodeCity(cityName) {
     const d = await r.json();
     const res0 = d && Array.isArray(d.results) && d.results[0];
     if (!res0) return null;
-    return { lat: res0.latitude, lon: res0.longitude, label: res0.country ? `${res0.name}, ${res0.country}` : res0.name };
+    const label = (res0.country && res0.country !== res0.name) ? `${res0.name}, ${res0.country}` : res0.name; // evite "Bénin, Bénin" quand on cherche directement un pays
+    return { lat: res0.latitude, lon: res0.longitude, label };
   } catch (e) { console.error('geocodeCity:', e.message); return null; }
 }
 // Recupere la meteo REELLE (Open-Meteo, gratuit, sans cle) pour des coordonnees GPS donnees.
