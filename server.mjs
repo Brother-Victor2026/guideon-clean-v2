@@ -2278,10 +2278,95 @@ app.get('/api/feedback/stats', async (req, res) => {
 });
 
 // PHASE 1 - Point 1: Flux temps réel
+// Mappe un code meteo WMO (renvoye par Open-Meteo) vers une courte description en francais.
+// Table de reference : https://open-meteo.com/en/docs (section "WMO Weather interpretation codes").
+function wmoToFrench(code) {
+  const map = {
+    0: 'Ciel dégagé', 1: 'Principalement clair', 2: 'Partiellement nuageux', 3: 'Couvert',
+    45: 'Brouillard', 48: 'Brouillard givrant',
+    51: 'Bruine légère', 53: 'Bruine modérée', 55: 'Bruine dense',
+    56: 'Bruine verglaçante', 57: 'Bruine verglaçante dense',
+    61: 'Pluie légère', 63: 'Pluie modérée', 65: 'Pluie forte',
+    66: 'Pluie verglaçante', 67: 'Pluie verglaçante forte',
+    71: 'Neige légère', 73: 'Neige modérée', 75: 'Neige forte', 77: 'Grains de neige',
+    80: 'Averses légères', 81: 'Averses modérées', 82: 'Averses violentes',
+    85: 'Averses de neige légères', 86: 'Averses de neige fortes',
+    95: 'Orage', 96: 'Orage avec grêle légère', 99: 'Orage avec grêle forte'
+  };
+  return map[code] || 'Conditions inconnues';
+}
+// Convertit un nom de ville en coordonnees GPS via l'API de geocodage gratuite Open-Meteo (sans cle).
+async function geocodeCity(cityName) {
+  try {
+    const c = new AbortController();
+    const t = setTimeout(() => c.abort(), 7000);
+    const r = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(cityName)}&count=1&language=fr`, { signal: c.signal });
+    clearTimeout(t);
+    if (!r.ok) return null;
+    const d = await r.json();
+    const res0 = d && Array.isArray(d.results) && d.results[0];
+    if (!res0) return null;
+    return { lat: res0.latitude, lon: res0.longitude, label: res0.country ? `${res0.name}, ${res0.country}` : res0.name };
+  } catch (e) { console.error('geocodeCity:', e.message); return null; }
+}
+// Recupere la meteo REELLE (Open-Meteo, gratuit, sans cle) pour des coordonnees GPS donnees.
+// Remplace l'ancienne version qui renvoyait des donnees aleatoires (Math.random()).
+async function fetchRealWeather(lat, lon) {
+  try {
+    const c = new AbortController();
+    const t = setTimeout(() => c.abort(), 7000);
+    const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code,relative_humidity_2m,wind_speed_10m`, { signal: c.signal });
+    clearTimeout(t);
+    if (!r.ok) return null;
+    const d = await r.json();
+    const cur = d && d.current;
+    if (!cur || typeof cur.temperature_2m !== 'number') return null;
+    return {
+      temperature: Math.round(cur.temperature_2m) + '°C',
+      condition: wmoToFrench(cur.weather_code),
+      humidity: Math.round(cur.relative_humidity_2m) + '%',
+      wind_speed: Math.round(cur.wind_speed_10m) + ' km/h'
+    };
+  } catch (e) { console.error('fetchRealWeather:', e.message); return null; }
+}
 app.get('/api/realtime/weather', async (req, res) => {
-  const city = req.query.city || 'Paris';
-  const weathers = ['Ensoleillé', 'Nuageux', 'Pluvieux'];
-  res.json({ city, weather: { temperature: Math.floor(Math.random()*30)+5 + '°C', condition: weathers[Math.floor(Math.random()*3)], humidity: Math.floor(Math.random()*100) + '%', wind_speed: Math.floor(Math.random()*25) + ' km/h' }, timestamp: new Date().toISOString() });
+  try {
+    let lat = null, lon = null, city = req.query.city || null;
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    const user = token ? checkToken(token) : null;
+    if (user) {
+      const cb = await getUserCheckboxes(user.id);
+      if (typeof cb.userLat === 'number' && typeof cb.userLon === 'number') {
+        lat = cb.userLat; lon = cb.userLon; city = cb.userLocationLabel || city;
+      }
+    }
+    if (lat === null && city) {
+      const g = await geocodeCity(city);
+      if (g) { lat = g.lat; lon = g.lon; city = g.label; }
+    }
+    if (lat === null) { lat = 48.8566; lon = 2.3522; city = city || 'Paris'; } // Repli par defaut si aucune position n'est connue/trouvee.
+    const w = await fetchRealWeather(lat, lon);
+    if (!w) return res.status(502).json({ error: 'Météo indisponible pour le moment' });
+    res.json({ city, weather: w, timestamp: new Date().toISOString() });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Enregistre la position de l'utilisateur a partir d'un nom de ville saisi manuellement (geocodage
+// serveur via Open-Meteo). Pour la position GPS du navigateur, le frontend poste directement
+// {userLat, userLon} vers /api/checkboxes/save (coordonnees deja connues cote client).
+app.post('/api/user/location-by-city', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    if (!token) return res.status(401).json({ error: 'Token manquant' });
+    const user = checkToken(token);
+    if (!user) return res.status(401).json({ error: 'Token invalide' });
+    const city = String((req.body && req.body.city) || '').trim();
+    if (!city) return res.status(400).json({ error: 'Ville requise' });
+    const g = await geocodeCity(city);
+    if (!g) return res.status(404).json({ error: 'Ville introuvable' });
+    await mergeUserCheckboxes(user.id, { userLat: g.lat, userLon: g.lon, userLocationLabel: g.label });
+    res.json({ success: true, label: g.label });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.get('/api/realtime/news', async (req, res) => {
@@ -2798,6 +2883,90 @@ async function runInstallReminders() {
 }
 setTimeout(runInstallReminders, 3 * 60 * 1000);
 setInterval(runInstallReminders, 10 * 60 * 1000);
+
+// ===== BRIEFING QUOTIDIEN AUTOMATIQUE =====
+// Envoye une seule fois par jour (7h, heure du Benin - aucune preference d'heure exprimee, 7h choisi
+// par defaut comme heure de reveil), aux comptes ayant active les notifications (meme case que les
+// autres notifications : cb.notifCheck). Contenu : rappels du jour, meteo reelle (si une position est
+// enregistree), court resume d'actualite, et un rappel tire au hasard de la memoire de l'utilisateur.
+// Une seule notification globale par jour et par utilisateur (comme les rappels existants), meme si
+// plusieurs serveurs (local + Render) tournent en parallele : voir notifyOnce ci-dessus.
+const DAILY_BRIEFING_HOUR = 7;
+
+function getBeninTodayRange() {
+  const todayStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Porto-Novo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+  return { start: `${todayStr}T00:00:00+01:00`, end: `${todayStr}T23:59:59+01:00` };
+}
+
+async function buildDailyBriefingMessage(u) {
+  const cb = u.checkboxes || {};
+  const parts = [];
+
+  // 1) Rappels prevus aujourd'hui (non encore envoyes)
+  try {
+    const { start, end } = getBeninTodayRange();
+    const { data: reminders } = await sbAdmin.from('reminders').select('message,remind_at')
+      .eq('user_id', String(u.id)).eq('sent', false).gte('remind_at', start).lte('remind_at', end)
+      .order('remind_at', { ascending: true });
+    if (reminders && reminders.length > 0) {
+      const list = reminders.map(r => {
+        const h = new Intl.DateTimeFormat('fr-FR', { timeZone: 'Africa/Porto-Novo', hour: '2-digit', minute: '2-digit' }).format(new Date(r.remind_at));
+        return `${r.message} (${h})`;
+      }).join(', ');
+      parts.push(`📋 ${reminders.length} rappel(s) aujourd'hui : ${list}`);
+    }
+  } catch (e) { console.error('Briefing - rappels:', e.message); }
+
+  // 2) Meteo reelle (uniquement si l'utilisateur a enregistre une position dans Parametres)
+  if (typeof cb.userLat === 'number' && typeof cb.userLon === 'number') {
+    try {
+      const w = await fetchRealWeather(cb.userLat, cb.userLon);
+      if (w) parts.push(`🌤️ ${cb.userLocationLabel || 'Votre position'} : ${w.temperature}, ${w.condition}`);
+    } catch (e) { console.error('Briefing - meteo:', e.message); }
+  }
+
+  // 3) Court resume d'actualite : reutilise (appel interne, sans toucher la route) la recherche
+  // d'actualites generales deja utilisee par le chat (flux RSS reels, voir /api/search __GENERAL_NEWS__)
+  try {
+    const c = new AbortController();
+    const t = setTimeout(() => c.abort(), 9000);
+    const r = await fetch(`http://localhost:${process.env.PORT || 9000}/api/search`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query: '__GENERAL_NEWS__' }), signal: c.signal });
+    clearTimeout(t);
+    const d = await r.json();
+    if (d && d.success && d.result) {
+      const titles = String(d.result).replace('[Actualités générales du jour] ', '').split(' | ').filter(Boolean).slice(0, 2);
+      if (titles.length > 0) parts.push(`📰 Actu : ${titles.join(' • ')}`);
+    }
+  } catch (e) { console.error('Briefing - actu:', e.message); }
+
+  // 4) Rappel tire au hasard de la memoire de l'utilisateur
+  try {
+    const { data: mems } = await sbAdmin.from('memories').select('content').eq('user_id', String(u.id));
+    if (mems && mems.length > 0) {
+      const pick = mems[Math.floor(Math.random() * mems.length)];
+      if (pick && pick.content) parts.push(`🧠 Vous aviez noté : ${pick.content}`);
+    }
+  } catch (e) { console.error('Briefing - memoire:', e.message); }
+
+  if (parts.length === 0) return null; // Rien a dire aujourd'hui : pas de briefing vide.
+  return parts.join('\n');
+}
+
+async function runDailyBriefing() {
+  try {
+    if (getBeninHour() !== DAILY_BRIEFING_HOUR) return;
+    const { data: users, error } = await sbAdmin.from('users').select('id, checkboxes');
+    if (error || !users) return;
+    for (const u of users) {
+      const cb = u.checkboxes || {};
+      if (cb.notifCheck !== true) continue;
+      const message = await buildDailyBriefingMessage(u);
+      if (!message) continue;
+      await notifyOnce(u, 'daily_briefing', 20 * 60 * 60 * 1000, { type: 'info', title: '☀️ Votre briefing du jour', message });
+    }
+  } catch (e) { console.error('Briefing quotidien:', e.message); }
+}
+setInterval(runDailyBriefing, 10 * 60 * 1000);
 
 // Demander suppression données utilisateur (RGPD)
 app.post('/api/user/delete', async (req, res) => {
