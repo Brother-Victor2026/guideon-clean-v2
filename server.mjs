@@ -2329,38 +2329,46 @@ async function geocodeCity(cityName) {
 // Recupere la meteo REELLE (Open-Meteo, source : modeles meteorologiques officiels comme le DWD
 // allemand et NOAA, gratuit, sans cle) : conditions actuelles + previsions du jour (min/max, risque
 // de pluie, UV), comme une application meteo classique.
+// IMPORTANT : cette fonction LANCE une erreur (throw) en cas d'echec au lieu de renvoyer null,
+// pour que l'appelant puisse afficher/journaliser la VRAIE cause (timeout reseau, DNS, HTTP 4xx/5xx,
+// reponse Open-Meteo incomplete) plutot qu'un message generique "indisponible pour le moment".
 async function fetchRealWeather(lat, lon) {
+  const c = new AbortController();
+  const t = setTimeout(() => c.abort(), 7000);
+  let r;
   try {
-    const c = new AbortController();
-    const t = setTimeout(() => c.abort(), 7000);
     const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}`
       + `&current=temperature_2m,weather_code,relative_humidity_2m,wind_speed_10m,cloud_cover`
       + `&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,uv_index_max`
       + `&timezone=auto&forecast_days=1`;
-    const r = await fetch(url, { signal: c.signal });
+    r = await fetch(url, { signal: c.signal });
+  } catch (e) {
     clearTimeout(t);
-    if (!r.ok) return null;
-    const d = await r.json();
-    const cur = d && d.current;
-    if (!cur || typeof cur.temperature_2m !== 'number') return null;
-    const daily = d.daily || {};
-    const num = (arr) => (arr && typeof arr[0] === 'number') ? arr[0] : null;
-    const tempMax = num(daily.temperature_2m_max);
-    const tempMin = num(daily.temperature_2m_min);
-    const rainChance = num(daily.precipitation_probability_max);
-    const uv = num(daily.uv_index_max);
-    return {
-      temperature: Math.round(cur.temperature_2m) + '°C',
-      condition: wmoToFrench(cur.weather_code),
-      humidity: Math.round(cur.relative_humidity_2m) + '%',
-      wind_speed: Math.round(cur.wind_speed_10m) + ' km/h',
-      cloud_cover: typeof cur.cloud_cover === 'number' ? Math.round(cur.cloud_cover) + '%' : null,
-      temp_max: tempMax !== null ? Math.round(tempMax) + '°C' : null,
-      temp_min: tempMin !== null ? Math.round(tempMin) + '°C' : null,
-      rain_chance: rainChance !== null ? Math.round(rainChance) + '%' : null,
-      uv_index: uv !== null ? Math.round(uv) : null
-    };
-  } catch (e) { console.error('fetchRealWeather:', e.message); return null; }
+    const reason = e.name === 'AbortError' ? 'délai dépassé (connexion réseau trop lente ou instable)' : (e.message || 'erreur réseau');
+    throw new Error(`Connexion à Open-Meteo impossible : ${reason}`);
+  }
+  clearTimeout(t);
+  if (!r.ok) throw new Error(`Open-Meteo a répondu avec une erreur HTTP ${r.status}`);
+  const d = await r.json();
+  const cur = d && d.current;
+  if (!cur || typeof cur.temperature_2m !== 'number') throw new Error('Réponse Open-Meteo incomplète (données actuelles manquantes)');
+  const daily = d.daily || {};
+  const num = (arr) => (arr && typeof arr[0] === 'number') ? arr[0] : null;
+  const tempMax = num(daily.temperature_2m_max);
+  const tempMin = num(daily.temperature_2m_min);
+  const rainChance = num(daily.precipitation_probability_max);
+  const uv = num(daily.uv_index_max);
+  return {
+    temperature: Math.round(cur.temperature_2m) + '°C',
+    condition: wmoToFrench(cur.weather_code),
+    humidity: Math.round(cur.relative_humidity_2m) + '%',
+    wind_speed: Math.round(cur.wind_speed_10m) + ' km/h',
+    cloud_cover: typeof cur.cloud_cover === 'number' ? Math.round(cur.cloud_cover) + '%' : null,
+    temp_max: tempMax !== null ? Math.round(tempMax) + '°C' : null,
+    temp_min: tempMin !== null ? Math.round(tempMin) + '°C' : null,
+    rain_chance: rainChance !== null ? Math.round(rainChance) + '%' : null,
+    uv_index: uv !== null ? Math.round(uv) : null
+  };
 }
 app.get('/api/realtime/weather', async (req, res) => {
   try {
@@ -2378,8 +2386,9 @@ app.get('/api/realtime/weather', async (req, res) => {
       if (g) { lat = g.lat; lon = g.lon; city = g.label; }
     }
     if (lat === null) { lat = 48.8566; lon = 2.3522; city = city || 'Paris'; } // Repli par defaut si aucune position n'est connue/trouvee.
-    const w = await fetchRealWeather(lat, lon);
-    if (!w) return res.status(502).json({ error: 'Météo indisponible pour le moment' });
+    let w;
+    try { w = await fetchRealWeather(lat, lon); }
+    catch (werr) { console.error('fetchRealWeather:', werr.message); return res.status(502).json({ error: werr.message }); }
     res.json({ city, weather: w, timestamp: new Date().toISOString() });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -2441,17 +2450,26 @@ app.post('/api/user/location-by-ip', async (req, res) => {
 // la recherche du chat (voir /api/search __GENERAL_NEWS__). Remplace l'ancienne version factice qui
 // renvoyait toujours "Actualité <categorie>" / "Description" / "News".
 app.get('/api/realtime/news', async (req, res) => {
+  const c = new AbortController();
+  const t = setTimeout(() => c.abort(), 9000);
+  let r;
   try {
-    const c = new AbortController();
-    const t = setTimeout(() => c.abort(), 9000);
-    const r = await fetch(`http://localhost:${process.env.PORT || 9000}/api/search`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query: '__GENERAL_NEWS__' }), signal: c.signal });
+    r = await fetch(`http://localhost:${process.env.PORT || 9000}/api/search`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query: '__GENERAL_NEWS__' }), signal: c.signal });
+  } catch (e) {
     clearTimeout(t);
+    const reason = e.name === 'AbortError' ? 'délai dépassé (connexion réseau trop lente ou instable)' : (e.message || 'erreur réseau');
+    console.error('realtime/news fetch:', reason);
+    return res.status(502).json({ error: `Actualités indisponibles : ${reason}` });
+  }
+  clearTimeout(t);
+  try {
+    if (!r.ok) return res.status(502).json({ error: `Actualités indisponibles : erreur HTTP ${r.status}` });
     const d = await r.json();
-    if (!d || !d.success || !d.result) return res.status(502).json({ error: 'Actualités indisponibles pour le moment' });
+    if (!d || !d.success || !d.result) return res.status(502).json({ error: `Actualités indisponibles : ${(d && d.error) || 'aucun flux RSS n\'a répondu'}` });
     const titles = String(d.result).replace('[Actualités générales du jour] ', '').split(' | ').filter(Boolean);
     const sources = Array.isArray(d.sources) ? d.sources : [];
     const articles = titles.slice(0, 8).map((title, i) => ({ title, source: (sources[i] && sources[i].name) || 'Actualités' }));
-    if (articles.length === 0) return res.status(502).json({ error: 'Actualités indisponibles pour le moment' });
+    if (articles.length === 0) return res.status(502).json({ error: 'Actualités indisponibles : aucun article trouvé' });
     res.json({ articles, timestamp: new Date().toISOString() });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
