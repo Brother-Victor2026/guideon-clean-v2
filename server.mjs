@@ -2325,21 +2325,39 @@ async function geocodeCity(cityName) {
 }
 // Recupere la meteo REELLE (Open-Meteo, gratuit, sans cle) pour des coordonnees GPS donnees.
 // Remplace l'ancienne version qui renvoyait des donnees aleatoires (Math.random()).
+// Recupere la meteo REELLE (Open-Meteo, source : modeles meteorologiques officiels comme le DWD
+// allemand et NOAA, gratuit, sans cle) : conditions actuelles + previsions du jour (min/max, risque
+// de pluie, UV), comme une application meteo classique.
 async function fetchRealWeather(lat, lon) {
   try {
     const c = new AbortController();
     const t = setTimeout(() => c.abort(), 7000);
-    const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code,relative_humidity_2m,wind_speed_10m`, { signal: c.signal });
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}`
+      + `&current=temperature_2m,weather_code,relative_humidity_2m,wind_speed_10m,cloud_cover`
+      + `&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,uv_index_max`
+      + `&timezone=auto&forecast_days=1`;
+    const r = await fetch(url, { signal: c.signal });
     clearTimeout(t);
     if (!r.ok) return null;
     const d = await r.json();
     const cur = d && d.current;
     if (!cur || typeof cur.temperature_2m !== 'number') return null;
+    const daily = d.daily || {};
+    const num = (arr) => (arr && typeof arr[0] === 'number') ? arr[0] : null;
+    const tempMax = num(daily.temperature_2m_max);
+    const tempMin = num(daily.temperature_2m_min);
+    const rainChance = num(daily.precipitation_probability_max);
+    const uv = num(daily.uv_index_max);
     return {
       temperature: Math.round(cur.temperature_2m) + '°C',
       condition: wmoToFrench(cur.weather_code),
       humidity: Math.round(cur.relative_humidity_2m) + '%',
-      wind_speed: Math.round(cur.wind_speed_10m) + ' km/h'
+      wind_speed: Math.round(cur.wind_speed_10m) + ' km/h',
+      cloud_cover: typeof cur.cloud_cover === 'number' ? Math.round(cur.cloud_cover) + '%' : null,
+      temp_max: tempMax !== null ? Math.round(tempMax) + '°C' : null,
+      temp_min: tempMin !== null ? Math.round(tempMin) + '°C' : null,
+      rain_chance: rainChance !== null ? Math.round(rainChance) + '%' : null,
+      uv_index: uv !== null ? Math.round(uv) : null
     };
   } catch (e) { console.error('fetchRealWeather:', e.message); return null; }
 }
@@ -2970,7 +2988,13 @@ async function buildDailyBriefingMessage(u) {
   if (typeof cb.userLat === 'number' && typeof cb.userLon === 'number') {
     try {
       const w = await fetchRealWeather(cb.userLat, cb.userLon);
-      if (w) parts.push(`🌤️ ${cb.userLocationLabel || 'Votre position'} : ${w.temperature}, ${w.condition}`);
+      if (w) {
+        let line = `🌤️ ${cb.userLocationLabel || 'Votre position'} : ${w.temperature}, ${w.condition}`;
+        if (w.temp_min && w.temp_max) line += ` (min ${w.temp_min} / max ${w.temp_max})`;
+        if (w.rain_chance) line += `, risque de pluie ${w.rain_chance}`;
+        if (w.cloud_cover) line += `, nuages ${w.cloud_cover}`;
+        parts.push(line);
+      }
     } catch (e) { console.error('Briefing - meteo:', e.message); }
   }
 
@@ -2988,14 +3012,9 @@ async function buildDailyBriefingMessage(u) {
     }
   } catch (e) { console.error('Briefing - actu:', e.message); }
 
-  // 4) Rappel tire au hasard de la memoire de l'utilisateur
-  try {
-    const { data: mems } = await sbAdmin.from('memories').select('content').eq('user_id', String(u.id));
-    if (mems && mems.length > 0) {
-      const pick = mems[Math.floor(Math.random() * mems.length)];
-      if (pick && pick.content) parts.push(`🧠 Vous aviez noté : ${pick.content}`);
-    }
-  } catch (e) { console.error('Briefing - memoire:', e.message); }
+  // (Le rappel tire de la memoire personnelle a ete retire du briefing a la demande de Victor : des
+  // informations sensibles - numero de piece d'identite, etc. - pouvaient s'y retrouver, dans une
+  // notification push qui n'est pas un canal prive/chiffre comme la conversation elle-meme.)
 
   if (parts.length === 0) return null; // Rien a dire aujourd'hui : pas de briefing vide.
   return parts.join('\n');
