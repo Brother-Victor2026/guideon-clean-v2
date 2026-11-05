@@ -1848,8 +1848,8 @@ app.get('/api/memory/view', async (req, res) => {
       maybeSendDailyBriefing({ id: user.id, checkboxes: row.checkboxes }).catch(e => console.error('maybeSendDailyBriefing (connexion):', e.message));
       if (typeof row.checkboxes.userLat !== 'number') {
         geolocateByIp(getClientIp(req)).then(g => {
-          if (g) mergeUserCheckboxes(user.id, { userLat: g.lat, userLon: g.lon, userLocationLabel: g.label }).catch(() => {});
-        }).catch(() => {});
+          mergeUserCheckboxes(user.id, { userLat: g.lat, userLon: g.lon, userLocationLabel: g.label }).catch(() => {});
+        }).catch(e => console.error('geolocateByIp (auto, connexion):', e.message));
       }
     }
     res.json(row);
@@ -2498,19 +2498,30 @@ app.post('/api/user/location-by-city', async (req, res) => {
 // qu'une position GPS mais ne demande AUCUNE autorisation navigateur : sert de detection automatique
 // silencieuse par defaut (voir le hook dans /api/memory/view plus bas), avant que l'utilisateur ne
 // precise sa position via GPS ou saisie manuelle de ville.
+// IMPORTANT : cette fonction LANCE une erreur (throw) en cas d'echec, comme fetchRealWeather, pour que
+// l'appelant puisse afficher/journaliser la VRAIE cause (IP privee/locale non geolocalisable, timeout
+// reseau, erreur HTTP, reponse ipapi.co incomplete) plutot qu'un message generique.
 async function geolocateByIp(ip) {
+  if (!ip || ip === 'x' || ip === 'unknown' || ip === '::1' || ip.startsWith('127.') || ip.startsWith('192.168.') || ip.startsWith('10.') || ip.startsWith('172.16.') || ip.startsWith('172.17.') || ip.startsWith('172.18.') || ip.startsWith('172.19.') || ip.startsWith('172.2') || ip.startsWith('172.30.') || ip.startsWith('172.31.')) {
+    throw new Error(`Adresse IP locale/privée non géolocalisable (${ip || 'adresse manquante'})`);
+  }
+  const c = new AbortController();
+  const t = setTimeout(() => c.abort(), 7000);
+  let r;
   try {
-    if (!ip || ip === 'x' || ip === 'unknown' || ip === '::1' || ip.startsWith('127.') || ip.startsWith('192.168.') || ip.startsWith('10.')) return null; // IP locale/privee : non geolocalisable
-    const c = new AbortController();
-    const t = setTimeout(() => c.abort(), 7000);
-    const r = await fetch(`https://ipapi.co/${encodeURIComponent(ip)}/json/`, { signal: c.signal });
+    r = await fetch(`https://ipapi.co/${encodeURIComponent(ip)}/json/`, { signal: c.signal });
+  } catch (e) {
     clearTimeout(t);
-    if (!r.ok) return null;
-    const d = await r.json();
-    if (d.error || typeof d.latitude !== 'number' || typeof d.longitude !== 'number') return null;
-    const label = d.city ? (d.country_name ? `${d.city}, ${d.country_name}` : d.city) : (d.country_name || null);
-    return { lat: d.latitude, lon: d.longitude, label };
-  } catch (e) { console.error('geolocateByIp:', e.message); return null; }
+    const reason = e.name === 'AbortError' ? 'délai dépassé (connexion réseau trop lente ou instable)' : (e.message || 'erreur réseau');
+    throw new Error(`Connexion à ipapi.co impossible : ${reason}`);
+  }
+  clearTimeout(t);
+  if (!r.ok) throw new Error(`ipapi.co a répondu avec une erreur HTTP ${r.status}`);
+  const d = await r.json();
+  if (d.error) throw new Error(`ipapi.co : ${d.reason || 'adresse IP non reconnue'}`);
+  if (typeof d.latitude !== 'number' || typeof d.longitude !== 'number') throw new Error('Réponse ipapi.co incomplète (coordonnées manquantes)');
+  const label = d.city ? (d.country_name ? `${d.city}, ${d.country_name}` : d.city) : (d.country_name || null);
+  return { lat: d.latitude, lon: d.longitude, label };
 }
 function getClientIp(req) {
   return String(req.headers['x-forwarded-for'] || req.ip || 'x').split(',')[0].trim();
@@ -2522,8 +2533,9 @@ app.post('/api/user/location-by-ip', async (req, res) => {
     if (!token) return res.status(401).json({ error: 'Token manquant' });
     const user = checkToken(token);
     if (!user) return res.status(401).json({ error: 'Token invalide' });
-    const g = await geolocateByIp(getClientIp(req));
-    if (!g) return res.status(404).json({ error: "Impossible de localiser votre adresse IP (IP locale ou service indisponible). Essayez le GPS ou saisissez votre ville." });
+    let g;
+    try { g = await geolocateByIp(getClientIp(req)); }
+    catch (gerr) { console.error('geolocateByIp:', gerr.message); return res.status(404).json({ error: `Détection par IP impossible : ${gerr.message}. Essayez le GPS ou saisissez votre pays.` }); }
     await mergeUserCheckboxes(user.id, { userLat: g.lat, userLon: g.lon, userLocationLabel: g.label });
     res.json({ success: true, label: g.label });
   } catch (e) { res.status(500).json({ error: e.message }); }
