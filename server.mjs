@@ -28,6 +28,10 @@ const SECRET = process.env.JWT_SECRET || 'guideon2026';
 const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN;
 const WHATSAPP_PHONE_NUMBER_ID = process.env.WHATSAPP_PHONE_NUMBER_ID;
 const WHATSAPP_VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN;
+// Solution de secours meteo (voir fetchRealWeather) : utilisee uniquement si Open-Meteo echoue
+// (ex: erreur HTTP 429 due au quota gratuit partage par IP sur Render - voir echange avec Victor du
+// 05/11/2026). Optionnelle : si absente, le code se comporte comme avant (Open-Meteo seul).
+const OPENWEATHER_API_KEY = process.env.OPENWEATHER_API_KEY;
 const pkg = JSON.parse(fs.readFileSync(__dirname + '/package.json', 'utf-8'));
 const VERSION = pkg.version;
 // Identifiant de CET environnement serveur (local ou production), utilise par notifyNewVersion() pour
@@ -2292,6 +2296,23 @@ app.get('/api/feedback/stats', async (req, res) => {
 });
 
 // PHASE 1 - Point 1: Flux temps réel
+// Cache en memoire (TTL) pour les donnees temps reel (meteo/actu/bourse) : evite de rappeler les API
+// externes a chaque rechargement du panneau. Utile pour la fiabilite (moins d'appels = moins de risque
+// de timeout) ET pour rester sous les quotas gratuits externes (ex: Open-Meteo applique ses limites par
+// adresse IP, qui est partagee entre tous les clients Render sur le plan gratuit - voir echange avec
+// Victor du 05/11/2026). Redemarre a vide a chaque redemarrage du serveur (pas de persistance), ce qui
+// est volontaire : ce n'est qu'une optimisation, pas une source de verite.
+const REALTIME_CACHE_TTL_MS = 12 * 60 * 1000; // 12 minutes
+const realtimeCache = new Map();
+function cacheGet(key) {
+  const entry = realtimeCache.get(key);
+  if (!entry) return null;
+  if (Date.now() > entry.expiresAt) { realtimeCache.delete(key); return null; }
+  return entry.data;
+}
+function cacheSet(key, data, ttlMs) {
+  realtimeCache.set(key, { data, expiresAt: Date.now() + (ttlMs || REALTIME_CACHE_TTL_MS) });
+}
 // Mappe un code meteo WMO (renvoye par Open-Meteo) vers une courte description en francais.
 // Table de reference : https://open-meteo.com/en/docs (section "WMO Weather interpretation codes").
 function wmoToFrench(code) {
@@ -2333,6 +2354,68 @@ async function geocodeCity(cityName) {
 // pour que l'appelant puisse afficher/journaliser la VRAIE cause (timeout reseau, DNS, HTTP 4xx/5xx,
 // reponse Open-Meteo incomplete) plutot qu'un message generique "indisponible pour le moment".
 async function fetchRealWeather(lat, lon) {
+  // Cache 12 min par position arrondie (0,01° ~ 1km) : evite de re-interroger Open-Meteo a chaque
+  // clic sur "Charger donnees" ou a chaque rafraichissement de la page pour la meme zone.
+  const cacheKey = 'weather:' + lat.toFixed(2) + ',' + lon.toFixed(2);
+  const cached = cacheGet(cacheKey);
+  if (cached) return cached;
+  let data;
+  try {
+    data = await fetchRealWeatherUncached(lat, lon);
+  } catch (primaryErr) {
+    // Repli OpenWeatherMap uniquement si une cle est configuree (OPENWEATHER_API_KEY). Sinon on
+    // relance l'erreur d'Open-Meteo telle quelle, comme avant.
+    if (!OPENWEATHER_API_KEY) throw primaryErr;
+    try {
+      data = await fetchWeatherFallback(lat, lon);
+      console.error('fetchRealWeather: repli OpenWeatherMap utilisé après échec Open-Meteo :', primaryErr.message);
+    } catch (fallbackErr) {
+      throw new Error(`Open-Meteo indisponible (${primaryErr.message}) ; repli OpenWeatherMap aussi indisponible (${fallbackErr.message})`);
+    }
+  }
+  cacheSet(cacheKey, data);
+  return data;
+}
+// Solution de secours (voir OPENWEATHER_API_KEY en haut du fichier) : utilisee UNIQUEMENT quand
+// Open-Meteo echoue. Ne fournit pas les previsions min/max du jour, le risque de pluie ni l'UV (non
+// inclus dans l'endpoint "current weather" simple d'OpenWeatherMap) : ces champs restent null, ce que
+// le reste du code gere deja comme optionnel (voir affichage et briefing quotidien).
+async function fetchWeatherFallback(lat, lon) {
+  if (!OPENWEATHER_API_KEY) throw new Error('Aucune clé OpenWeatherMap configurée');
+  const c = new AbortController();
+  const t = setTimeout(() => c.abort(), 7000);
+  let r;
+  try {
+    const url = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${OPENWEATHER_API_KEY}&units=metric&lang=fr`;
+    r = await fetch(url, { signal: c.signal });
+  } catch (e) {
+    clearTimeout(t);
+    const reason = e.name === 'AbortError' ? 'délai dépassé (connexion réseau trop lente ou instable)' : (e.message || 'erreur réseau');
+    throw new Error(`Connexion à OpenWeatherMap impossible : ${reason}`);
+  }
+  clearTimeout(t);
+  if (!r.ok) {
+    const detail = r.status === 401 ? ' (clé API invalide ou pas encore activée — une nouvelle clé peut prendre jusqu\'à 2h)' : '';
+    throw new Error(`OpenWeatherMap a répondu avec une erreur HTTP ${r.status}${detail}`);
+  }
+  const d = await r.json();
+  if (!d || !d.main || typeof d.main.temp !== 'number') throw new Error('Réponse OpenWeatherMap incomplète (données manquantes)');
+  const condRaw = (d.weather && d.weather[0] && d.weather[0].description) ? d.weather[0].description : 'Conditions inconnues';
+  const condition = condRaw.charAt(0).toUpperCase() + condRaw.slice(1);
+  return {
+    temperature: Math.round(d.main.temp) + '°C',
+    condition,
+    humidity: typeof d.main.humidity === 'number' ? Math.round(d.main.humidity) + '%' : null,
+    wind_speed: (d.wind && typeof d.wind.speed === 'number') ? Math.round(d.wind.speed * 3.6) + ' km/h' : null, // m/s -> km/h
+    cloud_cover: (d.clouds && typeof d.clouds.all === 'number') ? Math.round(d.clouds.all) + '%' : null,
+    temp_max: typeof d.main.temp_max === 'number' ? Math.round(d.main.temp_max) + '°C' : null,
+    temp_min: typeof d.main.temp_min === 'number' ? Math.round(d.main.temp_min) + '°C' : null,
+    rain_chance: null,
+    uv_index: null,
+    source: 'OpenWeatherMap (secours)'
+  };
+}
+async function fetchRealWeatherUncached(lat, lon) {
   const c = new AbortController();
   const t = setTimeout(() => c.abort(), 7000);
   let r;
@@ -2464,6 +2547,10 @@ app.post('/api/user/location-clear', async (req, res) => {
 // la recherche du chat (voir /api/search __GENERAL_NEWS__). Remplace l'ancienne version factice qui
 // renvoyait toujours "Actualité <categorie>" / "Description" / "News".
 app.get('/api/realtime/news', async (req, res) => {
+  // Actualites generales = identiques pour tout le monde (pas lie a un utilisateur) : un seul cache
+  // global suffit, et reduit fortement le nombre d'appels aux 18 flux RSS sous-jacents.
+  const cached = cacheGet('news:general');
+  if (cached) return res.json(cached);
   const c = new AbortController();
   const t = setTimeout(() => c.abort(), 9000);
   let r;
@@ -2484,7 +2571,9 @@ app.get('/api/realtime/news', async (req, res) => {
     const sources = Array.isArray(d.sources) ? d.sources : [];
     const articles = titles.slice(0, 8).map((title, i) => ({ title, source: (sources[i] && sources[i].name) || 'Actualités' }));
     if (articles.length === 0) return res.status(502).json({ error: 'Actualités indisponibles : aucun article trouvé' });
-    res.json({ articles, timestamp: new Date().toISOString() });
+    const payload = { articles, timestamp: new Date().toISOString() };
+    cacheSet('news:general', payload);
+    res.json(payload);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -2493,6 +2582,9 @@ app.get('/api/realtime/news', async (req, res) => {
 app.get('/api/realtime/stocks', async (req, res) => {
   try {
     const syms = String(req.query.symbols || 'AAPL,GOOGL').split(',').map(s => s.trim()).filter(Boolean).slice(0, 10);
+    const cacheKeyStocks = 'stocks:' + syms.slice().sort().join(',');
+    const cachedStocks = cacheGet(cacheKeyStocks);
+    if (cachedStocks) return res.json(cachedStocks);
     const UA = { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36' };
     const results = await Promise.all(syms.map(async (sym) => {
       try {
@@ -2516,7 +2608,9 @@ app.get('/api/realtime/stocks', async (req, res) => {
     }));
     const stocks = results.filter(Boolean);
     if (stocks.length === 0) return res.status(502).json({ error: 'Cotations indisponibles pour le moment' });
-    res.json({ stocks, timestamp: new Date().toISOString() });
+    const payloadStocks = { stocks, timestamp: new Date().toISOString() };
+    cacheSet(cacheKeyStocks, payloadStocks);
+    res.json(payloadStocks);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
