@@ -2502,6 +2502,17 @@ app.post('/api/user/location-by-city', async (req, res) => {
 // l'appelant puisse afficher/journaliser la VRAIE cause (IP privee/locale non geolocalisable, timeout
 // reseau, erreur HTTP, reponse ipapi.co incomplete) plutot qu'un message generique.
 async function geolocateByIp(ip) {
+  // Cache 24h par IP (la geolocalisation d'une IP change rarement) : reduit l'exposition au quota
+  // gratuit d'ipapi.co (1000 requetes/jour SEULEMENT, partage entre tous les clients Render - encore
+  // plus restrictif que Open-Meteo, voir echange avec Victor du 05/11/2026).
+  const cacheKey = 'geoip:' + ip;
+  const cached = cacheGet(cacheKey);
+  if (cached) return cached;
+  const data = await geolocateByIpUncached(ip);
+  cacheSet(cacheKey, data, 24 * 60 * 60 * 1000);
+  return data;
+}
+async function geolocateByIpUncached(ip) {
   if (!ip || ip === 'x' || ip === 'unknown' || ip === '::1' || ip.startsWith('127.') || ip.startsWith('192.168.') || ip.startsWith('10.') || ip.startsWith('172.16.') || ip.startsWith('172.17.') || ip.startsWith('172.18.') || ip.startsWith('172.19.') || ip.startsWith('172.2') || ip.startsWith('172.30.') || ip.startsWith('172.31.')) {
     throw new Error(`Adresse IP locale/privée non géolocalisable (${ip || 'adresse manquante'})`);
   }
@@ -3163,19 +3174,24 @@ async function buildDailyBriefingMessage(u) {
     }
   } catch (e) { console.error('Briefing - rappels:', e.message); }
 
-  // 2) Meteo reelle (uniquement si l'utilisateur a enregistre une position dans Parametres)
-  if (typeof cb.userLat === 'number' && typeof cb.userLon === 'number') {
-    try {
-      const w = await fetchRealWeather(cb.userLat, cb.userLon);
-      if (w) {
-        let line = `🌤️ ${cb.userLocationLabel || 'Votre position'} : ${w.temperature}, ${w.condition}`;
-        if (w.temp_min && w.temp_max) line += ` (min ${w.temp_min} / max ${w.temp_max})`;
-        if (w.rain_chance) line += `, risque de pluie ${w.rain_chance}`;
-        if (w.cloud_cover) line += `, nuages ${w.cloud_cover}`;
-        parts.push(line);
-      }
-    } catch (e) { console.error('Briefing - meteo:', e.message); }
-  }
+  // 2) Meteo reelle. Utilise la position enregistree si disponible, sinon un repli par defaut (Paris,
+  // meme comportement que /api/realtime/weather) pour que la meteo apparaisse toujours dans le
+  // briefing plutot que d'etre silencieusement omise quand l'utilisateur n'a pas encore enregistre de
+  // position (cas constate le 05/11/2026 : le briefing de Victor ne contenait pas de meteo du tout).
+  try {
+    const hasPosition = typeof cb.userLat === 'number' && typeof cb.userLon === 'number';
+    const lat = hasPosition ? cb.userLat : 48.8566;
+    const lon = hasPosition ? cb.userLon : 2.3522;
+    const label = hasPosition ? (cb.userLocationLabel || 'Votre position') : 'Paris (position par défaut, non configurée)';
+    const w = await fetchRealWeather(lat, lon);
+    if (w) {
+      let line = `🌤️ ${label} : ${w.temperature}, ${w.condition}`;
+      if (w.temp_min && w.temp_max) line += ` (min ${w.temp_min} / max ${w.temp_max})`;
+      if (w.rain_chance) line += `, risque de pluie ${w.rain_chance}`;
+      if (w.cloud_cover) line += `, nuages ${w.cloud_cover}`;
+      parts.push(line);
+    }
+  } catch (e) { console.error('Briefing - meteo:', e.message); }
 
   // 3) Court resume d'actualite : reutilise (appel interne, sans toucher la route) la recherche
   // d'actualites generales deja utilisee par le chat (flux RSS reels, voir /api/search __GENERAL_NEWS__)
