@@ -189,13 +189,38 @@ header{background:linear-gradient(135deg,#1a0533,#0d1f4d);padding:14px 16px;disp
 function loadRealtime(){
   const el = document.getElementById('realtimeData');
   el.innerHTML = 'Chargement...';
-  Promise.all([
-    fetch('/api/realtime/weather?city=Paris').then(r=>r.json()),
+  const tok = localStorage.getItem('gtoken');
+  const authHeaders = tok ? { 'Authorization': 'Bearer ' + tok } : {};
+  // Promise.allSettled (et non Promise.all) : si une seule des trois sources echoue (reseau, service
+  // momentanement indisponible...), les deux autres s'affichent quand meme au lieu de tout faire
+  // planter. On envoie aussi le token pour que la meteo utilise la position enregistree par
+  // l'utilisateur (GPS/IP/pays) au lieu de toujours interroger Paris par defaut.
+  Promise.allSettled([
+    fetch('/api/realtime/weather', { headers: authHeaders }).then(r=>r.json()),
     fetch('/api/realtime/news?category=tech').then(r=>r.json()),
     fetch('/api/realtime/stocks?symbols=AAPL,GOOGL').then(r=>r.json())
-  ]).then(([w,n,s]) => {
-    el.innerHTML = '<h5>🌤️ Météo: ' + w.weather.temperature + ' - ' + w.weather.condition + '</h5><h5>📰 News: ' + n.articles[0].title + '</h5><h5>📈 Stocks: ' + s.stocks.map(st=>st.symbol+' '+st.price).join(', ') + '</h5>';
-  }).catch(e => el.innerHTML = '❌ ' + e.message);
+  ]).then(([wr,nr,sr]) => {
+    const w = wr.status === 'fulfilled' ? wr.value : null;
+    const n = nr.status === 'fulfilled' ? nr.value : null;
+    const s = sr.status === 'fulfilled' ? sr.value : null;
+    let html = '';
+    if (w && w.weather && w.weather.temperature) {
+      html += '<h5>🌤️ Météo (' + w.city + ') : ' + w.weather.temperature + (w.weather.temp_min && w.weather.temp_max ? ' (min ' + w.weather.temp_min + ' / max ' + w.weather.temp_max + ')' : '') + ' - ' + w.weather.condition + '</h5><h5>☔ Risque de pluie : ' + (w.weather.rain_chance || 'n/d') + ' · ☁️ Couverture nuageuse : ' + (w.weather.cloud_cover || 'n/d') + ' · 💧 Humidité : ' + w.weather.humidity + ' · 🌬️ Vent : ' + w.weather.wind_speed + '</h5>';
+    } else {
+      html += '<h5>🌤️ Météo : indisponible pour le moment' + (w && w.error ? ' (' + w.error + ')' : '') + '</h5>';
+    }
+    if (n && Array.isArray(n.articles) && n.articles.length > 0) {
+      html += '<h5>📰 Actu : ' + n.articles.slice(0,3).map(a=>a.title+' ('+a.source+')').join('<br>') + '</h5>';
+    } else {
+      html += '<h5>📰 Actu : indisponible pour le moment' + (n && n.error ? ' (' + n.error + ')' : '') + '</h5>';
+    }
+    if (s && Array.isArray(s.stocks) && s.stocks.length > 0) {
+      html += '<h5>📈 Bourse : ' + s.stocks.map(st=>st.symbol+' : '+st.price+' ('+st.change_percent+')').join('<br>') + '</h5>';
+    } else {
+      html += '<h5>📈 Bourse : indisponible pour le moment' + (s && s.error ? ' (' + s.error + ')' : '') + '</h5>';
+    }
+    el.innerHTML = html;
+  });
 }
 function loadProfile(){
   const tok = localStorage.getItem('gtoken');
@@ -279,13 +304,38 @@ document.addEventListener('DOMContentLoaded', async () => {
 function loadRealtime(){
   const el = document.getElementById('realtimeData');
   el.innerHTML = 'Chargement...';
-  Promise.all([
-    fetch('/api/realtime/weather?city=Paris').then(r=>r.json()),
+  const tok = localStorage.getItem('gtoken');
+  const authHeaders = tok ? { 'Authorization': 'Bearer ' + tok } : {};
+  // Promise.allSettled (et non Promise.all) : si une seule des trois sources echoue (reseau, service
+  // momentanement indisponible...), les deux autres s'affichent quand meme au lieu de tout faire
+  // planter. On envoie aussi le token pour que la meteo utilise la position enregistree par
+  // l'utilisateur (GPS/IP/pays) au lieu de toujours interroger Paris par defaut.
+  Promise.allSettled([
+    fetch('/api/realtime/weather', { headers: authHeaders }).then(r=>r.json()),
     fetch('/api/realtime/news?category=tech').then(r=>r.json()),
     fetch('/api/realtime/stocks?symbols=AAPL,GOOGL').then(r=>r.json())
-  ]).then(([w,n,s]) => {
-    el.innerHTML = '<h5>🌤️ Météo: ' + w.weather.temperature + ' - ' + w.weather.condition + '</h5><h5>📰 News: ' + n.articles[0].title + '</h5><h5>📈 Stocks: ' + s.stocks.map(st=>st.symbol+' '+st.price).join(', ') + '</h5>';
-  }).catch(e => el.innerHTML = '❌ ' + e.message);
+  ]).then(([wr,nr,sr]) => {
+    const w = wr.status === 'fulfilled' ? wr.value : null;
+    const n = nr.status === 'fulfilled' ? nr.value : null;
+    const s = sr.status === 'fulfilled' ? sr.value : null;
+    let html = '';
+    if (w && w.weather && w.weather.temperature) {
+      html += '<h5>🌤️ Météo (' + w.city + ') : ' + w.weather.temperature + (w.weather.temp_min && w.weather.temp_max ? ' (min ' + w.weather.temp_min + ' / max ' + w.weather.temp_max + ')' : '') + ' - ' + w.weather.condition + '</h5><h5>☔ Risque de pluie : ' + (w.weather.rain_chance || 'n/d') + ' · ☁️ Couverture nuageuse : ' + (w.weather.cloud_cover || 'n/d') + ' · 💧 Humidité : ' + w.weather.humidity + ' · 🌬️ Vent : ' + w.weather.wind_speed + '</h5>';
+    } else {
+      html += '<h5>🌤️ Météo : indisponible pour le moment' + (w && w.error ? ' (' + w.error + ')' : '') + '</h5>';
+    }
+    if (n && Array.isArray(n.articles) && n.articles.length > 0) {
+      html += '<h5>📰 Actu : ' + n.articles.slice(0,3).map(a=>a.title+' ('+a.source+')').join('<br>') + '</h5>';
+    } else {
+      html += '<h5>📰 Actu : indisponible pour le moment' + (n && n.error ? ' (' + n.error + ')' : '') + '</h5>';
+    }
+    if (s && Array.isArray(s.stocks) && s.stocks.length > 0) {
+      html += '<h5>📈 Bourse : ' + s.stocks.map(st=>st.symbol+' : '+st.price+' ('+st.change_percent+')').join('<br>') + '</h5>';
+    } else {
+      html += '<h5>📈 Bourse : indisponible pour le moment' + (s && s.error ? ' (' + s.error + ')' : '') + '</h5>';
+    }
+    el.innerHTML = html;
+  });
 }
 function loadProfile(){
   const tok = localStorage.getItem('gtoken');
@@ -431,13 +481,38 @@ async function sendForgot() {
 function loadRealtime(){
   const el = document.getElementById('realtimeData');
   el.innerHTML = 'Chargement...';
-  Promise.all([
-    fetch('/api/realtime/weather?city=Paris').then(r=>r.json()),
+  const tok = localStorage.getItem('gtoken');
+  const authHeaders = tok ? { 'Authorization': 'Bearer ' + tok } : {};
+  // Promise.allSettled (et non Promise.all) : si une seule des trois sources echoue (reseau, service
+  // momentanement indisponible...), les deux autres s'affichent quand meme au lieu de tout faire
+  // planter. On envoie aussi le token pour que la meteo utilise la position enregistree par
+  // l'utilisateur (GPS/IP/pays) au lieu de toujours interroger Paris par defaut.
+  Promise.allSettled([
+    fetch('/api/realtime/weather', { headers: authHeaders }).then(r=>r.json()),
     fetch('/api/realtime/news?category=tech').then(r=>r.json()),
     fetch('/api/realtime/stocks?symbols=AAPL,GOOGL').then(r=>r.json())
-  ]).then(([w,n,s]) => {
-    el.innerHTML = '<h5>🌤️ Météo: ' + w.weather.temperature + ' - ' + w.weather.condition + '</h5><h5>📰 News: ' + n.articles[0].title + '</h5><h5>📈 Stocks: ' + s.stocks.map(st=>st.symbol+' '+st.price).join(', ') + '</h5>';
-  }).catch(e => el.innerHTML = '❌ ' + e.message);
+  ]).then(([wr,nr,sr]) => {
+    const w = wr.status === 'fulfilled' ? wr.value : null;
+    const n = nr.status === 'fulfilled' ? nr.value : null;
+    const s = sr.status === 'fulfilled' ? sr.value : null;
+    let html = '';
+    if (w && w.weather && w.weather.temperature) {
+      html += '<h5>🌤️ Météo (' + w.city + ') : ' + w.weather.temperature + (w.weather.temp_min && w.weather.temp_max ? ' (min ' + w.weather.temp_min + ' / max ' + w.weather.temp_max + ')' : '') + ' - ' + w.weather.condition + '</h5><h5>☔ Risque de pluie : ' + (w.weather.rain_chance || 'n/d') + ' · ☁️ Couverture nuageuse : ' + (w.weather.cloud_cover || 'n/d') + ' · 💧 Humidité : ' + w.weather.humidity + ' · 🌬️ Vent : ' + w.weather.wind_speed + '</h5>';
+    } else {
+      html += '<h5>🌤️ Météo : indisponible pour le moment' + (w && w.error ? ' (' + w.error + ')' : '') + '</h5>';
+    }
+    if (n && Array.isArray(n.articles) && n.articles.length > 0) {
+      html += '<h5>📰 Actu : ' + n.articles.slice(0,3).map(a=>a.title+' ('+a.source+')').join('<br>') + '</h5>';
+    } else {
+      html += '<h5>📰 Actu : indisponible pour le moment' + (n && n.error ? ' (' + n.error + ')' : '') + '</h5>';
+    }
+    if (s && Array.isArray(s.stocks) && s.stocks.length > 0) {
+      html += '<h5>📈 Bourse : ' + s.stocks.map(st=>st.symbol+' : '+st.price+' ('+st.change_percent+')').join('<br>') + '</h5>';
+    } else {
+      html += '<h5>📈 Bourse : indisponible pour le moment' + (s && s.error ? ' (' + s.error + ')' : '') + '</h5>';
+    }
+    el.innerHTML = html;
+  });
 }
 function loadProfile(){
   const tok = localStorage.getItem('gtoken');
@@ -882,13 +957,38 @@ window.addEventListener('load', function() {
 function loadRealtime(){
   const el = document.getElementById('realtimeData');
   el.innerHTML = 'Chargement...';
-  Promise.all([
-    fetch('/api/realtime/weather?city=Paris').then(r=>r.json()),
+  const tok = localStorage.getItem('gtoken');
+  const authHeaders = tok ? { 'Authorization': 'Bearer ' + tok } : {};
+  // Promise.allSettled (et non Promise.all) : si une seule des trois sources echoue (reseau, service
+  // momentanement indisponible...), les deux autres s'affichent quand meme au lieu de tout faire
+  // planter. On envoie aussi le token pour que la meteo utilise la position enregistree par
+  // l'utilisateur (GPS/IP/pays) au lieu de toujours interroger Paris par defaut.
+  Promise.allSettled([
+    fetch('/api/realtime/weather', { headers: authHeaders }).then(r=>r.json()),
     fetch('/api/realtime/news?category=tech').then(r=>r.json()),
     fetch('/api/realtime/stocks?symbols=AAPL,GOOGL').then(r=>r.json())
-  ]).then(([w,n,s]) => {
-    el.innerHTML = '<h5>🌤️ Météo: ' + w.weather.temperature + ' - ' + w.weather.condition + '</h5><h5>📰 News: ' + n.articles[0].title + '</h5><h5>📈 Stocks: ' + s.stocks.map(st=>st.symbol+' '+st.price).join(', ') + '</h5>';
-  }).catch(e => el.innerHTML = '❌ ' + e.message);
+  ]).then(([wr,nr,sr]) => {
+    const w = wr.status === 'fulfilled' ? wr.value : null;
+    const n = nr.status === 'fulfilled' ? nr.value : null;
+    const s = sr.status === 'fulfilled' ? sr.value : null;
+    let html = '';
+    if (w && w.weather && w.weather.temperature) {
+      html += '<h5>🌤️ Météo (' + w.city + ') : ' + w.weather.temperature + (w.weather.temp_min && w.weather.temp_max ? ' (min ' + w.weather.temp_min + ' / max ' + w.weather.temp_max + ')' : '') + ' - ' + w.weather.condition + '</h5><h5>☔ Risque de pluie : ' + (w.weather.rain_chance || 'n/d') + ' · ☁️ Couverture nuageuse : ' + (w.weather.cloud_cover || 'n/d') + ' · 💧 Humidité : ' + w.weather.humidity + ' · 🌬️ Vent : ' + w.weather.wind_speed + '</h5>';
+    } else {
+      html += '<h5>🌤️ Météo : indisponible pour le moment' + (w && w.error ? ' (' + w.error + ')' : '') + '</h5>';
+    }
+    if (n && Array.isArray(n.articles) && n.articles.length > 0) {
+      html += '<h5>📰 Actu : ' + n.articles.slice(0,3).map(a=>a.title+' ('+a.source+')').join('<br>') + '</h5>';
+    } else {
+      html += '<h5>📰 Actu : indisponible pour le moment' + (n && n.error ? ' (' + n.error + ')' : '') + '</h5>';
+    }
+    if (s && Array.isArray(s.stocks) && s.stocks.length > 0) {
+      html += '<h5>📈 Bourse : ' + s.stocks.map(st=>st.symbol+' : '+st.price+' ('+st.change_percent+')').join('<br>') + '</h5>';
+    } else {
+      html += '<h5>📈 Bourse : indisponible pour le moment' + (s && s.error ? ' (' + s.error + ')' : '') + '</h5>';
+    }
+    el.innerHTML = html;
+  });
 }
 function loadProfile(){
   const tok = localStorage.getItem('gtoken');
@@ -1397,13 +1497,38 @@ let inputDebounce;document.getElementById('ui').addEventListener('input',functio
 function loadRealtime(){
   const el = document.getElementById('realtimeData');
   el.innerHTML = 'Chargement...';
-  Promise.all([
-    fetch('/api/realtime/weather?city=Paris').then(r=>r.json()),
+  const tok = localStorage.getItem('gtoken');
+  const authHeaders = tok ? { 'Authorization': 'Bearer ' + tok } : {};
+  // Promise.allSettled (et non Promise.all) : si une seule des trois sources echoue (reseau, service
+  // momentanement indisponible...), les deux autres s'affichent quand meme au lieu de tout faire
+  // planter. On envoie aussi le token pour que la meteo utilise la position enregistree par
+  // l'utilisateur (GPS/IP/pays) au lieu de toujours interroger Paris par defaut.
+  Promise.allSettled([
+    fetch('/api/realtime/weather', { headers: authHeaders }).then(r=>r.json()),
     fetch('/api/realtime/news?category=tech').then(r=>r.json()),
     fetch('/api/realtime/stocks?symbols=AAPL,GOOGL').then(r=>r.json())
-  ]).then(([w,n,s]) => {
-    el.innerHTML = '<h5>🌤️ Météo: ' + w.weather.temperature + ' - ' + w.weather.condition + '</h5><h5>📰 News: ' + n.articles[0].title + '</h5><h5>📈 Stocks: ' + s.stocks.map(st=>st.symbol+' '+st.price).join(', ') + '</h5>';
-  }).catch(e => el.innerHTML = '❌ ' + e.message);
+  ]).then(([wr,nr,sr]) => {
+    const w = wr.status === 'fulfilled' ? wr.value : null;
+    const n = nr.status === 'fulfilled' ? nr.value : null;
+    const s = sr.status === 'fulfilled' ? sr.value : null;
+    let html = '';
+    if (w && w.weather && w.weather.temperature) {
+      html += '<h5>🌤️ Météo (' + w.city + ') : ' + w.weather.temperature + (w.weather.temp_min && w.weather.temp_max ? ' (min ' + w.weather.temp_min + ' / max ' + w.weather.temp_max + ')' : '') + ' - ' + w.weather.condition + '</h5><h5>☔ Risque de pluie : ' + (w.weather.rain_chance || 'n/d') + ' · ☁️ Couverture nuageuse : ' + (w.weather.cloud_cover || 'n/d') + ' · 💧 Humidité : ' + w.weather.humidity + ' · 🌬️ Vent : ' + w.weather.wind_speed + '</h5>';
+    } else {
+      html += '<h5>🌤️ Météo : indisponible pour le moment' + (w && w.error ? ' (' + w.error + ')' : '') + '</h5>';
+    }
+    if (n && Array.isArray(n.articles) && n.articles.length > 0) {
+      html += '<h5>📰 Actu : ' + n.articles.slice(0,3).map(a=>a.title+' ('+a.source+')').join('<br>') + '</h5>';
+    } else {
+      html += '<h5>📰 Actu : indisponible pour le moment' + (n && n.error ? ' (' + n.error + ')' : '') + '</h5>';
+    }
+    if (s && Array.isArray(s.stocks) && s.stocks.length > 0) {
+      html += '<h5>📈 Bourse : ' + s.stocks.map(st=>st.symbol+' : '+st.price+' ('+st.change_percent+')').join('<br>') + '</h5>';
+    } else {
+      html += '<h5>📈 Bourse : indisponible pour le moment' + (s && s.error ? ' (' + s.error + ')' : '') + '</h5>';
+    }
+    el.innerHTML = html;
+  });
 }
 function loadProfile(){
   const tok = localStorage.getItem('gtoken');
@@ -1503,13 +1628,38 @@ window.addEventListener('load', function() {
 function loadRealtime(){
   const el = document.getElementById('realtimeData');
   el.innerHTML = 'Chargement...';
-  Promise.all([
-    fetch('/api/realtime/weather?city=Paris').then(r=>r.json()),
+  const tok = localStorage.getItem('gtoken');
+  const authHeaders = tok ? { 'Authorization': 'Bearer ' + tok } : {};
+  // Promise.allSettled (et non Promise.all) : si une seule des trois sources echoue (reseau, service
+  // momentanement indisponible...), les deux autres s'affichent quand meme au lieu de tout faire
+  // planter. On envoie aussi le token pour que la meteo utilise la position enregistree par
+  // l'utilisateur (GPS/IP/pays) au lieu de toujours interroger Paris par defaut.
+  Promise.allSettled([
+    fetch('/api/realtime/weather', { headers: authHeaders }).then(r=>r.json()),
     fetch('/api/realtime/news?category=tech').then(r=>r.json()),
     fetch('/api/realtime/stocks?symbols=AAPL,GOOGL').then(r=>r.json())
-  ]).then(([w,n,s]) => {
-    el.innerHTML = '<h5>🌤️ Météo: ' + w.weather.temperature + ' - ' + w.weather.condition + '</h5><h5>📰 News: ' + n.articles[0].title + '</h5><h5>📈 Stocks: ' + s.stocks.map(st=>st.symbol+' '+st.price).join(', ') + '</h5>';
-  }).catch(e => el.innerHTML = '❌ ' + e.message);
+  ]).then(([wr,nr,sr]) => {
+    const w = wr.status === 'fulfilled' ? wr.value : null;
+    const n = nr.status === 'fulfilled' ? nr.value : null;
+    const s = sr.status === 'fulfilled' ? sr.value : null;
+    let html = '';
+    if (w && w.weather && w.weather.temperature) {
+      html += '<h5>🌤️ Météo (' + w.city + ') : ' + w.weather.temperature + (w.weather.temp_min && w.weather.temp_max ? ' (min ' + w.weather.temp_min + ' / max ' + w.weather.temp_max + ')' : '') + ' - ' + w.weather.condition + '</h5><h5>☔ Risque de pluie : ' + (w.weather.rain_chance || 'n/d') + ' · ☁️ Couverture nuageuse : ' + (w.weather.cloud_cover || 'n/d') + ' · 💧 Humidité : ' + w.weather.humidity + ' · 🌬️ Vent : ' + w.weather.wind_speed + '</h5>';
+    } else {
+      html += '<h5>🌤️ Météo : indisponible pour le moment' + (w && w.error ? ' (' + w.error + ')' : '') + '</h5>';
+    }
+    if (n && Array.isArray(n.articles) && n.articles.length > 0) {
+      html += '<h5>📰 Actu : ' + n.articles.slice(0,3).map(a=>a.title+' ('+a.source+')').join('<br>') + '</h5>';
+    } else {
+      html += '<h5>📰 Actu : indisponible pour le moment' + (n && n.error ? ' (' + n.error + ')' : '') + '</h5>';
+    }
+    if (s && Array.isArray(s.stocks) && s.stocks.length > 0) {
+      html += '<h5>📈 Bourse : ' + s.stocks.map(st=>st.symbol+' : '+st.price+' ('+st.change_percent+')').join('<br>') + '</h5>';
+    } else {
+      html += '<h5>📈 Bourse : indisponible pour le moment' + (s && s.error ? ' (' + s.error + ')' : '') + '</h5>';
+    }
+    el.innerHTML = html;
+  });
 }
 function loadProfile(){
   const tok = localStorage.getItem('gtoken');
@@ -1598,11 +1748,11 @@ function updateCCColor(color){const ccHistory=document.getElementById('ccHistory
 <option value="simplifie">🎯 Simplifié</option>
 </select><button onclick="savePreferences()" style="width:100%;padding:10px;background:#1e3a8a;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:12px;">💾 Enregistrer Tone/Style</button><label style="color:#9ca3af;font-size:12px;display:flex;align-items:center;gap:8px;margin-bottom:12px;cursor:pointer;"><input type="checkbox" id="tmpChat" onchange="saveCheckboxState(this.id,this.checked)"> Mode temporaire</label><div style="margin-bottom:12px;"><label style="color:#a78bfa;font-size:12px;">🌙 Thème</label><select id="themeSelect" onchange="changeThemeAndReload(this.value)" style="width:100%;padding:8px;background:#0f0f1a;color:#fff;border:1px solid #2d1b69;border-radius:8px;font-size:13px;"><option value="dark">Sombre</option><option value="light">Clair</option></select></div><div style="margin-bottom:12px;"><label style="color:#a78bfa;font-size:12px;">🌍 Langue</label><select id="langSelect" style="width:100%;padding:8px;background:#0f0f1a;color:#fff;border:1px solid #2d1b69;border-radius:8px;font-size:13px;"><option value="auto">Auto</option><option value="fr">Français</option><option value="en">Anglais</option></select><button onclick="saveLang()" style="width:100%;padding:8px;background:#10b981;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-top:6px;margin-bottom:12px;">💾 Enregistrer Langue</button></div><div style="margin-bottom:12px;"><button id="gInstallPromptBtn" onclick="window.gTriggerInstall&&window.gTriggerInstall()" style="width:100%;padding:8px;background:#1e3a8a;color:#fff;border:none;border-radius:8px;cursor:pointer;">📲 Installer Guidéon IA</button><button id="gResetPwaBtn" onclick="window.gResetPwaInstalled&&window.gResetPwaInstalled()" style="display:none;width:100%;padding:4px;margin-top:4px;background:none;border:none;color:#9ca3af;font-size:11.5px;cursor:pointer;text-decoration:underline;">Pas installée (ou désinstallée) ? Réinitialiser</button></div><div style="margin-bottom:12px;"><label style="color:#a78bfa;font-size:12px;">📏 Longueur</label><select id="lengthSelect" style="width:100%;padding:8px;background:#0f0f1a;color:#fff;border:1px solid #2d1b69;border-radius:8px;font-size:13px;"><option value="normal">Normale</option><option value="short">Courte</option><option value="long">Détaillée</option></select><button onclick="saveLength()" style="width:100%;padding:8px;background:#7c3aed;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-top:6px;margin-bottom:12px;">💾 Enregistrer Longueur</button></div><label style="color:#9ca3af;font-size:12px;display:flex;align-items:center;gap:8px;margin-bottom:12px;pointer-events:none;"><input type="checkbox" id="notifCheck" style="pointer-events:auto;" onchange="saveCheckboxState(this.id,this.checked);if(this.checked){showConfirmDialog(`✅ Notifications activées
 Vous recevrez des notifications de mises à jour et d'événements importants`,()=>{},()=>{document.getElementById('notifCheck').checked=false;});}else{showConfirmDialog(`❌ Notifications désactivées
-Vous ne recevrez plus de notifications`,()=>{},()=>{document.getElementById('notifCheck').checked=true;});}"> Notifications activées / désactivées</label><button onclick="showStats()" style="width:100%;padding:10px;background:#1e3a8a;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:8px;">📊 Statistiques</button><button onclick="viewMemory()" style="width:100%;padding:10px;background:#1e3a8a;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:8px;">🧠 Mémoire</button><button onclick="clearMem()" style="width:100%;padding:10px;background:#374151;color:#fff;border:none;border-radius:8px;cursor:pointer;">🗑️ Effacer mémoire</button><div style="display:flex;gap:8px;margin-top:16px;"><button onclick="saveProfile()" style="flex:1;padding:10px;background:#2d1b69;color:#fff;border:none;border-radius:8px;cursor:pointer;">💾 Sauver</button><button onclick="logout()" style="flex:1;padding:10px;background:#7f1d1d;color:#fff;border:none;border-radius:8px;cursor:pointer;">🚪 Quitter</button></div><button onclick="createNewAccount()" style="width:100%;padding:10px;background:#5f0000;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-top:8px;margin-bottom:8px;">❌ Supprimer</button><button onclick="switchToRegistration()" style="width:100%;padding:10px;background:#065f46;color:#fff;border:none;border-radius:8px;cursor:pointer;">➕ Créer compte</button><div id="memview" style="display:none;margin-top:12px;padding:12px;background:#0f0f1a;border-radius:8px;color:#9ca3af;font-size:12px;line-height:1.6;"></div></div><div id="tab-privacy" class="tab-content" style="display:none;"><h4 style="color:#a78bfa;">📊 Vos données avec Guidéon</h4><div style="background:#0f0f1a;border:1px solid #2d1b69;border-radius:8px;padding:12px;margin-bottom:12px;"><div style="color:#9ca3af;font-size:12px;line-height:1.6;">👤 <strong>Nom:</strong> <span id="dataName">-</span><br>🆔 <strong>ID Utilisateur:</strong> <span id="dataEmail">-</span><br>💬 <strong>Conversations:</strong> <span id="dataConvCount">0</span><br>💾 <strong>Espace:</strong> <span id="dataSize">-</span></div><button onclick="shareUserData()" style="width:100%;padding:10px;background:#7c3aed;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-top:12px;font-weight:600;">🔗 Partager vos données</button></div><h4 style="color:#a78bfa;">Actions</h4><button onclick="downloadData()" style="width:100%;padding:10px;background:#1e3a8a;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:8px;">📥 Télécharger</button><button onclick="deleteData()" style="width:100%;padding:10px;background:#7f1d1d;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:16px;">🗑️ Supprimer</button><h4 style="color:#a78bfa;">Partage</h4><label style="color:#9ca3af;font-size:12px;pointer-events:none;"><input type="checkbox" id="shareControl" style="pointer-events:auto;" onchange="saveCheckboxState(this.id,this.checked);if(this.checked){showConfirmDialog('✅ Partage autorisé\nVos données pourront être partagées\nAppuyez sur OK',()=>{},()=>{document.getElementById('shareControl').checked=false;});}else{showConfirmDialog('❌ Partage désactivé\nVos données ne seront plus partagées\nAppuyez sur OK pour désactiver l\'autorisation',()=>{},()=>{document.getElementById('shareControl').checked=true;});}"> Autoriser partage</label></div><div id="tab-security" class="tab-content" style="display:none;"><h4 style="color:#a78bfa;">Mot de passe</h4><input id="newPwdSec" type="password" placeholder="Nouveau" style="width:100%;padding:10px;background:#0f0f1a;color:#fff;border:1px solid #2d1b69;border-radius:8px;margin-bottom:8px;box-sizing:border-box;"><input id="confirmPwdSec" type="password" placeholder="Confirmer" style="width:100%;padding:10px;background:#0f0f1a;color:#fff;border:1px solid #2d1b69;border-radius:8px;margin-bottom:8px;box-sizing:border-box;"><button onclick="changePassword()" style="width:100%;padding:10px;background:#2d1b69;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:16px;">Changer</button><h4 style="color:#a78bfa;">Sessions</h4><div id="sessionsList" style="background:#0f0f1a;border:1px solid #2d1b69;border-radius:8px;padding:12px;margin-bottom:8px;font-size:12px;color:#9ca3af;">Chargement...</div><button onclick="logoutOtherSessions()" style="width:100%;padding:10px;background:#7f1d1d;color:#fff;border:none;border-radius:8px;cursor:pointer;">Déconnecter</button></div><div id="tab-accessibility" class="tab-content" style="display:none;"><h4 style="color:#a78bfa;">Thème</h4><select id="advThemeSelect" style="width:100%;padding:8px;background:#0f0f1a;color:#fff;border:1px solid #2d1b69;border-radius:8px;margin-bottom:12px;"><option>Sombre</option><option>Clair</option><option>Contraste</option></select><h4 style="color:#a78bfa;">Police</h4><input type="range" id="fontSizeSlider" min="12" max="18" value="14" onchange="changeFontSize(this.value)" style="width:100%;margin-bottom:8px;"><span id="fontSizeValue" style="color:#9ca3af;">14px</span><h4 style="color:#a78bfa;margin-top:12px;">Contraste</h4><input type="range" id="contrastSlider" min="100" max="150" value="100" onchange="changeContrast(this.value)" style="width:100%;margin-bottom:8px;"><span id="contrastValue" style="color:#9ca3af;">Normal</span></div><div id="tab-shared" class="tab-content" style="display:none;"><h4 style="color:#a78bfa;">📋 Conversations partagées</h4><div id="sharedList" style="background:#0f0f1a;border:1px solid #2d1b69;border-radius:8px;padding:12px;margin-bottom:12px;font-size:12px;color:#9ca3af;min-height:100px;">Chargement...</div><h4 style="color:#a78bfa;">Permissions</h4><label style="color:#9ca3af;font-size:12px;display:flex;align-items:center;gap:8px;margin-bottom:8px;pointer-events:none;"><input type="checkbox" id="allowPublicShare" style="pointer-events:auto;" onchange="saveCheckboxState(this.id,this.checked);if(this.checked){showConfirmDialog('✅ Partages publics autorisés\nVos conversations partagées seront visibles\nVeuillez appuyer sur OK pour l\'activer.',()=>{loadSharedConversations();},()=>{document.getElementById('allowPublicShare').checked=false;});}else{showConfirmDialog('❌ Partages publics désactivés\nVos conversations partagées ne seront plus visibles\nÊtes-vous sûr(e) de le désactiver ? Si oui, appuyez sur OK.',()=>{loadSharedConversations();},()=>{document.getElementById('allowPublicShare').checked=true;});}"> Autoriser partages publics</label><label style="color:#9ca3af;font-size:12px;display:flex;align-items:center;gap:8px;pointer-events:none;"><input type="checkbox" id="allowCollabShare" style="pointer-events:auto;" onchange="saveCheckboxState(this.id,this.checked);if(this.checked){showConfirmDialog('✅ Collaborations autorisées\nVos collaborateurs pourront vous aider\nVeuillez appuyer sur OK pour l\'activer.',()=>{},()=>{document.getElementById('allowCollabShare').checked=false;});}else{showConfirmDialog('❌ Collaborations désactivées\nVos collaborateurs ne pourront plus vous aider\nÊtes-vous sûr(e) de le désactiver ? Si oui, appuyez sur OK.',()=>{},()=>{document.getElementById('allowCollabShare').checked=true;});}"> Autoriser collaborations</label></div><div id="tab-privacy-advanced" class="tab-content" style="display:none;"><h4 style="color:#a78bfa;">🛡️ Confidentialité des données</h4><p style="color:#9ca3af;font-size:12px;margin-bottom:12px;">Guidéon s'engage pour la transparence des pratiques en matière de données.</p><label style="color:#9ca3af;font-size:12px;display:flex;align-items:center;gap:8px;margin-bottom:12px;pointer-events:none;"><input type="checkbox" id="analyticsConsent" style="pointer-events:auto;" onchange="saveCheckboxState(this.id,this.checked);if(this.checked){showConfirmDialog('✅ Analyse activée\nVos interactions seront analysées\nVeuillez appuyer sur OK pour l\'activer.',()=>{},()=>{document.getElementById('analyticsConsent').checked=false;});}else{showConfirmDialog('❌ Analyse désactivée\nVos interactions ne seront plus analysées\nÊtes-vous sûr(e) de le désactiver ? Si oui, appuyez sur OK.',()=>{},()=>{document.getElementById('analyticsConsent').checked=true;});}" > Permettre l'analyse des interactions (améliore l'IA)</label><label style="color:#9ca3af;font-size:12px;display:flex;align-items:center;gap:8px;margin-bottom:12px;pointer-events:none;"><input type="checkbox" id="cloudBackup" checked style="pointer-events:auto;" onchange="saveCheckboxState(this.id,this.checked);if(this.checked){showConfirmDialog(`✅ Sauvegarde cloud activée
+Vous ne recevrez plus de notifications`,()=>{},()=>{document.getElementById('notifCheck').checked=true;});}"> Notifications activées / désactivées</label><div style="margin-bottom:12px;background:#0f0f1a;border:1px solid #2d1b69;border-radius:8px;padding:10px;"><label style="color:#a78bfa;font-size:12px;display:block;margin-bottom:8px;">📍 Position (pour la météo du briefing quotidien)</label><div id="gLocationLabel" style="color:#9ca3af;font-size:11px;margin-bottom:8px;">Aucune position enregistrée</div><button onclick="window.gDetectLocation&&window.gDetectLocation()" style="width:100%;padding:8px;background:#1e3a8a;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:6px;font-size:12px;">📡 Détecter via GPS (précis)</button><button onclick="window.gDetectLocationByIp&&window.gDetectLocationByIp()" style="width:100%;padding:8px;background:#374151;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:8px;font-size:12px;">🌐 Détecter via mon adresse IP (approximatif, sans autorisation)</button><div style="display:flex;gap:6px;margin-bottom:6px;"><select id="gCountrySelect" onchange="if(this.value){document.getElementById('gCityInput').value=this.value;}" style="flex:1;min-width:0;padding:10px;background:#0f0f1a;color:#fff;border:1px solid #2d1b69;border-radius:8px;box-sizing:border-box;font-size:12px;"><option value="">-- Sélectionner votre pays --</option><option value="Afghanistan">Afghanistan</option><option value="Afrique du Sud">Afrique du Sud</option><option value="Albanie">Albanie</option><option value="Algérie">Algérie</option><option value="Allemagne">Allemagne</option><option value="Andorre">Andorre</option><option value="Angola">Angola</option><option value="Antigua-et-Barbuda">Antigua-et-Barbuda</option><option value="Arabie saoudite">Arabie saoudite</option><option value="Argentine">Argentine</option><option value="Arménie">Arménie</option><option value="Australie">Australie</option><option value="Autriche">Autriche</option><option value="Azerbaïdjan">Azerbaïdjan</option><option value="Bahamas">Bahamas</option><option value="Bahreïn">Bahreïn</option><option value="Bangladesh">Bangladesh</option><option value="Barbade">Barbade</option><option value="Belgique">Belgique</option><option value="Belize">Belize</option><option value="Bénin">Bénin</option><option value="Bhoutan">Bhoutan</option><option value="Biélorussie">Biélorussie</option><option value="Birmanie">Birmanie</option><option value="Bolivie">Bolivie</option><option value="Bosnie-Herzégovine">Bosnie-Herzégovine</option><option value="Botswana">Botswana</option><option value="Brésil">Brésil</option><option value="Brunei">Brunei</option><option value="Bulgarie">Bulgarie</option><option value="Burkina Faso">Burkina Faso</option><option value="Burundi">Burundi</option><option value="Cambodge">Cambodge</option><option value="Cameroun">Cameroun</option><option value="Canada">Canada</option><option value="Cap-Vert">Cap-Vert</option><option value="République centrafricaine">République centrafricaine</option><option value="Chili">Chili</option><option value="Chine">Chine</option><option value="Chypre">Chypre</option><option value="Colombie">Colombie</option><option value="Comores">Comores</option><option value="Congo (République du)">Congo (République du)</option><option value="Congo (République démocratique du)">Congo (République démocratique du)</option><option value="Corée du Nord">Corée du Nord</option><option value="Corée du Sud">Corée du Sud</option><option value="Costa Rica">Costa Rica</option><option value="Côte d'Ivoire">Côte d'Ivoire</option><option value="Croatie">Croatie</option><option value="Cuba">Cuba</option><option value="Danemark">Danemark</option><option value="Djibouti">Djibouti</option><option value="Dominique">Dominique</option><option value="Égypte">Égypte</option><option value="Émirats arabes unis">Émirats arabes unis</option><option value="Équateur">Équateur</option><option value="Érythrée">Érythrée</option><option value="Espagne">Espagne</option><option value="Estonie">Estonie</option><option value="Eswatini">Eswatini</option><option value="États-Unis">États-Unis</option><option value="Éthiopie">Éthiopie</option><option value="Fidji">Fidji</option><option value="Finlande">Finlande</option><option value="France">France</option><option value="Gabon">Gabon</option><option value="Gambie">Gambie</option><option value="Géorgie">Géorgie</option><option value="Ghana">Ghana</option><option value="Grèce">Grèce</option><option value="Grenade">Grenade</option><option value="Guatemala">Guatemala</option><option value="Guinée">Guinée</option><option value="Guinée-Bissau">Guinée-Bissau</option><option value="Guinée équatoriale">Guinée équatoriale</option><option value="Guyana">Guyana</option><option value="Haïti">Haïti</option><option value="Honduras">Honduras</option><option value="Hongrie">Hongrie</option><option value="Îles Marshall">Îles Marshall</option><option value="Îles Salomon">Îles Salomon</option><option value="Inde">Inde</option><option value="Indonésie">Indonésie</option><option value="Irak">Irak</option><option value="Iran">Iran</option><option value="Irlande">Irlande</option><option value="Islande">Islande</option><option value="Israël">Israël</option><option value="Italie">Italie</option><option value="Jamaïque">Jamaïque</option><option value="Japon">Japon</option><option value="Jordanie">Jordanie</option><option value="Kazakhstan">Kazakhstan</option><option value="Kenya">Kenya</option><option value="Kirghizistan">Kirghizistan</option><option value="Kiribati">Kiribati</option><option value="Kosovo">Kosovo</option><option value="Koweït">Koweït</option><option value="Laos">Laos</option><option value="Lesotho">Lesotho</option><option value="Lettonie">Lettonie</option><option value="Liban">Liban</option><option value="Liberia">Liberia</option><option value="Libye">Libye</option><option value="Liechtenstein">Liechtenstein</option><option value="Lituanie">Lituanie</option><option value="Luxembourg">Luxembourg</option><option value="Macédoine du Nord">Macédoine du Nord</option><option value="Madagascar">Madagascar</option><option value="Malaisie">Malaisie</option><option value="Malawi">Malawi</option><option value="Maldives">Maldives</option><option value="Mali">Mali</option><option value="Malte">Malte</option><option value="Maroc">Maroc</option><option value="Maurice">Maurice</option><option value="Mauritanie">Mauritanie</option><option value="Mexique">Mexique</option><option value="Micronésie">Micronésie</option><option value="Moldavie">Moldavie</option><option value="Monaco">Monaco</option><option value="Mongolie">Mongolie</option><option value="Monténégro">Monténégro</option><option value="Mozambique">Mozambique</option><option value="Namibie">Namibie</option><option value="Nauru">Nauru</option><option value="Népal">Népal</option><option value="Nicaragua">Nicaragua</option><option value="Niger">Niger</option><option value="Nigeria">Nigeria</option><option value="Norvège">Norvège</option><option value="Nouvelle-Zélande">Nouvelle-Zélande</option><option value="Oman">Oman</option><option value="Ouganda">Ouganda</option><option value="Ouzbékistan">Ouzbékistan</option><option value="Pakistan">Pakistan</option><option value="Palaos">Palaos</option><option value="Palestine">Palestine</option><option value="Panama">Panama</option><option value="Papouasie-Nouvelle-Guinée">Papouasie-Nouvelle-Guinée</option><option value="Paraguay">Paraguay</option><option value="Pays-Bas">Pays-Bas</option><option value="Pérou">Pérou</option><option value="Philippines">Philippines</option><option value="Pologne">Pologne</option><option value="Portugal">Portugal</option><option value="Qatar">Qatar</option><option value="République dominicaine">République dominicaine</option><option value="République tchèque">République tchèque</option><option value="Roumanie">Roumanie</option><option value="Royaume-Uni">Royaume-Uni</option><option value="Russie">Russie</option><option value="Rwanda">Rwanda</option><option value="Saint-Christophe-et-Niévès">Saint-Christophe-et-Niévès</option><option value="Saint-Marin">Saint-Marin</option><option value="Saint-Vincent-et-les-Grenadines">Saint-Vincent-et-les-Grenadines</option><option value="Sainte-Lucie">Sainte-Lucie</option><option value="Salvador">Salvador</option><option value="Samoa">Samoa</option><option value="São Tomé-et-Príncipe">São Tomé-et-Príncipe</option><option value="Sénégal">Sénégal</option><option value="Serbie">Serbie</option><option value="Seychelles">Seychelles</option><option value="Sierra Leone">Sierra Leone</option><option value="Singapour">Singapour</option><option value="Slovaquie">Slovaquie</option><option value="Slovénie">Slovénie</option><option value="Somalie">Somalie</option><option value="Soudan">Soudan</option><option value="Soudan du Sud">Soudan du Sud</option><option value="Sri Lanka">Sri Lanka</option><option value="Suède">Suède</option><option value="Suisse">Suisse</option><option value="Suriname">Suriname</option><option value="Syrie">Syrie</option><option value="Tadjikistan">Tadjikistan</option><option value="Taïwan">Taïwan</option><option value="Tanzanie">Tanzanie</option><option value="Tchad">Tchad</option><option value="Thaïlande">Thaïlande</option><option value="Timor oriental">Timor oriental</option><option value="Togo">Togo</option><option value="Tonga">Tonga</option><option value="Trinité-et-Tobago">Trinité-et-Tobago</option><option value="Tunisie">Tunisie</option><option value="Turkménistan">Turkménistan</option><option value="Turquie">Turquie</option><option value="Tuvalu">Tuvalu</option><option value="Ukraine">Ukraine</option><option value="Uruguay">Uruguay</option><option value="Vanuatu">Vanuatu</option><option value="Vatican">Vatican</option><option value="Venezuela">Venezuela</option><option value="Viêt Nam">Viêt Nam</option><option value="Yémen">Yémen</option><option value="Zambie">Zambie</option><option value="Zimbabwe">Zimbabwe</option></select><button onclick="window.gClearCountrySelection&&window.gClearCountrySelection()" title="Effacer la sélection" style="padding:8px 12px;background:#374151;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:14px;">✕</button></div><input id="gCityInput" type="text" autocomplete="off" placeholder="Sélectionnez ou saisissez votre pays" style="width:100%;padding:8px;background:#1f2937;color:#fff;border:1px solid #374151;border-radius:8px;margin-bottom:6px;box-sizing:border-box;font-size:12px;"><button onclick="window.gSaveCityLocation&&window.gSaveCityLocation()" style="width:100%;padding:8px;background:#10b981;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:12px;margin-bottom:6px;">💾 Enregistrer ce pays</button><button onclick="window.gClearSavedLocation&&window.gClearSavedLocation()" style="width:100%;padding:8px;background:#7f1d1d;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:12px;">🗑️ Supprimer ma position enregistrée</button></div><button onclick="showStats()" style="width:100%;padding:10px;background:#1e3a8a;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:8px;">📊 Statistiques</button><button onclick="viewMemory()" style="width:100%;padding:10px;background:#1e3a8a;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:8px;">🧠 Mémoire</button><button onclick="clearMem()" style="width:100%;padding:10px;background:#374151;color:#fff;border:none;border-radius:8px;cursor:pointer;">🗑️ Effacer mémoire</button><div style="display:flex;gap:8px;margin-top:16px;"><button onclick="saveProfile()" style="flex:1;padding:10px;background:#2d1b69;color:#fff;border:none;border-radius:8px;cursor:pointer;">💾 Sauver</button><button onclick="logout()" style="flex:1;padding:10px;background:#7f1d1d;color:#fff;border:none;border-radius:8px;cursor:pointer;">🚪 Quitter</button></div><button onclick="createNewAccount()" style="width:100%;padding:10px;background:#5f0000;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-top:8px;margin-bottom:8px;">❌ Supprimer</button><button onclick="switchToRegistration()" style="width:100%;padding:10px;background:#065f46;color:#fff;border:none;border-radius:8px;cursor:pointer;">➕ Créer compte</button><div id="memview" style="display:none;margin-top:12px;padding:12px;background:#0f0f1a;border-radius:8px;color:#9ca3af;font-size:12px;line-height:1.6;"></div></div><div id="tab-privacy" class="tab-content" style="display:none;"><h4 style="color:#a78bfa;">📊 Vos données avec Guidéon</h4><div style="background:#0f0f1a;border:1px solid #2d1b69;border-radius:8px;padding:12px;margin-bottom:12px;"><div style="color:#9ca3af;font-size:12px;line-height:1.6;">👤 <strong>Nom:</strong> <span id="dataName">-</span><br>🆔 <strong>ID Utilisateur:</strong> <span id="dataEmail">-</span><br>💬 <strong>Conversations:</strong> <span id="dataConvCount">0</span><br>💾 <strong>Espace:</strong> <span id="dataSize">-</span></div><button onclick="shareUserData()" style="width:100%;padding:10px;background:#7c3aed;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-top:12px;font-weight:600;">🔗 Partager vos données</button></div><h4 style="color:#a78bfa;">Actions</h4><button onclick="downloadData()" style="width:100%;padding:10px;background:#1e3a8a;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:8px;">📥 Télécharger</button><button onclick="deleteData()" style="width:100%;padding:10px;background:#7f1d1d;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:16px;">🗑️ Supprimer</button><h4 style="color:#a78bfa;">Partage</h4><label style="color:#9ca3af;font-size:12px;pointer-events:none;"><input type="checkbox" id="shareControl" style="pointer-events:auto;" onchange="saveCheckboxState(this.id,this.checked);if(this.checked){showConfirmDialog('✅ Partage autorisé\nVos données pourront être partagées\nAppuyez sur OK',()=>{},()=>{document.getElementById('shareControl').checked=false;});}else{showConfirmDialog('❌ Partage désactivé\nVos données ne seront plus partagées\nAppuyez sur OK pour désactiver l\'autorisation',()=>{},()=>{document.getElementById('shareControl').checked=true;});}"> Autoriser partage</label></div><div id="tab-security" class="tab-content" style="display:none;"><h4 style="color:#a78bfa;">Mot de passe</h4><input id="newPwdSec" type="password" placeholder="Nouveau" style="width:100%;padding:10px;background:#0f0f1a;color:#fff;border:1px solid #2d1b69;border-radius:8px;margin-bottom:8px;box-sizing:border-box;"><input id="confirmPwdSec" type="password" placeholder="Confirmer" style="width:100%;padding:10px;background:#0f0f1a;color:#fff;border:1px solid #2d1b69;border-radius:8px;margin-bottom:8px;box-sizing:border-box;"><button onclick="changePassword()" style="width:100%;padding:10px;background:#2d1b69;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:16px;">Changer</button><h4 style="color:#a78bfa;">Sessions</h4><div id="sessionsList" style="background:#0f0f1a;border:1px solid #2d1b69;border-radius:8px;padding:12px;margin-bottom:8px;font-size:12px;color:#9ca3af;">Chargement...</div><button onclick="logoutOtherSessions()" style="width:100%;padding:10px;background:#7f1d1d;color:#fff;border:none;border-radius:8px;cursor:pointer;">Déconnecter</button></div><div id="tab-accessibility" class="tab-content" style="display:none;"><h4 style="color:#a78bfa;">Thème</h4><select id="advThemeSelect" style="width:100%;padding:8px;background:#0f0f1a;color:#fff;border:1px solid #2d1b69;border-radius:8px;margin-bottom:12px;"><option>Sombre</option><option>Clair</option><option>Contraste</option></select><h4 style="color:#a78bfa;">Police</h4><input type="range" id="fontSizeSlider" min="12" max="18" value="14" onchange="changeFontSize(this.value)" style="width:100%;margin-bottom:8px;"><span id="fontSizeValue" style="color:#9ca3af;">14px</span><h4 style="color:#a78bfa;margin-top:12px;">Contraste</h4><input type="range" id="contrastSlider" min="100" max="150" value="100" onchange="changeContrast(this.value)" style="width:100%;margin-bottom:8px;"><span id="contrastValue" style="color:#9ca3af;">Normal</span></div><div id="tab-shared" class="tab-content" style="display:none;"><h4 style="color:#a78bfa;">📋 Conversations partagées</h4><div id="sharedList" style="background:#0f0f1a;border:1px solid #2d1b69;border-radius:8px;padding:12px;margin-bottom:12px;font-size:12px;color:#9ca3af;min-height:100px;">Chargement...</div><h4 style="color:#a78bfa;">Permissions</h4><label style="color:#9ca3af;font-size:12px;display:flex;align-items:center;gap:8px;margin-bottom:8px;pointer-events:none;"><input type="checkbox" id="allowPublicShare" style="pointer-events:auto;" onchange="saveCheckboxState(this.id,this.checked);if(this.checked){showConfirmDialog('✅ Partages publics autorisés\nVos conversations partagées seront visibles\nVeuillez appuyer sur OK pour l\'activer.',()=>{loadSharedConversations();},()=>{document.getElementById('allowPublicShare').checked=false;});}else{showConfirmDialog('❌ Partages publics désactivés\nVos conversations partagées ne seront plus visibles\nÊtes-vous sûr(e) de le désactiver ? Si oui, appuyez sur OK.',()=>{loadSharedConversations();},()=>{document.getElementById('allowPublicShare').checked=true;});}"> Autoriser partages publics</label><label style="color:#9ca3af;font-size:12px;display:flex;align-items:center;gap:8px;pointer-events:none;"><input type="checkbox" id="allowCollabShare" style="pointer-events:auto;" onchange="saveCheckboxState(this.id,this.checked);if(this.checked){showConfirmDialog('✅ Collaborations autorisées\nVos collaborateurs pourront vous aider\nVeuillez appuyer sur OK pour l\'activer.',()=>{},()=>{document.getElementById('allowCollabShare').checked=false;});}else{showConfirmDialog('❌ Collaborations désactivées\nVos collaborateurs ne pourront plus vous aider\nÊtes-vous sûr(e) de le désactiver ? Si oui, appuyez sur OK.',()=>{},()=>{document.getElementById('allowCollabShare').checked=true;});}"> Autoriser collaborations</label></div><div id="tab-privacy-advanced" class="tab-content" style="display:none;"><h4 style="color:#a78bfa;">🛡️ Confidentialité des données</h4><p style="color:#9ca3af;font-size:12px;margin-bottom:12px;">Guidéon s'engage pour la transparence des pratiques en matière de données.</p><label style="color:#9ca3af;font-size:12px;display:flex;align-items:center;gap:8px;margin-bottom:12px;pointer-events:none;"><input type="checkbox" id="analyticsConsent" style="pointer-events:auto;" onchange="saveCheckboxState(this.id,this.checked);if(this.checked){showConfirmDialog('✅ Analyse activée\nVos interactions seront analysées\nVeuillez appuyer sur OK pour l\'activer.',()=>{},()=>{document.getElementById('analyticsConsent').checked=false;});}else{showConfirmDialog('❌ Analyse désactivée\nVos interactions ne seront plus analysées\nÊtes-vous sûr(e) de le désactiver ? Si oui, appuyez sur OK.',()=>{},()=>{document.getElementById('analyticsConsent').checked=true;});}" > Permettre l'analyse des interactions (améliore l'IA)</label><label style="color:#9ca3af;font-size:12px;display:flex;align-items:center;gap:8px;margin-bottom:12px;pointer-events:none;"><input type="checkbox" id="cloudBackup" checked style="pointer-events:auto;" onchange="saveCheckboxState(this.id,this.checked);if(this.checked){showConfirmDialog(`✅ Sauvegarde cloud activée
 Vos données seront sauvegardées en cloud
 Veuillez appuyer sur OK pour l'activer.`,()=>{},()=>{document.getElementById('cloudBackup').checked=false;});}else{showConfirmDialog(`❌ Sauvegarde cloud désactivée
 Vos données ne seront plus sauvegardées en cloud
-Êtes-vous sûr(e) de le désactiver ? Si oui, appuyez sur OK.`,()=>{},()=>{document.getElementById('cloudBackup').checked=true;});}" > Sauvegarder dans le cloud (vos conversations sont enregistrées en ligne et retrouvables sur tous vos appareils ; décochée, elles ne sont pas conservées)</label><label style="color:#9ca3af;font-size:12px;display:flex;align-items:center;gap:8px;margin-bottom:16px;"><input type="checkbox" id="deleteHistoryAuto" checked style="pointer-events:auto;" onchange="saveCheckboxState(this.id,this.checked);if(this.checked){showConfirmDialog('✅ Suppression automatique activée\nVotre historique sera supprimé après 30 jours d\'inactivité\nVeuillez appuyer sur OK pour l\'activer.',()=>{},()=>{document.getElementById('deleteHistoryAuto').checked=false;});}else{showConfirmDialog('❌ Suppression automatique désactivée\nVotre historique sera conservé\nÊtes-vous sûr(e) de le désactiver ? Si oui, appuyez sur OK.',()=>{},()=>{document.getElementById('deleteHistoryAuto').checked=true;});}"> Supprimer l'historique après 30 jours inactifs (auto-suppression)</label><h4 style="color:#a78bfa;">Données tierces</h4><div style="background:#0f0f1a;border-left:3px solid #7c3aed;padding:10px;border-radius:4px;margin-bottom:12px;"><p style="color:#9ca3af;font-size:11px;margin:0;">✓ Aucune donnée personnelle vendue à des tiers<br>✓ Chiffrement end-to-end disponible<br>✓ Droits RGPD & CCPA garantis</p></div><button onclick="downloadPrivacyReport()" style="width:100%;padding:10px;background:#1e3a8a;color:#fff;border:none;border-radius:8px;cursor:pointer;">📄 Rapport de confidentialité</button></div><div id="tab-updates" class="tab-content" style="display:none;"><h4 style="color:#a78bfa;">📦 Mises à jour</h4><div style="background:#0f0f1a;border:1px solid #2d1b69;border-radius:8px;padding:12px;margin-bottom:12px;"><div style="color:#a78bfa;font-size:16px;font-weight:600;margin-bottom:8px;">✅ Dernière version</div><div style="color:#7c3aed;font-size:14px;margin-bottom:4px;">v<span id="latestVersion">1.0.296</span><div id="versionDisplay" style="color:#9ca3af;font-size:11px;margin-top:8px;">⏱️ Auto-version activée</div></div><div style="color:#9ca3af;font-size:11px;margin-bottom:12px;">📅 <span id="updateDate">03/11/2026</span> à <span id="updateTime">22:21:11</span></div><button onclick="checkUpdate()" style="width:100%;padding:10px;background:#7c3aed;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;margin-bottom:12px;">✓ Vérifier mise à jour</button></div><div style="background:#0f0f1a;border:1px solid #2d1b69;border-radius:8px;padding:12px;"><div style="color:#a78bfa;font-size:12px;font-weight:600;margin-bottom:8px;">📋 Changelog</div><div style="color:#9ca3af;font-size:11px;line-height:1.8;"><div>✨ Endpoint /api/sessions/logout-others</div><div>🎨 Interface d'inscription améliorée</div><div>🔐 Nouvelles options de confidentialité</div><div>📊 Statistiques détaillées</div></div></div></div><div id="tab-realtime" class="tab-content" style="display:none;"><h4 style="color:#a78bfa;">📊 Données en temps réel</h4><button onclick="loadRealtime()" style="width:100%;padding:10px;background:#1e3a8a;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:12px;">🔄 Charger données</button><div id="realtimeData" style="background:#0f0f1a;border:1px solid #2d1b69;border-radius:8px;padding:12px;font-size:12px;color:#9ca3af;min-height:100px;"></div></div><div id="tab-memories" class="tab-content" style="display:none;"><h4 style="color:#a78bfa;margin-bottom:12px;">🧠 Mes mémoires</h4><div id="memoriesList" style="max-height:300px;overflow-y:auto;margin-bottom:12px;border:1px solid #2d1b69;border-radius:8px;padding:8px;">Chargement...</div><textarea id="newMemory" placeholder="Ajouter une mémoire..." style="width:100%;padding:10px;background:#0f0f1a;color:#fff;border:1px solid #2d1b69;border-radius:8px;margin-bottom:8px;box-sizing:border-box;height:60px;resize:none;font-size:12px;"></textarea><button onclick="addMemory()" style="width:100%;padding:10px;background:#10b981;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:8px;">➕ Ajouter</button><button onclick="loadMemories()" style="width:100%;padding:8px;background:#6b7280;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:12px;">🔄 Rafraîchir</button></div><div id="tab-about" class="tab-content" style="display:none;"><h3 style="color:#a78bfa;font-size:18px;margin-bottom:4px;">Guidéon v2.0</h3><p style="color:#7c3aed;font-size:12px;margin-bottom:12px;">🎯 Production | Juillet 2026</p><h4 style="color:#a78bfa;">Liens</h4><div style="display:flex;flex-direction:column;gap:6px;"><a href="#" style="color:#7c3aed;text-decoration:none;font-size:12px;">📖 Docs</a><a href="mailto:support@guideon.ai" style="color:#7c3aed;text-decoration:none;font-size:12px;">📧 Support</a><a href="#" style="color:#7c3aed;text-decoration:none;font-size:12px;">📊 Status</a></div></div></div></div></div>
+Êtes-vous sûr(e) de le désactiver ? Si oui, appuyez sur OK.`,()=>{},()=>{document.getElementById('cloudBackup').checked=true;});}" > Sauvegarder dans le cloud (vos conversations sont enregistrées en ligne et retrouvables sur tous vos appareils ; décochée, elles ne sont pas conservées)</label><label style="color:#9ca3af;font-size:12px;display:flex;align-items:center;gap:8px;margin-bottom:16px;"><input type="checkbox" id="deleteHistoryAuto" checked style="pointer-events:auto;" onchange="saveCheckboxState(this.id,this.checked);if(this.checked){showConfirmDialog('✅ Suppression automatique activée\nVotre historique sera supprimé après 30 jours d\'inactivité\nVeuillez appuyer sur OK pour l\'activer.',()=>{},()=>{document.getElementById('deleteHistoryAuto').checked=false;});}else{showConfirmDialog('❌ Suppression automatique désactivée\nVotre historique sera conservé\nÊtes-vous sûr(e) de le désactiver ? Si oui, appuyez sur OK.',()=>{},()=>{document.getElementById('deleteHistoryAuto').checked=true;});}"> Supprimer l'historique après 30 jours inactifs (auto-suppression)</label><h4 style="color:#a78bfa;">Données tierces</h4><div style="background:#0f0f1a;border-left:3px solid #7c3aed;padding:10px;border-radius:4px;margin-bottom:12px;"><p style="color:#9ca3af;font-size:11px;margin:0;">✓ Aucune donnée personnelle vendue à des tiers<br>✓ Chiffrement end-to-end disponible<br>✓ Droits RGPD & CCPA garantis</p></div><button onclick="downloadPrivacyReport()" style="width:100%;padding:10px;background:#1e3a8a;color:#fff;border:none;border-radius:8px;cursor:pointer;">📄 Rapport de confidentialité</button></div><div id="tab-updates" class="tab-content" style="display:none;"><h4 style="color:#a78bfa;">📦 Mises à jour</h4><div style="background:#0f0f1a;border:1px solid #2d1b69;border-radius:8px;padding:12px;margin-bottom:12px;"><div style="color:#a78bfa;font-size:16px;font-weight:600;margin-bottom:8px;">✅ Dernière version</div><div style="color:#7c3aed;font-size:14px;margin-bottom:4px;">v<span id="latestVersion">1.0.304</span><div id="versionDisplay" style="color:#9ca3af;font-size:11px;margin-top:8px;">⏱️ Auto-version activée</div></div><div style="color:#9ca3af;font-size:11px;margin-bottom:12px;">📅 <span id="updateDate">05/11/2026</span> à <span id="updateTime">03:02:34</span></div><button onclick="checkUpdate()" style="width:100%;padding:10px;background:#7c3aed;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;margin-bottom:12px;">✓ Vérifier mise à jour</button></div><div style="background:#0f0f1a;border:1px solid #2d1b69;border-radius:8px;padding:12px;"><div style="color:#a78bfa;font-size:12px;font-weight:600;margin-bottom:8px;">📋 Changelog</div><div style="color:#9ca3af;font-size:11px;line-height:1.8;"><div>✨ Endpoint /api/sessions/logout-others</div><div>🎨 Interface d'inscription améliorée</div><div>🔐 Nouvelles options de confidentialité</div><div>📊 Statistiques détaillées</div></div></div></div><div id="tab-realtime" class="tab-content" style="display:none;"><h4 style="color:#a78bfa;">📊 Données en temps réel</h4><button onclick="loadRealtime()" style="width:100%;padding:10px;background:#1e3a8a;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:12px;">🔄 Charger données</button><div id="realtimeData" style="background:#0f0f1a;border:1px solid #2d1b69;border-radius:8px;padding:12px;font-size:12px;color:#9ca3af;min-height:100px;"></div><p style="color:#6b7280;font-size:10.5px;margin-top:8px;line-height:1.5;">✓ Toutes les données ci-dessus sont réelles et mises à jour à chaque chargement, pas des valeurs inventées : météo via <strong>Open-Meteo</strong> (modèles météorologiques officiels tels que le DWD allemand et NOAA), actualités via de vrais flux RSS (Google News, Le Monde, BBC, etc.), cotations boursières via <strong>Yahoo Finance</strong>.</p></div><div id="tab-memories" class="tab-content" style="display:none;"><h4 style="color:#a78bfa;margin-bottom:12px;">🧠 Mes mémoires</h4><div id="memoriesList" style="max-height:300px;overflow-y:auto;margin-bottom:12px;border:1px solid #2d1b69;border-radius:8px;padding:8px;">Chargement...</div><textarea id="newMemory" placeholder="Ajouter une mémoire..." style="width:100%;padding:10px;background:#0f0f1a;color:#fff;border:1px solid #2d1b69;border-radius:8px;margin-bottom:8px;box-sizing:border-box;height:60px;resize:none;font-size:12px;"></textarea><button onclick="addMemory()" style="width:100%;padding:10px;background:#10b981;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:8px;">➕ Ajouter</button><button onclick="loadMemories()" style="width:100%;padding:8px;background:#6b7280;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:12px;">🔄 Rafraîchir</button></div><div id="tab-about" class="tab-content" style="display:none;"><h3 style="color:#a78bfa;font-size:18px;margin-bottom:4px;">Guidéon v2.0</h3><p style="color:#7c3aed;font-size:12px;margin-bottom:12px;">🎯 Production | Juillet 2026</p><h4 style="color:#a78bfa;">Liens</h4><div style="display:flex;flex-direction:column;gap:6px;"><a href="#" style="color:#7c3aed;text-decoration:none;font-size:12px;">📖 Docs</a><a href="mailto:support@guideon.ai" style="color:#7c3aed;text-decoration:none;font-size:12px;">📧 Support</a><a href="#" style="color:#7c3aed;text-decoration:none;font-size:12px;">📊 Status</a></div></div></div></div></div>
 </div></div>
 <div id="sharemod" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9998;align-items:center;justify-content:center;">
 <div style="background:#1a1a2e;padding:24px;border-radius:16px;width:88%;max-width:340px;border:1px solid #2d1b69;">
@@ -2248,13 +2398,38 @@ setTimeout(()=>{loadAppVersion();console.log('✅ loadAppVersion appelée');},10
 function loadRealtime(){
   const el = document.getElementById('realtimeData');
   el.innerHTML = 'Chargement...';
-  Promise.all([
-    fetch('/api/realtime/weather?city=Paris').then(r=>r.json()),
+  const tok = localStorage.getItem('gtoken');
+  const authHeaders = tok ? { 'Authorization': 'Bearer ' + tok } : {};
+  // Promise.allSettled (et non Promise.all) : si une seule des trois sources echoue (reseau, service
+  // momentanement indisponible...), les deux autres s'affichent quand meme au lieu de tout faire
+  // planter. On envoie aussi le token pour que la meteo utilise la position enregistree par
+  // l'utilisateur (GPS/IP/pays) au lieu de toujours interroger Paris par defaut.
+  Promise.allSettled([
+    fetch('/api/realtime/weather', { headers: authHeaders }).then(r=>r.json()),
     fetch('/api/realtime/news?category=tech').then(r=>r.json()),
     fetch('/api/realtime/stocks?symbols=AAPL,GOOGL').then(r=>r.json())
-  ]).then(([w,n,s]) => {
-    el.innerHTML = '<h5>🌤️ Météo: ' + w.weather.temperature + ' - ' + w.weather.condition + '</h5><h5>📰 News: ' + n.articles[0].title + '</h5><h5>📈 Stocks: ' + s.stocks.map(st=>st.symbol+' '+st.price).join(', ') + '</h5>';
-  }).catch(e => el.innerHTML = '❌ ' + e.message);
+  ]).then(([wr,nr,sr]) => {
+    const w = wr.status === 'fulfilled' ? wr.value : null;
+    const n = nr.status === 'fulfilled' ? nr.value : null;
+    const s = sr.status === 'fulfilled' ? sr.value : null;
+    let html = '';
+    if (w && w.weather && w.weather.temperature) {
+      html += '<h5>🌤️ Météo (' + w.city + ') : ' + w.weather.temperature + (w.weather.temp_min && w.weather.temp_max ? ' (min ' + w.weather.temp_min + ' / max ' + w.weather.temp_max + ')' : '') + ' - ' + w.weather.condition + '</h5><h5>☔ Risque de pluie : ' + (w.weather.rain_chance || 'n/d') + ' · ☁️ Couverture nuageuse : ' + (w.weather.cloud_cover || 'n/d') + ' · 💧 Humidité : ' + w.weather.humidity + ' · 🌬️ Vent : ' + w.weather.wind_speed + '</h5>';
+    } else {
+      html += '<h5>🌤️ Météo : indisponible pour le moment' + (w && w.error ? ' (' + w.error + ')' : '') + '</h5>';
+    }
+    if (n && Array.isArray(n.articles) && n.articles.length > 0) {
+      html += '<h5>📰 Actu : ' + n.articles.slice(0,3).map(a=>a.title+' ('+a.source+')').join('<br>') + '</h5>';
+    } else {
+      html += '<h5>📰 Actu : indisponible pour le moment' + (n && n.error ? ' (' + n.error + ')' : '') + '</h5>';
+    }
+    if (s && Array.isArray(s.stocks) && s.stocks.length > 0) {
+      html += '<h5>📈 Bourse : ' + s.stocks.map(st=>st.symbol+' : '+st.price+' ('+st.change_percent+')').join('<br>') + '</h5>';
+    } else {
+      html += '<h5>📈 Bourse : indisponible pour le moment' + (s && s.error ? ' (' + s.error + ')' : '') + '</h5>';
+    }
+    el.innerHTML = html;
+  });
 }
 function loadProfile(){
   const tok = localStorage.getItem('gtoken');
@@ -3497,6 +3672,11 @@ setTimeout(updateInstructionsPlaceholder, 500);
     return b;
   }
   window.showNotification = function(type, title, message){
+    // Le briefing quotidien contient plus de texte a lire que les autres notifications : on lui laisse
+    // 15s au lieu des 8s habituelles (identifie par son titre, le type 'info' etant partage avec d'autres
+    // notifications generiques).
+    var isBriefing = typeof title === 'string' && title.indexOf('Votre briefing du jour') !== -1;
+    var durationMs = isBriefing ? 15000 : 8000;
     var acc = ACC[type] || ACC.info;
     var ico = ICO[type] || ICO.info;
     var box = toastBox();
@@ -3525,7 +3705,7 @@ setTimeout(updateInstructionsPlaceholder, 500);
     act.textContent = type === 'update' ? '🔄 Actualiser' : '✓ Vu';
     act.style.cssText = 'margin-top:10px;margin-left:46px;padding:7px 14px;border-radius:10px;border:1px solid ' + acc + ';background:none;color:' + acc + ';font-size:13px;cursor:pointer;';
     var bar = document.createElement('div');
-    bar.style.cssText = 'position:absolute;left:0;bottom:0;height:3px;background:' + acc + ';animation:gToastBar 8s linear forwards;';
+    bar.style.cssText = 'position:absolute;left:0;bottom:0;height:3px;background:' + acc + ';animation:gToastBar ' + (durationMs / 1000) + 's linear forwards;';
     card.appendChild(row); card.appendChild(act); card.appendChild(bar);
     box.appendChild(card);
     var done = false;
@@ -3538,7 +3718,7 @@ setTimeout(updateInstructionsPlaceholder, 500);
     }
     x.onclick = close;
     act.onclick = function(){ if (type === 'update') location.reload(); else close(); };
-    setTimeout(close, 8000);
+    setTimeout(close, durationMs);
   };
   function loadSeen(){ try { return JSON.parse(localStorage.getItem('gnotifSeen') || '{}'); } catch (e) { return {}; } }
   window.fetchNotifications = async function(){
@@ -3986,6 +4166,102 @@ setTimeout(updateInstructionsPlaceholder, 500);
       alert("Aucun token trouvé, connectez-vous d'abord.");
     }
   }
+})();
+</script>
+<script>
+(function(){
+  // Position de l'utilisateur, utilisee pour la meteo reelle du briefing quotidien (Parametres > Preferences).
+  // Le choix de pays se fait via le menu select natif Android (meme composant deja utilise et fiable
+  // pour "Selectionner un tone") qui remplit le champ texte gCityInput ; un menu deroulant maison avait
+  // ete tente avant mais s'affichait de facon incorrecte sur Android Chrome.
+  function labelEl(){ return document.getElementById('gLocationLabel'); }
+  async function refreshLocationLabel(){
+    var el = labelEl();
+    if (!el) return;
+    try {
+      var tok = localStorage.getItem('gtoken');
+      if (!tok) return;
+      var r = await fetch('/api/memory/view', { headers: { 'Authorization': 'Bearer ' + tok } });
+      var d = await r.json();
+      if (d && d.checkboxes && d.checkboxes.userLocationLabel) {
+        el.textContent = '📍 ' + d.checkboxes.userLocationLabel;
+      } else if (d && d.checkboxes && typeof d.checkboxes.userLat === 'number') {
+        el.textContent = '📍 Position GPS enregistrée';
+      } else {
+        el.textContent = 'Aucune position enregistrée';
+      }
+    } catch (e) {}
+  }
+  window.gDetectLocation = function(){
+    if (!navigator.geolocation) { alert("La géolocalisation n'est pas disponible sur cet appareil/navigateur."); return; }
+    var tok = localStorage.getItem('gtoken');
+    if (!tok) { alert("Connectez-vous d'abord."); return; }
+    navigator.geolocation.getCurrentPosition(async function(pos){
+      try {
+        await fetch('/api/checkboxes/save', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + tok }, body: JSON.stringify({ userLat: pos.coords.latitude, userLon: pos.coords.longitude, userLocationLabel: null }) });
+        await refreshLocationLabel();
+        alert('Position enregistrée.');
+      } catch (e) { alert('Erreur réseau : ' + e.message); }
+    }, function(err){
+      alert("Impossible d'obtenir votre position (" + err.message + "). Vous pouvez saisir votre ville manuellement ci-dessous.");
+    }, { timeout: 10000 });
+  };
+  window.gDetectLocationByIp = async function(){
+    var tok = localStorage.getItem('gtoken');
+    if (!tok) { alert("Connectez-vous d'abord."); return; }
+    try {
+      var r = await fetch('/api/user/location-by-ip', { method: 'POST', headers: { 'Authorization': 'Bearer ' + tok } });
+      var d = await r.json();
+      if (r.ok && d.success) {
+        await refreshLocationLabel();
+        alert('Position approximative enregistrée : ' + d.label);
+      } else {
+        alert(d.error || "Détection par IP impossible (normal en local/Termux : votre adresse n'est pas publique).");
+      }
+    } catch (e) { alert('Erreur réseau : ' + e.message); }
+  };
+  window.gSaveCityLocation = async function(){
+    var input = document.getElementById('gCityInput');
+    var city = input ? input.value.trim() : '';
+    if (!city) { alert('Sélectionnez ou saisissez votre pays.'); return; }
+    var tok = localStorage.getItem('gtoken');
+    if (!tok) { alert("Connectez-vous d'abord."); return; }
+    try {
+      var r = await fetch('/api/user/location-by-city', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + tok }, body: JSON.stringify({ city: city }) });
+      var d = await r.json();
+      if (r.ok && d.success) {
+        await refreshLocationLabel();
+        if (input) input.value = '';
+        alert('Position enregistrée : ' + d.label);
+      } else {
+        alert(d.error || 'Ville introuvable.');
+      }
+    } catch (e) { alert('Erreur réseau : ' + e.message); }
+  };
+  window.gClearCountrySelection = function(){
+    var sel = document.getElementById('gCountrySelect');
+    var input = document.getElementById('gCityInput');
+    if (sel) sel.value = '';
+    if (input) input.value = '';
+  };
+  window.gClearSavedLocation = async function(){
+    var tok = localStorage.getItem('gtoken');
+    if (!tok) { alert("Connectez-vous d'abord."); return; }
+    if (!confirm('Supprimer votre position enregistrée ? La météo du briefing quotidien ne sera plus envoyée tant que vous n\'aurez pas enregistré une nouvelle position.')) return;
+    try {
+      var r = await fetch('/api/user/location-clear', { method: 'POST', headers: { 'Authorization': 'Bearer ' + tok } });
+      var d = await r.json();
+      if (r.ok && d.success) {
+        window.gClearCountrySelection();
+        await refreshLocationLabel();
+        alert('Position supprimée.');
+      } else {
+        alert(d.error || 'Erreur lors de la suppression.');
+      }
+    } catch (e) { alert('Erreur réseau : ' + e.message); }
+  };
+  refreshLocationLabel();
+  setTimeout(refreshLocationLabel, 1500);
 })();
 </script>
 <script>
