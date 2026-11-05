@@ -2446,6 +2446,20 @@ app.post('/api/user/location-by-ip', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// Supprime la position enregistree de l'utilisateur (demande explicite via le bouton "Supprimer ma
+// position" dans Parametres). La meteo du briefing quotidien sera alors ignoree tant qu'une nouvelle
+// position n'est pas enregistree (voir condition "typeof cb.userLat === 'number'" ailleurs).
+app.post('/api/user/location-clear', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    if (!token) return res.status(401).json({ error: 'Token manquant' });
+    const user = checkToken(token);
+    if (!user) return res.status(401).json({ error: 'Token invalide' });
+    await mergeUserCheckboxes(user.id, { userLat: null, userLon: null, userLocationLabel: null });
+    res.json({ success: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // Actualites REELLES : reutilise (appel interne, sans toucher la route) les flux RSS deja utilises par
 // la recherche du chat (voir /api/search __GENERAL_NEWS__). Remplace l'ancienne version factice qui
 // renvoyait toujours "Actualité <categorie>" / "Description" / "News".
