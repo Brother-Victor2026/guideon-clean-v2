@@ -28,6 +28,10 @@ const SECRET = process.env.JWT_SECRET || 'guideon2026';
 const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN;
 const WHATSAPP_PHONE_NUMBER_ID = process.env.WHATSAPP_PHONE_NUMBER_ID;
 const WHATSAPP_VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN;
+// Solution de secours meteo (voir fetchRealWeather) : utilisee uniquement si Open-Meteo echoue
+// (ex: erreur HTTP 429 due au quota gratuit partage par IP sur Render - voir echange avec Victor du
+// 05/11/2026). Optionnelle : si absente, le code se comporte comme avant (Open-Meteo seul).
+const OPENWEATHER_API_KEY = process.env.OPENWEATHER_API_KEY;
 const pkg = JSON.parse(fs.readFileSync(__dirname + '/package.json', 'utf-8'));
 const VERSION = pkg.version;
 // Identifiant de CET environnement serveur (local ou production), utilise par notifyNewVersion() pour
@@ -2355,9 +2359,61 @@ async function fetchRealWeather(lat, lon) {
   const cacheKey = 'weather:' + lat.toFixed(2) + ',' + lon.toFixed(2);
   const cached = cacheGet(cacheKey);
   if (cached) return cached;
-  const data = await fetchRealWeatherUncached(lat, lon);
+  let data;
+  try {
+    data = await fetchRealWeatherUncached(lat, lon);
+  } catch (primaryErr) {
+    // Repli OpenWeatherMap uniquement si une cle est configuree (OPENWEATHER_API_KEY). Sinon on
+    // relance l'erreur d'Open-Meteo telle quelle, comme avant.
+    if (!OPENWEATHER_API_KEY) throw primaryErr;
+    try {
+      data = await fetchWeatherFallback(lat, lon);
+      console.error('fetchRealWeather: repli OpenWeatherMap utilisé après échec Open-Meteo :', primaryErr.message);
+    } catch (fallbackErr) {
+      throw new Error(`Open-Meteo indisponible (${primaryErr.message}) ; repli OpenWeatherMap aussi indisponible (${fallbackErr.message})`);
+    }
+  }
   cacheSet(cacheKey, data);
   return data;
+}
+// Solution de secours (voir OPENWEATHER_API_KEY en haut du fichier) : utilisee UNIQUEMENT quand
+// Open-Meteo echoue. Ne fournit pas les previsions min/max du jour, le risque de pluie ni l'UV (non
+// inclus dans l'endpoint "current weather" simple d'OpenWeatherMap) : ces champs restent null, ce que
+// le reste du code gere deja comme optionnel (voir affichage et briefing quotidien).
+async function fetchWeatherFallback(lat, lon) {
+  if (!OPENWEATHER_API_KEY) throw new Error('Aucune clé OpenWeatherMap configurée');
+  const c = new AbortController();
+  const t = setTimeout(() => c.abort(), 7000);
+  let r;
+  try {
+    const url = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${OPENWEATHER_API_KEY}&units=metric&lang=fr`;
+    r = await fetch(url, { signal: c.signal });
+  } catch (e) {
+    clearTimeout(t);
+    const reason = e.name === 'AbortError' ? 'délai dépassé (connexion réseau trop lente ou instable)' : (e.message || 'erreur réseau');
+    throw new Error(`Connexion à OpenWeatherMap impossible : ${reason}`);
+  }
+  clearTimeout(t);
+  if (!r.ok) {
+    const detail = r.status === 401 ? ' (clé API invalide ou pas encore activée — une nouvelle clé peut prendre jusqu\'à 2h)' : '';
+    throw new Error(`OpenWeatherMap a répondu avec une erreur HTTP ${r.status}${detail}`);
+  }
+  const d = await r.json();
+  if (!d || !d.main || typeof d.main.temp !== 'number') throw new Error('Réponse OpenWeatherMap incomplète (données manquantes)');
+  const condRaw = (d.weather && d.weather[0] && d.weather[0].description) ? d.weather[0].description : 'Conditions inconnues';
+  const condition = condRaw.charAt(0).toUpperCase() + condRaw.slice(1);
+  return {
+    temperature: Math.round(d.main.temp) + '°C',
+    condition,
+    humidity: typeof d.main.humidity === 'number' ? Math.round(d.main.humidity) + '%' : null,
+    wind_speed: (d.wind && typeof d.wind.speed === 'number') ? Math.round(d.wind.speed * 3.6) + ' km/h' : null, // m/s -> km/h
+    cloud_cover: (d.clouds && typeof d.clouds.all === 'number') ? Math.round(d.clouds.all) + '%' : null,
+    temp_max: typeof d.main.temp_max === 'number' ? Math.round(d.main.temp_max) + '°C' : null,
+    temp_min: typeof d.main.temp_min === 'number' ? Math.round(d.main.temp_min) + '°C' : null,
+    rain_chance: null,
+    uv_index: null,
+    source: 'OpenWeatherMap (secours)'
+  };
 }
 async function fetchRealWeatherUncached(lat, lon) {
   const c = new AbortController();
