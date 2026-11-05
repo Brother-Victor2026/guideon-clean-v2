@@ -1,20 +1,17 @@
-◇ injected env (8) from .env // tip: ◈ secrets for agents [www.dotenvx.com]
-Guideon actif !
-📞 POST /api/sessions reçu
-🔑 Token: eyJpZCI6MTQsImVtYWlsIjoidmJvc3NvdTI3MEBnbWFpbC5jb20iLCJleHAiOjE3OTU5NzY0ODUyMDl9.de4a21c228acdee35b4166b1402780fcbd8355ada085e2946ab001b535f98a2f
-👤 User: { id: 14, email: 'vbossou270@gmail.com', exp: 1795976485209 }
-📊 Session créée: [
-  {
-    id: 1788200485512,
-    user_id: '14',
-    title: 'Nouvelle conversation',
-    created_at: '2026-08-31T18:21:27.630328+00:00',
-    pinned: false
-  }
-]
-🔑 Token: eyJpZCI6MTQsImVtYWlsIjoidmJvc3NvdTI3MEBnbWFpbC5jb20iLCJleHAiOjE3OTU5NzY0ODUyMDl9.de4a21c228acdee35b4166b1402780fcbd8355ada085e2946ab001b535f98a2f
-👤 User: { id: 14, email: 'vbossou270@gmail.com', exp: 1795976485209 }
-🔑 Token: eyJpZCI6MTQsImVtYWlsIjoidmJvc3NvdTI3MEBnbWFpbC5jb20iLCJleHAiOjE3OTU5NzY0ODUyMDl9.de4a21c228acdee35b4166b1402780fcbd8355ada085e2946ab001b535f98a2f
-👤 User: { id: 14, email: 'vbossou270@gmail.com', exp: 1795976485209 }
-🔑 Token: eyJpZCI6MTQsImVtYWlsIjoidmJvc3NvdTI3MEBnbWFpbC5jb20iLCJleHAiOjE3OTU5NzY0ODUyMDl9.de4a21c228acdee35b4166b1402780fcbd8355ada085e2946ab001b535f98a2f
-👤 User: { id: 14, email: 'vbossou270@gmail.com', exp: 1795976485209 }
+node:internal/modules/esm/resolve:204
+  const resolvedOption = FSLegacyMainResolve(pkgPath, packageConfig.main, baseStringified);
+                         ^
+
+Error: Cannot find package '/home/claude/guideon-clean-v2/node_modules/compression/index.js' imported from /home/claude/guideon-clean-v2/server.mjs
+    at legacyMainResolve (node:internal/modules/esm/resolve:204:26)
+    at packageResolve (node:internal/modules/esm/resolve:777:12)
+    at moduleResolve (node:internal/modules/esm/resolve:853:18)
+    at defaultResolve (node:internal/modules/esm/resolve:983:11)
+    at #cachedDefaultResolve (node:internal/modules/esm/loader:731:20)
+    at ModuleLoader.resolve (node:internal/modules/esm/loader:708:38)
+    at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:310:38)
+    at ModuleJob._link (node:internal/modules/esm/module_job:182:49) {
+  code: 'ERR_MODULE_NOT_FOUND'
+}
+
+Node.js v22.22.0
