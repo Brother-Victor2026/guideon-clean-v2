@@ -1836,22 +1836,26 @@ app.delete('/api/memory', async (req, res) => {
 
 app.get('/api/memory/view', async (req, res) => {
   try {
+    // IMPORTANT (securite, 06/11/2026) : ne JAMAIS journaliser le token brut ni la ligne complete de
+    // checkboxes ici - cette route est appelee a CHAQUE connexion/ouverture d'app, donc un simple
+    // console.log('Token:', token) finissait par exposer en clair, dans les logs Render (persistants
+    // et consultables), exactement le type de jeton dont la fuite nous avait deja force a faire tourner
+    // JWT_SECRET le 05/11/2026. Les anciennes lignes de debogage ont ete retirees pour cette raison.
     const token = req.headers.authorization?.split(' ')[1];
-    console.log('🔑 Token:', token);
-        const user = checkToken(token);
-        console.log('👤 User:', user);
+    const user = checkToken(token);
     if (!user) return res.status(401).json({ error: 'Non autorise' });
     const r = await fetch(`${DB}/users?id=eq.${user.id}&select=name,email,instructions,created_at,checkboxes`, { headers: SB });
     const data = await r.json();
-    console.log("✅ Checkboxes chargés de la BD:", data);
     const row = Array.isArray(data) ? data[0] : {};
     // Cette route est appelee a chaque "connexion"/ouverture d'app (chargement des parametres, du
     // bouton d'installation, de la position, etc.) : on en profite, SANS bloquer la reponse, pour (1)
-    // verifier/envoyer le briefing quotidien si ce n'est pas encore fait aujourd'hui, et (2) detecter
+    // verifier/envoyer le briefing quotidien si ce n'est pas encore fait aujourd'hui, (2) verifier/
+    // envoyer le rappel d'installation PWA du creneau horaire en cours (si applicable), et (3) detecter
     // automatiquement par IP une position par defaut si l'utilisateur n'en a jamais enregistre (sans
     // lui demander d'autorisation, contrairement au GPS) ; il pourra toujours la preciser lui-meme.
     if (row && row.checkboxes) {
       maybeSendDailyBriefing({ id: user.id, checkboxes: row.checkboxes }).catch(e => console.error('maybeSendDailyBriefing (connexion):', e.message));
+      maybeSendInstallReminder({ id: user.id, checkboxes: row.checkboxes }).catch(e => console.error('maybeSendInstallReminder (connexion):', e.message));
       if (typeof row.checkboxes.userLat !== 'number') {
         geolocateByIp(getClientIp(req)).then(g => {
           mergeUserCheckboxes(user.id, { userLat: g.lat, userLon: g.lon, userLocationLabel: g.label }).catch(() => {});
@@ -2583,6 +2587,11 @@ function getClientIp(req) {
   return String(req.headers['x-forwarded-for'] || req.ip || 'x').split(',')[0].trim();
 }
 // Permet a l'utilisateur de redeclencher lui-meme la detection par IP (bouton Parametres).
+// NE SAUVEGARDE PLUS automatiquement (changement du 06/11/2026, demande par Victor) : cette route ne
+// fait que DETECTER et renvoyer la position approximative. L'enregistrement en base ne se fait que si
+// l'utilisateur confirme (bouton "OK") dans la boite de dialogue de confirmation cote client, via un
+// appel separe a /api/checkboxes/save - pour qu'une fermeture de la boite de dialogue (Annuler, ou un
+// appui en dehors) n'enregistre rien.
 app.post('/api/user/location-by-ip', async (req, res) => {
   try {
     const token = req.headers.authorization?.replace('Bearer ', '');
@@ -2592,8 +2601,7 @@ app.post('/api/user/location-by-ip', async (req, res) => {
     let g;
     try { g = await geolocateByIp(getClientIp(req)); }
     catch (gerr) { console.error('geolocateByIp:', gerr.message); return res.status(404).json({ error: `Détection par IP impossible : ${gerr.message}. Essayez le GPS ou saisissez votre pays.` }); }
-    await mergeUserCheckboxes(user.id, { userLat: g.lat, userLon: g.lon, userLocationLabel: g.label });
-    res.json({ success: true, label: g.label });
+    res.json({ success: true, lat: g.lat, lon: g.lon, label: g.label });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -3080,7 +3088,7 @@ async function notifyNewVersion() {
       await mergeUserCheckboxes(u.id, { lastNotifiedVersionByHost: { ...byHost, [SERVER_HOST]: v } });
       if (!known) continue;
       await sbAdmin.from('notifications').insert([{ user_id: u.id, type: 'update', title: '📦 Nouvelle version disponible', message: `Guidéon ${v} est maintenant disponible. Rafraîchissez pour mettre à jour.`, is_read: false }]);
-      sendPush(u.id, 'general', { title: '📦 Nouvelle version disponible', body: `Guidéon ${v} est disponible.`, url: '/', updateAction: true }).catch(() => {});
+      sendPush(u.id, 'general', { title: '📦 Nouvelle version disponible', body: `Guidéon ${v} est disponible.`, url: '/', updateAction: true }).catch(e => console.error('sendPush (nouvelle version):', e.message));
     }
   } catch (e) {
     console.error('Erreur notification de version:', e.message);
@@ -3101,7 +3109,7 @@ async function notifyOnce(u, mark, minGapMs, row, extra = {}) {
     const cb1 = (fresh && fresh.checkboxes) || cb0;
     cb1.notifMarks = { ...(cb1.notifMarks || {}), [mark]: Date.now() };
     await sbAdmin.from('users').update({ checkboxes: cb1 }).eq('id', u.id);
-    sendPush(u.id, 'general', { title: row.title, body: row.message, url: '/', ...extra }).catch(() => {});
+    sendPush(u.id, 'general', { title: row.title, body: row.message, url: '/', ...extra }).catch(e => console.error('sendPush (notifyOnce, ' + mark + '):', e.message));
     return true;
   } catch (e) { console.error('Notification', mark, ':', e.message); return false; }
 }
@@ -3167,24 +3175,24 @@ function getBeninHour() {
   return raw % 24; // normalise le cas ou ICU renvoie "24" au lieu de "00" a minuit
 }
 
-async function runInstallReminders() {
-  try {
-    const hour = getBeninHour();
-    const slot = INSTALL_REMINDER_SCHEDULE.find(s => s.hour === hour);
-    if (!slot) return;
-    const { data: users, error } = await sbAdmin.from('users').select('id, checkboxes');
-    if (error || !users) return;
-    for (const u of users) {
-      const cb = u.checkboxes || {};
-      if (cb.notifCheck !== true) continue;
-      if (cb.pwaInstalled === true) continue;
-      const reminderMsg = slot.message + " Vous retrouverez aussi ce bouton à tout moment dans les Paramètres de Guidéon.";
-      await notifyOnce(u, slot.mark, 20 * 60 * 60 * 1000, { type: 'info', title: slot.title, message: reminderMsg }, { installAction: true });
-    }
-  } catch (e) { console.error('Rappels installation:', e.message); }
+// Rappel d'installation PWA : declenche UNIQUEMENT par la connexion/ouverture de l'app (voir le hook
+// dans /api/memory/view), jamais par un balayage periodique en arriere-plan sur tous les comptes.
+// Avant ce correctif (06/11/2026), un balayage toutes les 10 minutes parcourait TOUS les comptes et
+// creait une notification des que l'heure Benin correspondait a un creneau du planning - meme si
+// l'utilisateur n'etait pas connecte a ce moment-la. Consequence constatee par Victor : en revenant
+// apres plusieurs heures d'absence, TOUTES les notifications des creneaux manques pendant son absence
+// s'affichaient d'un coup (plusieurs notifications d'installation en rafale). Desormais, un creneau
+// n'est envoye QUE si l'utilisateur se connecte PENDANT l'heure exacte de ce creneau : aucun rattrapage
+// des heures manquees.
+async function maybeSendInstallReminder(u) {
+  const cb = u.checkboxes || {};
+  if (cb.notifCheck !== true) return;
+  if (cb.pwaInstalled === true) return;
+  const slot = INSTALL_REMINDER_SCHEDULE.find(s => s.hour === getBeninHour());
+  if (!slot) return;
+  const reminderMsg = slot.message + " Vous retrouverez aussi ce bouton à tout moment dans les Paramètres de Guidéon.";
+  await notifyOnce(u, slot.mark, 20 * 60 * 60 * 1000, { type: 'info', title: slot.title, message: reminderMsg }, { installAction: true });
 }
-setTimeout(runInstallReminders, 3 * 60 * 1000);
-setInterval(runInstallReminders, 10 * 60 * 1000);
 
 // ===== BRIEFING QUOTIDIEN AUTOMATIQUE =====
 // Envoye une seule fois par jour (pas d'heure fixe : des la toute premiere "connexion"/ouverture de
@@ -3276,7 +3284,7 @@ async function maybeSendDailyBriefing(u) {
   await mergeUserCheckboxes(u.id, { lastBriefingDate: today });
   const { error } = await sbAdmin.from('notifications').insert([{ user_id: u.id, type: 'info', title: '☀️ Votre briefing du jour', message, is_read: false }]);
   if (error) { console.error('Briefing insert:', error.message); return; }
-  sendPush(u.id, 'general', { title: '☀️ Votre briefing du jour', body: message, url: '/' }).catch(() => {});
+  sendPush(u.id, 'general', { title: '☀️ Votre briefing du jour', body: message, url: '/' }).catch(e => console.error('sendPush (briefing):', e.message));
 }
 
 // Demander suppression données utilisateur (RGPD)
