@@ -32,6 +32,12 @@ const WHATSAPP_VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN;
 // (ex: erreur HTTP 429 due au quota gratuit partage par IP sur Render - voir echange avec Victor du
 // 05/11/2026). Optionnelle : si absente, le code se comporte comme avant (Open-Meteo seul).
 const OPENWEATHER_API_KEY = process.env.OPENWEATHER_API_KEY;
+// Solution de secours geolocalisation IP (voir geolocateByIp) : utilisee uniquement si ipapi.co echoue
+// (ex: erreur HTTP 429 due au quota gratuit de 1000/jour partage entre tous les clients Render - voir
+// echange avec Victor du 05-06/11/2026). Quota ipinfo.io Lite suivi par jeton de compte (pas par IP
+// source), donc non partage avec les autres utilisateurs de Render. Optionnelle : si absente, le code
+// se comporte comme avant (ipapi.co seul).
+const IPINFO_API_KEY = process.env.IPINFO_API_KEY;
 const pkg = JSON.parse(fs.readFileSync(__dirname + '/package.json', 'utf-8'));
 const VERSION = pkg.version;
 // Identifiant de CET environnement serveur (local ou production), utilise par notifyNewVersion() pour
@@ -2508,9 +2514,48 @@ async function geolocateByIp(ip) {
   const cacheKey = 'geoip:' + ip;
   const cached = cacheGet(cacheKey);
   if (cached) return cached;
-  const data = await geolocateByIpUncached(ip);
+  let data;
+  try {
+    data = await geolocateByIpUncached(ip);
+  } catch (primaryErr) {
+    if (!IPINFO_API_KEY) throw primaryErr;
+    try {
+      data = await geolocateByIpFallback(ip);
+      console.error('geolocateByIp: repli ipinfo.io utilisé après échec ipapi.co :', primaryErr.message);
+    } catch (fallbackErr) {
+      throw new Error(`ipapi.co indisponible (${primaryErr.message}) ; repli ipinfo.io aussi indisponible (${fallbackErr.message})`);
+    }
+  }
   cacheSet(cacheKey, data, 24 * 60 * 60 * 1000);
   return data;
+}
+// Repli (voir IPINFO_API_KEY en haut du fichier) : utilise UNIQUEMENT quand ipapi.co echoue. Le plan
+// gratuit "Lite" d'ipinfo.io ne donne que le PAYS (pas de coordonnees precises) ; on reutilise ensuite
+// le geocodage Open-Meteo deja en place (geocodeCity) pour obtenir des coordonnees approximatives
+// (centre du pays) a partir du nom de pays - precision degradee par rapport a ipapi.co (qui donne la
+// ville), mais suffisante pour une position par defaut de secours.
+async function geolocateByIpFallback(ip) {
+  if (!IPINFO_API_KEY) throw new Error('Aucune clé ipinfo.io configurée');
+  const c = new AbortController();
+  const t = setTimeout(() => c.abort(), 7000);
+  let r;
+  try {
+    r = await fetch(`https://api.ipinfo.io/lite/${encodeURIComponent(ip)}?token=${IPINFO_API_KEY}`, { signal: c.signal });
+  } catch (e) {
+    clearTimeout(t);
+    const reason = e.name === 'AbortError' ? 'délai dépassé (connexion réseau trop lente ou instable)' : (e.message || 'erreur réseau');
+    throw new Error(`Connexion à ipinfo.io impossible : ${reason}`);
+  }
+  clearTimeout(t);
+  if (!r.ok) {
+    const detail = r.status === 401 ? ' (clé API invalide ou pas encore activée)' : '';
+    throw new Error(`ipinfo.io a répondu avec une erreur HTTP ${r.status}${detail}`);
+  }
+  const d = await r.json();
+  if (!d || !d.country) throw new Error('Réponse ipinfo.io incomplète (pays manquant)');
+  const g = await geocodeCity(d.country);
+  if (!g) throw new Error(`Pays "${d.country}" détecté mais impossible à géocoder en coordonnées`);
+  return { lat: g.lat, lon: g.lon, label: g.label };
 }
 async function geolocateByIpUncached(ip) {
   if (!ip || ip === 'x' || ip === 'unknown' || ip === '::1' || ip.startsWith('127.') || ip.startsWith('192.168.') || ip.startsWith('10.') || ip.startsWith('172.16.') || ip.startsWith('172.17.') || ip.startsWith('172.18.') || ip.startsWith('172.19.') || ip.startsWith('172.2') || ip.startsWith('172.30.') || ip.startsWith('172.31.')) {
@@ -3142,13 +3187,13 @@ setTimeout(runInstallReminders, 3 * 60 * 1000);
 setInterval(runInstallReminders, 10 * 60 * 1000);
 
 // ===== BRIEFING QUOTIDIEN AUTOMATIQUE =====
-// Envoye une seule fois par jour (7h, heure du Benin - aucune preference d'heure exprimee, 7h choisi
-// par defaut comme heure de reveil), aux comptes ayant active les notifications (meme case que les
-// autres notifications : cb.notifCheck). Contenu : rappels du jour, meteo reelle (si une position est
-// enregistree), court resume d'actualite, et un rappel tire au hasard de la memoire de l'utilisateur.
+// Envoye une seule fois par jour (pas d'heure fixe : des la toute premiere "connexion"/ouverture de
+// l'app de la journee, voir le hook dans /api/memory/view - changement demande par Victor le
+// 06/11/2026, l'ancienne version imposait d'attendre 7h heure du Benin), aux comptes ayant active les
+// notifications (meme case que les autres notifications : cb.notifCheck). Contenu : rappels du jour,
+// meteo reelle (si une position est enregistree), court resume d'actualite.
 // Une seule notification globale par jour et par utilisateur (comme les rappels existants), meme si
 // plusieurs serveurs (local + Render) tournent en parallele : voir notifyOnce ci-dessus.
-const DAILY_BRIEFING_HOUR = 7;
 
 function getBeninTodayRange() {
   const todayStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Porto-Novo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
@@ -3215,17 +3260,15 @@ async function buildDailyBriefingMessage(u) {
   return parts.join('\n');
 }
 
-// Envoie le briefing du jour a UN utilisateur si : notifications activees, il est 7h ou plus (heure du
-// Benin), et il ne l'a pas deja recu aujourd'hui (cb.lastBriefingDate). Appelee (1) en arriere-plan
-// toutes les 10 minutes pour tout le monde (voir runDailyBriefing), et (2) a chaque "connexion" d'un
-// utilisateur (voir le hook dans /api/memory/view) : les deux partagent cette meme fonction, donc le
-// resultat est identique (un seul envoi par jour) quelle que soit la maniere dont il se declenche. La
-// date est marquee AVANT l'envoi (ecriture JSONB atomique cote base) pour reduire le risque de doublon
-// si les deux declencheurs tombent en meme temps.
+// Envoie le briefing du jour a UN utilisateur si : notifications activees, et il ne l'a pas deja recu
+// aujourd'hui (cb.lastBriefingDate). Declenchee UNIQUEMENT par la connexion/ouverture de l'app (voir
+// le hook dans /api/memory/view) : pas de balayage periodique en arriere-plan sur tous les comptes, le
+// briefing part donc des que l'utilisateur ouvre l'app pour la premiere fois du jour, quelle que soit
+// l'heure. La date est marquee AVANT l'envoi (ecriture JSONB atomique cote base) pour reduire le
+// risque de doublon si l'utilisateur ouvre l'app sur deux appareils/onglets presque simultanement.
 async function maybeSendDailyBriefing(u) {
   const cb = u.checkboxes || {};
   if (cb.notifCheck !== true) return;
-  if (getBeninHour() < DAILY_BRIEFING_HOUR) return;
   const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Porto-Novo' }).format(new Date());
   if (cb.lastBriefingDate === today) return;
   const message = await buildDailyBriefingMessage(u);
@@ -3235,16 +3278,6 @@ async function maybeSendDailyBriefing(u) {
   if (error) { console.error('Briefing insert:', error.message); return; }
   sendPush(u.id, 'general', { title: '☀️ Votre briefing du jour', body: message, url: '/' }).catch(() => {});
 }
-async function runDailyBriefing() {
-  try {
-    const { data: users, error } = await sbAdmin.from('users').select('id, checkboxes');
-    if (error || !users) return;
-    for (const u of users) {
-      await maybeSendDailyBriefing(u).catch(e => console.error('Briefing quotidien (' + u.id + '):', e.message));
-    }
-  } catch (e) { console.error('Briefing quotidien:', e.message); }
-}
-setInterval(runDailyBriefing, 10 * 60 * 1000);
 
 // Demander suppression données utilisateur (RGPD)
 app.post('/api/user/delete', async (req, res) => {
