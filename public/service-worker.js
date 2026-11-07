@@ -15,25 +15,31 @@ self.addEventListener('push', event => {
       badge: '/badge-96.png',
       tag: d.tag || ('g-' + Date.now()),
       vibrate: [200, 100, 200],
-      data: { url: d.url || '/' },
+      data: { url: d.url || '/', briefing: !!d.briefingAction },
       actions: d.installAction ? [{ action: 'install', title: '📲 Installer' }] : (d.updateAction ? [{ action: 'verify', title: '🔄 Vérifier' }] : [])
     });
   })());
 });
 
 self.addEventListener('notificationclick', event => {
+  // body est le texte COMPLET passe a showNotification() ci-dessus, jamais tronque (seul l'AFFICHAGE
+  // dans le bandeau Android est tronque visuellement) : on le recupere ici pour l'afficher en entier
+  // dans le chat au clic, sans avoir a le re-demander au serveur (voir briefing ci-dessous, 07/11/2026).
+  const fullBody = event.notification.body || '';
   event.notification.close();
   const data = event.notification.data || {};
   const wantActivate = event.action === 'activate' || data.activate === true;
   const wantInstall = event.action === 'install';
   const wantVerify = event.action === 'verify';
-  const url = wantActivate ? '/?activerNotifs=1' : (wantInstall ? '/?triggerInstall=1' : (data.url || '/'));
+  const wantBriefing = data.briefing === true;
+  const url = wantActivate ? '/?activerNotifs=1' : (wantInstall ? '/?triggerInstall=1' : (wantBriefing ? ('/?showBriefing=' + encodeURIComponent(fullBody)) : (data.url || '/')));
   event.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
     for (const c of list) {
       if ('focus' in c) {
         if (wantActivate) c.postMessage({ type: 'ACTIVATE_REPLIES' });
         if (wantInstall) c.postMessage({ type: 'TRIGGER_INSTALL' });
         if (wantVerify) c.postMessage({ type: 'RELOAD_PAGE' });
+        if (wantBriefing) c.postMessage({ type: 'SHOW_BRIEFING', message: fullBody });
         return c.focus();
       }
     }
