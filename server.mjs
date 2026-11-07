@@ -3282,6 +3282,12 @@ async function maybeSendDailyBriefing(u) {
   const message = await buildDailyBriefingMessage(u);
   if (!message) return;
   await mergeUserCheckboxes(u.id, { lastBriefingDate: today });
+  // Marque comme lus les briefings precedents jamais vus (demande de Victor le 07/11/2026) : sans
+  // cela, chaque jour d'absence laissait un briefing "non lu" en base, et ils s'affichaient TOUS
+  // d'un coup (plusieurs cartes empilees dans le chat) a la prochaine connexion. Un utilisateur ne
+  // doit voir que le briefing du jour ou il se connecte, jamais un rattrapage des jours manques.
+  const { error: clearErr } = await sbAdmin.from('notifications').update({ is_read: true }).eq('user_id', u.id).eq('title', '☀️ Votre briefing du jour').eq('is_read', false);
+  if (clearErr) console.error('Briefing (purge anciens non lus):', clearErr.message);
   const { error } = await sbAdmin.from('notifications').insert([{ user_id: u.id, type: 'info', title: '☀️ Votre briefing du jour', message, is_read: false }]);
   if (error) { console.error('Briefing insert:', error.message); return; }
   sendPush(u.id, 'general', { title: '☀️ Votre briefing du jour', body: message, url: '/' }).catch(e => console.error('sendPush (briefing):', e.message));
