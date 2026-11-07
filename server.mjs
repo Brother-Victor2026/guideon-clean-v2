@@ -1461,12 +1461,26 @@ console.log('🔖 searchSources au moment de l affichage:', JSON.stringify(searc
         if (taskRaw && taskRaw !== 'AUCUNE' && taskRaw.startsWith('-')) {
           const taskText = taskRaw.slice(1).trim();
           if (taskText) {
-            const insRes = await fetch(`${DB}/notifications`, {
-              method: 'POST',
-              headers: { ...SB, 'Prefer': 'return=minimal' },
-              body: JSON.stringify([{ user_id: user.id, type: 'task_proposal', title: '📝 Tâche détectée', message: taskText, is_read: false }])
-            });
-            if (!insRes.ok) console.error('task_proposal insert error:', insRes.status, await insRes.text());
+            // Evite les doublons (signale par Victor le 07/11/2026) : si l'utilisateur reformule ou
+            // repete une intention deja proposee (pas encore lue) ou deja confirmee dans sa liste de
+            // taches, on ne recree pas une proposition identique dans le chat.
+            const encText = encodeURIComponent(taskText.replace(/[,()]/g, ' ').trim());
+            const [dupPropRes, dupTaskRes] = await Promise.all([
+              fetch(`${DB}/notifications?user_id=eq.${user.id}&type=eq.task_proposal&is_read=eq.false&message=ilike.${encText}&select=id`, { headers: SB }),
+              fetch(`${DB}/tasks?user_id=eq.${user.id}&is_done=eq.false&content=ilike.${encText}&select=id`, { headers: SB })
+            ]);
+            const dupProp = dupPropRes.ok ? await dupPropRes.json() : [];
+            const dupTask = dupTaskRes.ok ? await dupTaskRes.json() : [];
+            if ((Array.isArray(dupProp) && dupProp.length > 0) || (Array.isArray(dupTask) && dupTask.length > 0)) {
+              console.log('task_proposal ignore (doublon detecte) :', taskText);
+            } else {
+              const insRes = await fetch(`${DB}/notifications`, {
+                method: 'POST',
+                headers: { ...SB, 'Prefer': 'return=minimal' },
+                body: JSON.stringify([{ user_id: user.id, type: 'task_proposal', title: '📝 Tâche détectée', message: taskText, is_read: false }])
+              });
+              if (!insRes.ok) console.error('task_proposal insert error:', insRes.status, await insRes.text());
+            }
           }
         }
       } catch (e) { console.error('task extraction error:', e.message); }
