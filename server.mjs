@@ -3290,7 +3290,11 @@ async function maybeSendDailyBriefing(u) {
   if (clearErr) console.error('Briefing (purge anciens non lus):', clearErr.message);
   const { error } = await sbAdmin.from('notifications').insert([{ user_id: u.id, type: 'info', title: '☀️ Votre briefing du jour', message, is_read: false }]);
   if (error) { console.error('Briefing insert:', error.message); return; }
-  sendPush(u.id, 'general', { title: '☀️ Votre briefing du jour', body: message, url: '/' }).catch(e => console.error('sendPush (briefing):', e.message));
+  // briefingAction: true (lu par le service worker, voir public/service-worker.js) permet d'ouvrir le
+  // chat et d'afficher le texte COMPLET du briefing quand l'utilisateur appuie sur la notification de
+  // l'appareil - demande de Victor le 07/11/2026 (avant ce correctif, toucher la notification se
+  // contentait de la fermer/ouvrir la page d'accueil sans rien montrer du contenu).
+  sendPush(u.id, 'general', { title: '☀️ Votre briefing du jour', body: message, url: '/', briefingAction: true }).catch(e => console.error('sendPush (briefing):', e.message));
 }
 
 // Demander suppression données utilisateur (RGPD)
