@@ -1435,6 +1435,42 @@ console.log('🔖 searchSources au moment de l affichage:', JSON.stringify(searc
         }
       } catch(e) { console.error('memories save error:', e.message); }
     }
+    // Extraction de taches en arriere-plan (demande de Victor le 07/11/2026) : detecte quand
+    // l'utilisateur exprime une intention d'action future ("il faut que je...", "je dois...",
+    // "n'oublie pas de..."), SANS jamais l'ajouter automatiquement - seulement une PROPOSITION via
+    // une notification de type 'task_proposal', affichee cote client comme une carte Oui/Non dans le
+    // chat (voir gHandleTaskProposal dans public/index.html). Meme architecture Groq que l'extraction
+    // de memories ci-dessus, modele separe, prompt dedie.
+    if (reply && user && user.id) {
+      try {
+        const taskRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${API_KEY}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: 'qwen/qwen3.8-27b',
+            max_tokens: 150,
+            messages: [
+              { role: 'system', content: 'Tu es un extracteur de TACHES STRICT. N\'extrait une tache QUE si l\'utilisateur exprime CLAIREMENT une intention d\'action future et concrete qu\'il doit accomplir lui-meme (ex: "il faut que je...", "je dois...", "n\'oublie pas de...", "je vais devoir..."). Ignore : les taches deja faites ou terminees, les simples questions, les faits sans action, les intentions vagues ou hypothetiques ("je devrais peut-etre un jour..."). Si une tache claire est exprimee, reponds avec UNE SEULE ligne au format exact "- texte court et actionnable de la tache" (a l\'infinitif, ex: "Acheter du pain"). Si aucune tache claire n\'est exprimee, reponds UNIQUEMENT "AUCUNE".' },
+              { role: 'user', content: `Message utilisateur: ${message}\nReponse assistant: ${reply}` }
+            ]
+          })
+        });
+        if (!taskRes.ok) console.error('EXTRACTION TACHE GROQ ERROR:', taskRes.status, await taskRes.text());
+        const taskData = taskRes.ok ? await taskRes.json() : null;
+        const taskRaw = taskData?.choices?.[0]?.message?.content?.trim() || '';
+        if (taskRaw && taskRaw !== 'AUCUNE' && taskRaw.startsWith('-')) {
+          const taskText = taskRaw.slice(1).trim();
+          if (taskText) {
+            const insRes = await fetch(`${DB}/notifications`, {
+              method: 'POST',
+              headers: { ...SB, 'Prefer': 'return=minimal' },
+              body: JSON.stringify([{ user_id: user.id, type: 'task_proposal', title: '📝 Tâche détectée', message: taskText, is_read: false }])
+            });
+            if (!insRes.ok) console.error('task_proposal insert error:', insRes.status, await insRes.text());
+          }
+        }
+      } catch (e) { console.error('task extraction error:', e.message); }
+    }
   } catch(e) {
     if (!res.headersSent) {
       res.status(500).json({ error: e.message });
@@ -3883,4 +3919,58 @@ app.put('/api/memory/:id', async (req, res) => {
     await fetch(`${DB}/memories?id=eq.${req.params.id}&user_id=eq.${String(user.id)}`, { method: 'PATCH', headers: { ...SB, 'Prefer': 'return=minimal' }, body: JSON.stringify({ content, updated_at: new Date().toISOString() }) });
     res.json({ success: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ===== TACHES (demande de Victor le 07/11/2026) =====
+// Une tache n'est JAMAIS ajoutee automatiquement : l'extraction Groq (voir /api/chat) ne fait que
+// deposer une PROPOSITION dans la table notifications (type: 'task_proposal'). Ces routes gerent la
+// vraie liste de taches confirmees par l'utilisateur.
+app.get('/api/tasks', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    const user = checkToken(token);
+    if (!user) return res.status(401).json({ error: 'Non autorisé' });
+    const r = await fetch(`${DB}/tasks?user_id=eq.${String(user.id)}&order=is_done.asc,created_at.desc&limit=200`, { headers: SB });
+    const data = await r.json();
+    res.json(Array.isArray(data) ? data : []);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/tasks', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    const user = checkToken(token);
+    if (!user) return res.status(401).json({ error: 'Non autorisé' });
+    const { content } = req.body;
+    if (!content || !String(content).trim()) return res.status(400).json({ error: 'Contenu requis' });
+    const sbRes = await fetch(`${DB}/tasks`, { method: 'POST', headers: { ...SB, 'Prefer': 'return=representation' }, body: JSON.stringify({ user_id: user.id, content: String(content).trim() }) });
+    if (!sbRes.ok) { const errText = await sbRes.text(); console.error('tasks/add Supabase error:', sbRes.status, errText); return res.status(500).json({ error: 'Échec enregistrement : ' + errText }); }
+    const created = await sbRes.json();
+    res.json({ success: true, task: Array.isArray(created) ? created[0] : created });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.patch('/api/tasks/:id', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    const user = checkToken(token);
+    if (!user) return res.status(401).json({ error: 'Non autorisé' });
+    const patch = {};
+    if (typeof req.body.is_done === 'boolean') patch.is_done = req.body.is_done;
+    if (typeof req.body.content === 'string' && req.body.content.trim()) patch.content = req.body.content.trim();
+    if (Object.keys(patch).length === 0) return res.status(400).json({ error: 'Rien à modifier' });
+    patch.updated_at = new Date().toISOString();
+    await fetch(`${DB}/tasks?id=eq.${req.params.id}&user_id=eq.${String(user.id)}`, { method: 'PATCH', headers: { ...SB, 'Prefer': 'return=minimal' }, body: JSON.stringify(patch) });
+    res.json({ success: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.delete('/api/tasks/:id', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    const user = checkToken(token);
+    if (!user) return res.status(401).json({ error: 'Non autorisé' });
+    await fetch(`${DB}/tasks?id=eq.${req.params.id}&user_id=eq.${String(user.id)}`, { method: 'DELETE', headers: SB });
+    res.json({ success: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
