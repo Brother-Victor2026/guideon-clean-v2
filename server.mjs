@@ -1443,6 +1443,16 @@ console.log('🔖 searchSources au moment de l affichage:', JSON.stringify(searc
     // de memories ci-dessus, modele separe, prompt dedie.
     if (reply && user && user.id) {
       try {
+        // Liste des projets DEJA existants pour cet utilisateur (demande de Victor le 07/11/2026) :
+        // le modele ne peut rattacher une tache qu'a un projet DEJA CREE par l'utilisateur (manuellement
+        // ou via une tache precedente), jamais en inventer un nouveau tout seul - securite anti-erreur
+        // explicitement demandee ("sans erreur de fonctionnement ni de risque").
+        const existingProjectsRes = await fetch(`${DB}/tasks?user_id=eq.${user.id}&project_name=not.is.null&select=project_name`, { headers: SB });
+        const existingProjectsRows = existingProjectsRes.ok ? await existingProjectsRes.json() : [];
+        const existingProjects = [...new Set((existingProjectsRows || []).map(r => r.project_name).filter(Boolean))];
+        const projectsHint = existingProjects.length
+          ? `Projets existants de l'utilisateur (tu peux UNIQUEMENT choisir parmi ceux-ci, jamais en inventer un autre) : ${existingProjects.join(', ')}.`
+          : "L'utilisateur n'a encore aucun projet existant, donc ne propose JAMAIS de projet.";
         const taskRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
           method: 'POST',
           headers: { 'Authorization': `Bearer ${API_KEY}`, 'Content-Type': 'application/json' },
@@ -1450,7 +1460,7 @@ console.log('🔖 searchSources au moment de l affichage:', JSON.stringify(searc
             model: 'qwen/qwen3.8-27b',
             max_tokens: 150,
             messages: [
-              { role: 'system', content: 'Tu es un extracteur de TACHES STRICT. N\'extrait une tache QUE si l\'utilisateur exprime CLAIREMENT une intention d\'action future et concrete qu\'il doit accomplir lui-meme (ex: "il faut que je...", "je dois...", "n\'oublie pas de...", "je vais devoir..."). Ignore : les taches deja faites ou terminees, les simples questions, les faits sans action, les intentions vagues ou hypothetiques ("je devrais peut-etre un jour..."). Si une tache claire est exprimee, reponds avec UNE SEULE ligne au format exact "- texte court et actionnable de la tache" (a l\'infinitif, ex: "Acheter du pain"). Si aucune tache claire n\'est exprimee, reponds UNIQUEMENT "AUCUNE".' },
+              { role: 'system', content: 'Tu es un extracteur de TACHES STRICT. N\'extrait une tache QUE si l\'utilisateur exprime CLAIREMENT une intention d\'action future et concrete qu\'il doit accomplir lui-meme (ex: "il faut que je...", "je dois...", "n\'oublie pas de...", "je vais devoir..."). Ignore : les taches deja faites ou terminees, les simples questions, les faits sans action, les intentions vagues ou hypothetiques ("je devrais peut-etre un jour..."). ' + projectsHint + ' Si une tache claire est exprimee ET que l\'utilisateur mentionne EXPLICITEMENT un de ces projets existants, reponds avec UNE SEULE ligne au format exact "- texte court et actionnable de la tache | projet: NomDuProjetExact" (le nom du projet doit etre copie EXACTEMENT comme dans la liste fournie). Si une tache claire est exprimee SANS mention explicite d\'un projet existant, reponds avec UNE SEULE ligne au format exact "- texte court et actionnable de la tache" (sans le "| projet:"). Si aucune tache claire n\'est exprimee, reponds UNIQUEMENT "AUCUNE".' },
               { role: 'user', content: `Message utilisateur: ${message}\nReponse assistant: ${reply}` }
             ]
           })
@@ -1459,7 +1469,19 @@ console.log('🔖 searchSources au moment de l affichage:', JSON.stringify(searc
         const taskData = taskRes.ok ? await taskRes.json() : null;
         const taskRaw = taskData?.choices?.[0]?.message?.content?.trim() || '';
         if (taskRaw && taskRaw !== 'AUCUNE' && taskRaw.startsWith('-')) {
-          const taskText = taskRaw.slice(1).trim();
+          let taskLine = taskRaw.slice(1).trim();
+          let detectedProject = null;
+          const pipeIdx = taskLine.indexOf('| projet:');
+          if (pipeIdx !== -1) {
+            const rawProject = taskLine.slice(pipeIdx + '| projet:'.length).trim();
+            taskLine = taskLine.slice(0, pipeIdx).trim();
+            // Verification stricte cote serveur : le projet propose par le modele doit correspondre
+            // EXACTEMENT (insensible a la casse) a un projet deja existant - sinon on l'ignore plutot
+            // que de risquer un nom invente ou mal copie.
+            const match = existingProjects.find(p => p.toLowerCase() === rawProject.toLowerCase());
+            if (match) detectedProject = match;
+          }
+          const taskText = taskLine;
           if (taskText) {
             // Evite les doublons (signale par Victor le 07/11/2026) : si l'utilisateur reformule ou
             // repete une intention deja proposee (pas encore lue) ou deja confirmee dans sa liste de
@@ -1477,13 +1499,59 @@ console.log('🔖 searchSources au moment de l affichage:', JSON.stringify(searc
               const insRes = await fetch(`${DB}/notifications`, {
                 method: 'POST',
                 headers: { ...SB, 'Prefer': 'return=minimal' },
-                body: JSON.stringify([{ user_id: user.id, type: 'task_proposal', title: '📝 Tâche détectée', message: taskText, is_read: false }])
+                body: JSON.stringify([{ user_id: user.id, type: 'task_proposal', title: '📝 Tâche détectée', message: taskText, is_read: false, meta: detectedProject ? { project: detectedProject } : null }])
               });
               if (!insRes.ok) console.error('task_proposal insert error:', insRes.status, await insRes.text());
             }
           }
         }
       } catch (e) { console.error('task extraction error:', e.message); }
+    }
+    // Detection de fin de tache (demande de Victor le 07/11/2026) : fournit au modele la liste EXACTE
+    // des taches en attente de l'utilisateur et lui demande si l'une d'elles vient d'etre terminee.
+    // Le modele doit repondre avec le texte EXACT d'une tache de la liste (jamais une reformulation),
+    // et le serveur verifie cette correspondance avant de proposer quoi que ce soit - zero risque
+    // d'inventer ou de mal cibler une tache ("sans erreur de fonctionnement ni de risque").
+    if (reply && user && user.id) {
+      try {
+        const pendingRes = await fetch(`${DB}/tasks?user_id=eq.${user.id}&is_done=eq.false&select=id,content,project_name&order=created_at.asc&limit=50`, { headers: SB });
+        const pendingTasks = pendingRes.ok ? await pendingRes.json() : [];
+        if (Array.isArray(pendingTasks) && pendingTasks.length > 0) {
+          const listStr = pendingTasks.map((t, i) => `${i + 1}. ${t.content}`).join('\n');
+          const doneRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${API_KEY}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              model: 'qwen/qwen3.8-27b',
+              max_tokens: 100,
+              messages: [
+                { role: 'system', content: 'Tu verifies si l\'utilisateur vient d\'indiquer avoir termine une tache precise, parmi une liste fournie. Voici la liste exacte des taches en attente de l\'utilisateur :\n' + listStr + '\n\nSi le message de l\'utilisateur indique CLAIREMENT qu\'il a termine UNE de ces taches precises (ex: "j\'ai achete le pain", "c\'est fait pour X", "j\'ai fini Y"), reponds UNIQUEMENT avec le texte EXACT de cette tache, copie caractere pour caractere depuis la liste ci-dessus, sans numero ni tiret. Si aucune tache de la liste n\'est clairement terminee, reponds UNIQUEMENT "AUCUNE".' },
+                { role: 'user', content: `Message utilisateur: ${message}\nReponse assistant: ${reply}` }
+              ]
+            })
+          });
+          if (!doneRes.ok) console.error('DETECTION FIN TACHE GROQ ERROR:', doneRes.status, await doneRes.text());
+          const doneData = doneRes.ok ? await doneRes.json() : null;
+          const doneRaw = (doneData?.choices?.[0]?.message?.content || '').trim();
+          if (doneRaw && doneRaw !== 'AUCUNE') {
+            // Verification stricte cote serveur : la reponse doit correspondre EXACTEMENT (insensible
+            // a la casse) a une tache reellement existante dans la liste fournie.
+            const matched = pendingTasks.find(t => t.content.trim().toLowerCase() === doneRaw.toLowerCase());
+            if (matched) {
+              const dupRes = await fetch(`${DB}/notifications?user_id=eq.${user.id}&type=eq.task_complete_proposal&is_read=eq.false&meta-%3E%3EtaskId=eq.${matched.id}&select=id`, { headers: SB });
+              const dup = dupRes.ok ? await dupRes.json() : [];
+              if (!Array.isArray(dup) || dup.length === 0) {
+                const insRes2 = await fetch(`${DB}/notifications`, {
+                  method: 'POST',
+                  headers: { ...SB, 'Prefer': 'return=minimal' },
+                  body: JSON.stringify([{ user_id: user.id, type: 'task_complete_proposal', title: '✅ Tâche peut-être terminée', message: matched.content, is_read: false, meta: { taskId: matched.id, project: matched.project_name || null } }])
+                });
+                if (!insRes2.ok) console.error('task_complete_proposal insert error:', insRes2.status, await insRes2.text());
+              }
+            }
+          }
+        }
+      } catch (e) { console.error('task completion detection error:', e.message); }
     }
   } catch(e) {
     if (!res.headersSent) {
@@ -1906,6 +1974,7 @@ app.get('/api/memory/view', async (req, res) => {
     if (row && row.checkboxes) {
       maybeSendDailyBriefing({ id: user.id, checkboxes: row.checkboxes }).catch(e => console.error('maybeSendDailyBriefing (connexion):', e.message));
       maybeSendInstallReminder({ id: user.id, checkboxes: row.checkboxes }).catch(e => console.error('maybeSendInstallReminder (connexion):', e.message));
+      maybeSendTaskReminder({ id: user.id, checkboxes: row.checkboxes }).catch(e => console.error('maybeSendTaskReminder (connexion):', e.message));
       if (typeof row.checkboxes.userLat !== 'number') {
         geolocateByIp(getClientIp(req)).then(g => {
           mergeUserCheckboxes(user.id, { userLat: g.lat, userLon: g.lon, userLocationLabel: g.label }).catch(() => {});
@@ -3244,6 +3313,25 @@ async function maybeSendInstallReminder(u) {
   await notifyOnce(u, slot.mark, 20 * 60 * 60 * 1000, { type: 'info', title: slot.title, message: reminderMsg }, { installAction: true });
 }
 
+// Rappel des taches en attente a la connexion (demande de Victor le 07/11/2026) : contrairement au
+// briefing (une seule fois par jour), Victor veut etre rappele "a chaque fois qu'il se connecte" s'il
+// a des taches en attente. Un cooldown de 4h evite toutefois le spam si l'app est rouverte plusieurs
+// fois en peu de temps (verrouillage d'ecran, changement d'onglet, reconnexion reseau...), tout en
+// restant largement plus frequent que les autres rappels (meme architecture notifyOnce).
+async function maybeSendTaskReminder(u) {
+  const cb = u.checkboxes || {};
+  if (cb.notifCheck !== true) return;
+  try {
+    const r = await fetch(`${DB}/tasks?user_id=eq.${u.id}&is_done=eq.false&select=content&order=created_at.asc&limit=10`, { headers: SB });
+    const pending = r.ok ? await r.json() : [];
+    if (!Array.isArray(pending) || pending.length === 0) return;
+    const names = pending.slice(0, 3).map(t => '• ' + t.content).join('\n');
+    const more = pending.length > 3 ? `\n... et ${pending.length - 3} autre(s).` : '';
+    const msg = `Tu as ${pending.length} tâche${pending.length > 1 ? 's' : ''} en attente :\n${names}${more}`;
+    await notifyOnce(u, 'taskReminder', 4 * 60 * 60 * 1000, { type: 'info', title: '📋 Tâches en attente', message: msg });
+  } catch (e) { console.error('maybeSendTaskReminder:', e.message); }
+}
+
 // ===== BRIEFING QUOTIDIEN AUTOMATIQUE =====
 // Envoye une seule fois par jour (pas d'heure fixe : des la toute premiere "connexion"/ouverture de
 // l'app de la journee, voir le hook dans /api/memory/view - changement demande par Victor le
@@ -3950,14 +4038,30 @@ app.get('/api/tasks', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// Liste des noms de projets deja utilises par l'utilisateur (pour le champ de saisie manuelle et
+// l'autocompletion cote client, demande de Victor le 07/11/2026).
+app.get('/api/tasks/projects', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    const user = checkToken(token);
+    if (!user) return res.status(401).json({ error: 'Non autorisé' });
+    const r = await fetch(`${DB}/tasks?user_id=eq.${String(user.id)}&project_name=not.is.null&select=project_name`, { headers: SB });
+    const data = r.ok ? await r.json() : [];
+    const projects = [...new Set((Array.isArray(data) ? data : []).map(t => t.project_name).filter(Boolean))].sort();
+    res.json(projects);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 app.post('/api/tasks', async (req, res) => {
   try {
     const token = req.headers.authorization?.split(' ')[1];
     const user = checkToken(token);
     if (!user) return res.status(401).json({ error: 'Non autorisé' });
-    const { content } = req.body;
+    const { content, project_name } = req.body;
     if (!content || !String(content).trim()) return res.status(400).json({ error: 'Contenu requis' });
-    const sbRes = await fetch(`${DB}/tasks`, { method: 'POST', headers: { ...SB, 'Prefer': 'return=representation' }, body: JSON.stringify({ user_id: user.id, content: String(content).trim() }) });
+    const payload = { user_id: user.id, content: String(content).trim() };
+    if (project_name != null && String(project_name).trim()) payload.project_name = String(project_name).trim();
+    const sbRes = await fetch(`${DB}/tasks`, { method: 'POST', headers: { ...SB, 'Prefer': 'return=representation' }, body: JSON.stringify(payload) });
     if (!sbRes.ok) { const errText = await sbRes.text(); console.error('tasks/add Supabase error:', sbRes.status, errText); return res.status(500).json({ error: 'Échec enregistrement : ' + errText }); }
     const created = await sbRes.json();
     res.json({ success: true, task: Array.isArray(created) ? created[0] : created });
