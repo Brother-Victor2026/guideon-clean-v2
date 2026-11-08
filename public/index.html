@@ -1752,7 +1752,7 @@ Vous ne recevrez plus de notifications`,()=>{},()=>{document.getElementById('not
 Vos données seront sauvegardées en cloud
 Veuillez appuyer sur OK pour l'activer.`,()=>{},()=>{document.getElementById('cloudBackup').checked=false;});}else{showConfirmDialog(`❌ Sauvegarde cloud désactivée
 Vos données ne seront plus sauvegardées en cloud
-Êtes-vous sûr(e) de le désactiver ? Si oui, appuyez sur OK.`,()=>{},()=>{document.getElementById('cloudBackup').checked=true;});}" > Sauvegarder dans le cloud (vos conversations sont enregistrées en ligne et retrouvables sur tous vos appareils ; décochée, elles ne sont pas conservées)</label><label style="color:#9ca3af;font-size:12px;display:flex;align-items:center;gap:8px;margin-bottom:16px;"><input type="checkbox" id="deleteHistoryAuto" checked style="pointer-events:auto;" onchange="saveCheckboxState(this.id,this.checked);if(this.checked){showConfirmDialog('✅ Suppression automatique activée\nVotre historique sera supprimé après 30 jours d\'inactivité\nVeuillez appuyer sur OK pour l\'activer.',()=>{},()=>{document.getElementById('deleteHistoryAuto').checked=false;});}else{showConfirmDialog('❌ Suppression automatique désactivée\nVotre historique sera conservé\nÊtes-vous sûr(e) de le désactiver ? Si oui, appuyez sur OK.',()=>{},()=>{document.getElementById('deleteHistoryAuto').checked=true;});}"> Supprimer l'historique après 30 jours inactifs (auto-suppression)</label><h4 style="color:#a78bfa;">Données tierces</h4><div style="background:#0f0f1a;border-left:3px solid #7c3aed;padding:10px;border-radius:4px;margin-bottom:12px;"><p style="color:#9ca3af;font-size:11px;margin:0;">✓ Aucune donnée personnelle vendue à des tiers<br>✓ Chiffrement end-to-end disponible<br>✓ Droits RGPD & CCPA garantis</p></div><button onclick="downloadPrivacyReport()" style="width:100%;padding:10px;background:#1e3a8a;color:#fff;border:none;border-radius:8px;cursor:pointer;">📄 Rapport de confidentialité</button></div><div id="tab-updates" class="tab-content" style="display:none;"><h4 style="color:#a78bfa;">📦 Mises à jour</h4><div style="background:#0f0f1a;border:1px solid #2d1b69;border-radius:8px;padding:12px;margin-bottom:12px;"><div style="color:#a78bfa;font-size:16px;font-weight:600;margin-bottom:8px;">✅ Dernière version</div><div style="color:#7c3aed;font-size:14px;margin-bottom:4px;">v<span id="latestVersion">1.0.315</span><div id="versionDisplay" style="color:#9ca3af;font-size:11px;margin-top:8px;">⏱️ Auto-version activée</div></div><div style="color:#9ca3af;font-size:11px;margin-bottom:12px;">📅 <span id="updateDate">07/11/2026</span> à <span id="updateTime">22:52:13</span></div><button onclick="checkUpdate()" style="width:100%;padding:10px;background:#7c3aed;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;margin-bottom:12px;">✓ Vérifier mise à jour</button></div><div style="background:#0f0f1a;border:1px solid #2d1b69;border-radius:8px;padding:12px;"><div style="color:#a78bfa;font-size:12px;font-weight:600;margin-bottom:8px;">📋 Changelog</div><div style="color:#9ca3af;font-size:11px;line-height:1.8;"><div>✨ Endpoint /api/sessions/logout-others</div><div>🎨 Interface d'inscription améliorée</div><div>🔐 Nouvelles options de confidentialité</div><div>📊 Statistiques détaillées</div></div></div></div><div id="tab-realtime" class="tab-content" style="display:none;"><h4 style="color:#a78bfa;">📊 Données en temps réel</h4><button onclick="loadRealtime()" style="width:100%;padding:10px;background:#1e3a8a;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:12px;">🔄 Charger données</button><div id="realtimeData" style="background:#0f0f1a;border:1px solid #2d1b69;border-radius:8px;padding:12px;font-size:12px;color:#9ca3af;min-height:100px;"></div><p style="color:#6b7280;font-size:10.5px;margin-top:8px;line-height:1.5;">✓ Toutes les données ci-dessus sont réelles et mises à jour à chaque chargement, pas des valeurs inventées : météo via <strong>Open-Meteo</strong> (modèles météorologiques officiels tels que le DWD allemand et NOAA), actualités via de vrais flux RSS (Google News, Le Monde, BBC, etc.), cotations boursières via <strong>Yahoo Finance</strong>.</p></div><div id="tab-memories" class="tab-content" style="display:none;"><h4 style="color:#a78bfa;margin-bottom:12px;">🧠 Mes mémoires</h4><div id="memoriesList" style="max-height:300px;overflow-y:auto;margin-bottom:12px;border:1px solid #2d1b69;border-radius:8px;padding:8px;">Chargement...</div><textarea id="newMemory" placeholder="Ajouter une mémoire..." style="width:100%;padding:10px;background:#0f0f1a;color:#fff;border:1px solid #2d1b69;border-radius:8px;margin-bottom:8px;box-sizing:border-box;height:60px;resize:none;font-size:12px;"></textarea><button onclick="addMemory()" style="width:100%;padding:10px;background:#10b981;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:8px;">➕ Ajouter</button><button onclick="loadMemories()" style="width:100%;padding:8px;background:#6b7280;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:12px;">🔄 Rafraîchir</button></div><div id="tab-about" class="tab-content" style="display:none;"><h3 style="color:#a78bfa;font-size:18px;margin-bottom:4px;">Guidéon v2.0</h3><p style="color:#7c3aed;font-size:12px;margin-bottom:12px;">🎯 Production | Juillet 2026</p><h4 style="color:#a78bfa;">Liens</h4><div style="display:flex;flex-direction:column;gap:6px;"><a href="#" style="color:#7c3aed;text-decoration:none;font-size:12px;">📖 Docs</a><a href="mailto:support@guideon.ai" style="color:#7c3aed;text-decoration:none;font-size:12px;">📧 Support</a><a href="#" style="color:#7c3aed;text-decoration:none;font-size:12px;">📊 Status</a></div></div></div></div></div>
+Êtes-vous sûr(e) de le désactiver ? Si oui, appuyez sur OK.`,()=>{},()=>{document.getElementById('cloudBackup').checked=true;});}" > Sauvegarder dans le cloud (vos conversations sont enregistrées en ligne et retrouvables sur tous vos appareils ; décochée, elles ne sont pas conservées)</label><label style="color:#9ca3af;font-size:12px;display:flex;align-items:center;gap:8px;margin-bottom:16px;"><input type="checkbox" id="deleteHistoryAuto" checked style="pointer-events:auto;" onchange="saveCheckboxState(this.id,this.checked);if(this.checked){showConfirmDialog('✅ Suppression automatique activée\nVotre historique sera supprimé après 30 jours d\'inactivité\nVeuillez appuyer sur OK pour l\'activer.',()=>{},()=>{document.getElementById('deleteHistoryAuto').checked=false;});}else{showConfirmDialog('❌ Suppression automatique désactivée\nVotre historique sera conservé\nÊtes-vous sûr(e) de le désactiver ? Si oui, appuyez sur OK.',()=>{},()=>{document.getElementById('deleteHistoryAuto').checked=true;});}"> Supprimer l'historique après 30 jours inactifs (auto-suppression)</label><h4 style="color:#a78bfa;">Données tierces</h4><div style="background:#0f0f1a;border-left:3px solid #7c3aed;padding:10px;border-radius:4px;margin-bottom:12px;"><p style="color:#9ca3af;font-size:11px;margin:0;">✓ Aucune donnée personnelle vendue à des tiers<br>✓ Chiffrement end-to-end disponible<br>✓ Droits RGPD & CCPA garantis</p></div><button onclick="downloadPrivacyReport()" style="width:100%;padding:10px;background:#1e3a8a;color:#fff;border:none;border-radius:8px;cursor:pointer;">📄 Rapport de confidentialité</button></div><div id="tab-updates" class="tab-content" style="display:none;"><h4 style="color:#a78bfa;">📦 Mises à jour</h4><div style="background:#0f0f1a;border:1px solid #2d1b69;border-radius:8px;padding:12px;margin-bottom:12px;"><div style="color:#a78bfa;font-size:16px;font-weight:600;margin-bottom:8px;">✅ Dernière version</div><div style="color:#7c3aed;font-size:14px;margin-bottom:4px;">v<span id="latestVersion">1.0.316</span><div id="versionDisplay" style="color:#9ca3af;font-size:11px;margin-top:8px;">⏱️ Auto-version activée</div></div><div style="color:#9ca3af;font-size:11px;margin-bottom:12px;">📅 <span id="updateDate">08/11/2026</span> à <span id="updateTime">03:59:55</span></div><button onclick="checkUpdate()" style="width:100%;padding:10px;background:#7c3aed;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;margin-bottom:12px;">✓ Vérifier mise à jour</button></div><div style="background:#0f0f1a;border:1px solid #2d1b69;border-radius:8px;padding:12px;"><div style="color:#a78bfa;font-size:12px;font-weight:600;margin-bottom:8px;">📋 Changelog</div><div style="color:#9ca3af;font-size:11px;line-height:1.8;"><div>✨ Endpoint /api/sessions/logout-others</div><div>🎨 Interface d'inscription améliorée</div><div>🔐 Nouvelles options de confidentialité</div><div>📊 Statistiques détaillées</div></div></div></div><div id="tab-realtime" class="tab-content" style="display:none;"><h4 style="color:#a78bfa;">📊 Données en temps réel</h4><button onclick="loadRealtime()" style="width:100%;padding:10px;background:#1e3a8a;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:12px;">🔄 Charger données</button><div id="realtimeData" style="background:#0f0f1a;border:1px solid #2d1b69;border-radius:8px;padding:12px;font-size:12px;color:#9ca3af;min-height:100px;"></div><p style="color:#6b7280;font-size:10.5px;margin-top:8px;line-height:1.5;">✓ Toutes les données ci-dessus sont réelles et mises à jour à chaque chargement, pas des valeurs inventées : météo via <strong>Open-Meteo</strong> (modèles météorologiques officiels tels que le DWD allemand et NOAA), actualités via de vrais flux RSS (Google News, Le Monde, BBC, etc.), cotations boursières via <strong>Yahoo Finance</strong>.</p></div><div id="tab-memories" class="tab-content" style="display:none;"><h4 style="color:#a78bfa;margin-bottom:12px;">🧠 Mes mémoires</h4><div id="memoriesList" style="max-height:300px;overflow-y:auto;margin-bottom:12px;border:1px solid #2d1b69;border-radius:8px;padding:8px;">Chargement...</div><textarea id="newMemory" placeholder="Ajouter une mémoire..." style="width:100%;padding:10px;background:#0f0f1a;color:#fff;border:1px solid #2d1b69;border-radius:8px;margin-bottom:8px;box-sizing:border-box;height:60px;resize:none;font-size:12px;"></textarea><button onclick="addMemory()" style="width:100%;padding:10px;background:#10b981;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:8px;">➕ Ajouter</button><button onclick="loadMemories()" style="width:100%;padding:8px;background:#6b7280;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:12px;">🔄 Rafraîchir</button></div><div id="tab-about" class="tab-content" style="display:none;"><h3 style="color:#a78bfa;font-size:18px;margin-bottom:4px;">Guidéon v2.0</h3><p style="color:#7c3aed;font-size:12px;margin-bottom:12px;">🎯 Production | Juillet 2026</p><h4 style="color:#a78bfa;">Liens</h4><div style="display:flex;flex-direction:column;gap:6px;"><a href="#" style="color:#7c3aed;text-decoration:none;font-size:12px;">📖 Docs</a><a href="mailto:support@guideon.ai" style="color:#7c3aed;text-decoration:none;font-size:12px;">📧 Support</a><a href="#" style="color:#7c3aed;text-decoration:none;font-size:12px;">📊 Status</a></div></div></div></div></div>
 </div></div>
 <div id="sharemod" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9998;align-items:center;justify-content:center;">
 <div style="background:#1a1a2e;padding:24px;border-radius:16px;width:88%;max-width:340px;border:1px solid #2d1b69;">
@@ -3754,11 +3754,14 @@ setTimeout(updateInstructionsPlaceholder, 500);
     var chat = document.getElementById('chat');
     if (!chat) return;
     var token = localStorage.getItem('gtoken');
+    var meta = n.meta || {};
+    var proj = meta.project || null;
     var safeMsg = String(n.message || '').replace(/</g, '&lt;');
+    var projHtml = proj ? (' <span style="opacity:0.8;">(projet : ' + String(proj).replace(/</g, '&lt;') + ')</span>') : '';
     var d = document.createElement('div');
     d.className = 'msg g';
     d.id = 'taskprop-' + n.id;
-    d.innerHTML = '<div class="av g">🧠</div><div class="mc"><div class="bub">📝 J\'ai remarqué ceci dans notre échange : « ' + safeMsg + ' ». Je l\'ajoute à tes tâches ?</div><div class="ba" style="margin-top:6px;"><button class="cb" data-act="oui">✅ Oui, ajouter</button><button class="cb" data-act="non">❌ Non</button></div></div>';
+    d.innerHTML = '<div class="av g">🧠</div><div class="mc"><div class="bub">📝 J\'ai remarqué ceci dans notre échange : « ' + safeMsg + ' »' + projHtml + '. Je l\'ajoute à tes tâches ?</div><div class="ba" style="margin-top:6px;"><button class="cb" data-act="oui">✅ Oui, ajouter</button><button class="cb" data-act="non">❌ Non</button></div></div>';
     chat.appendChild(d);
     try { gSmartScroll(); } catch (e) {}
     function markRead(){ if (token) _f('/api/notifications/read', { method: 'POST', headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' }, body: JSON.stringify({ ids: [n.id] }) }).catch(function(){}); }
@@ -3767,7 +3770,7 @@ setTimeout(updateInstructionsPlaceholder, 500);
     if (btnOui) btnOui.onclick = async function(){
       btnOui.disabled = true; if (btnNon) btnNon.disabled = true;
       try {
-        await _f('/api/tasks', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }, body: JSON.stringify({ content: n.message }) });
+        await _f('/api/tasks', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }, body: JSON.stringify({ content: n.message, project_name: proj }) });
         var bar = d.querySelector('.ba'); if (bar) bar.remove();
         d.querySelector('.bub').insertAdjacentHTML('beforeend', '<div style="margin-top:6px;color:#34d399;font-size:13px;">✅ Ajoutée à tes tâches.</div>');
       } catch (e) {}
@@ -3776,6 +3779,55 @@ setTimeout(updateInstructionsPlaceholder, 500);
     if (btnNon) btnNon.onclick = function(){
       var bar = d.querySelector('.ba'); if (bar) bar.remove();
       d.querySelector('.bub').insertAdjacentHTML('beforeend', '<div style="margin-top:6px;color:#9ca3af;font-size:13px;">Entendu, ignorée.</div>');
+      markRead();
+    };
+  };
+  // Carte Oui/Non dans le chat pour une FIN de tache detectee (demande de Victor, 07/11/2026) : sur
+  // Oui, suppression reelle de la tache (pas juste cochee), puis suggestion de la tache suivante du
+  // meme projet (ou, a defaut, n'importe quelle autre tache en attente) pour enchainer naturellement.
+  window.gShowTaskCompleteProposal = function(n){
+    if (!n || n.id == null || document.getElementById('taskdone-' + n.id)) return;
+    var chat = document.getElementById('chat');
+    if (!chat) return;
+    var token = localStorage.getItem('gtoken');
+    var meta = n.meta || {};
+    var taskId = meta.taskId;
+    var safeMsg = String(n.message || '').replace(/</g, '&lt;');
+    var d = document.createElement('div');
+    d.className = 'msg g';
+    d.id = 'taskdone-' + n.id;
+    d.innerHTML = '<div class="av g">🧠</div><div class="mc"><div class="bub">✅ Il me semble que tu as terminé « ' + safeMsg + ' ». Je la retire de tes tâches ?</div><div class="ba" style="margin-top:6px;"><button class="cb" data-act="oui">✅ Oui, retirer</button><button class="cb" data-act="non">❌ Non, pas encore</button></div></div>';
+    chat.appendChild(d);
+    try { gSmartScroll(); } catch (e) {}
+    function markRead(){ if (token) _f('/api/notifications/read', { method: 'POST', headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' }, body: JSON.stringify({ ids: [n.id] }) }).catch(function(){}); }
+    var btnOui = d.querySelector('[data-act="oui"]');
+    var btnNon = d.querySelector('[data-act="non"]');
+    if (btnOui) btnOui.onclick = async function(){
+      btnOui.disabled = true; if (btnNon) btnNon.disabled = true;
+      try {
+        if (taskId != null) await _f('/api/tasks/' + taskId, { method: 'DELETE', headers: { 'Authorization': 'Bearer ' + token } });
+        var bar = d.querySelector('.ba'); if (bar) bar.remove();
+        d.querySelector('.bub').insertAdjacentHTML('beforeend', '<div style="margin-top:6px;color:#34d399;font-size:13px;">✅ Retirée de tes tâches.</div>');
+        // Suggestion de la tache suivante (meme projet en priorite), demande de Victor le 07/11/2026.
+        try {
+          var r = await _f('/api/tasks', { headers: { 'Authorization': 'Bearer ' + token } });
+          var all = await r.json();
+          if (Array.isArray(all)) {
+            var pending = all.filter(function(t){ return !t.is_done && t.id !== taskId; });
+            var next = null;
+            if (meta.project) next = pending.find(function(t){ return t.project_name === meta.project; });
+            if (!next) next = pending[0];
+            if (next) {
+              setTimeout(function(){ try { am('guideon', '➡️ Tu veux continuer avec la tâche suivante : « ' + next.content + ' » ?'); } catch (e) {} }, 500);
+            }
+          }
+        } catch (e) {}
+      } catch (e) {}
+      markRead();
+    };
+    if (btnNon) btnNon.onclick = function(){
+      var bar = d.querySelector('.ba'); if (bar) bar.remove();
+      d.querySelector('.bub').insertAdjacentHTML('beforeend', '<div style="margin-top:6px;color:#9ca3af;font-size:13px;">D\'accord, je la laisse dans ta liste.</div>');
       markRead();
     };
   };
@@ -3794,8 +3846,10 @@ setTimeout(updateInstructionsPlaceholder, 500);
       // pas repondu, pas disparaitre apres 3 jours ou etre remplacees par d'autres notifications.
       // Voir gShowTaskProposal plus bas (demande de Victor, 07/11/2026).
       var taskProposals = list.filter(function(n){ return n.type === 'task_proposal'; });
-      list = list.filter(function(n){ return n.type !== 'task_proposal'; });
+      var taskCompleteProposals = list.filter(function(n){ return n.type === 'task_complete_proposal'; });
+      list = list.filter(function(n){ return n.type !== 'task_proposal' && n.type !== 'task_complete_proposal'; });
       taskProposals.forEach(function(n, i){ setTimeout(function(){ if (window.gShowTaskProposal) window.gShowTaskProposal(n); }, i * 600); });
+      taskCompleteProposals.forEach(function(n, i){ setTimeout(function(){ if (window.gShowTaskCompleteProposal) window.gShowTaskCompleteProposal(n); }, i * 600); });
       var seen = loadSeen();
       var comp = document.getElementById('complianceAlerts');
       var compOff = comp && !comp.checked;
@@ -3840,9 +3894,55 @@ setTimeout(updateInstructionsPlaceholder, 500);
     // défile désormais (overflow-y:auto sur le conteneur), donc le champ d'ajout reste toujours
     // atteignable en scrollant, même si l'écran est petit.
     m.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:#0f0f1a;z-index:10001;overflow-y:auto;padding:16px;box-sizing:border-box;';
-    m.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;"><span style="color:#fff;font-size:26px;font-weight:600;">✅ Tâches</span><button id="tasksModalClose" style="background:none;border:none;color:#9ca3af;font-size:22px;cursor:pointer;">✕</button></div><div style="display:flex;gap:8px;margin-bottom:16px;"><input id="tasksNewInput" type="text" placeholder="Ajouter une tâche…" style="flex:1;box-sizing:border-box;padding:12px;border-radius:14px;border:1px solid #2d1b69;background:#1a1a2e;color:#e5e7eb;font-size:15px;"><button id="tasksAddBtn" style="padding:0 16px;border:none;border-radius:14px;background:linear-gradient(135deg,#4c1d95,#1e3a8a);color:#fff;font-size:15px;cursor:pointer;flex:none;">➕</button></div><div id="tasksList" style="color:#9ca3af;">Chargement...</div>';
+    // Regroupement par projet (demande de Victor le 07/11/2026) : concept entierement separe du
+    // bouton "📂 Projets" existant (conversations) - aucun lien, aucune table partagee. Un champ
+    // "Projet (optionnel)" avec autocompletion (datalist) sur les projets deja utilises permet de
+    // rattacher une tache manuelle, sans jamais forcer un choix.
+    m.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;"><span style="color:#fff;font-size:26px;font-weight:600;">✅ Tâches</span><button id="tasksModalClose" style="background:none;border:none;color:#9ca3af;font-size:22px;cursor:pointer;">✕</button></div><div style="display:flex;gap:8px;margin-bottom:8px;"><input id="tasksNewInput" type="text" placeholder="Ajouter une tâche…" style="flex:1;box-sizing:border-box;padding:12px;border-radius:14px;border:1px solid #2d1b69;background:#1a1a2e;color:#e5e7eb;font-size:15px;"><button id="tasksAddBtn" style="padding:0 16px;border:none;border-radius:14px;background:linear-gradient(135deg,#4c1d95,#1e3a8a);color:#fff;font-size:15px;cursor:pointer;flex:none;">➕</button></div><input id="tasksNewProject" list="tasksProjectsList" type="text" placeholder="Projet (optionnel)" style="width:100%;box-sizing:border-box;padding:10px 12px;border-radius:14px;border:1px solid #2d1b69;background:#15152a;color:#9ca3af;font-size:13px;margin-bottom:16px;"><datalist id="tasksProjectsList"></datalist><div id="tasksList" style="color:#9ca3af;">Chargement...</div>';
     document.body.appendChild(m);
     document.getElementById('tasksModalClose').onclick = closeTasksModal;
+    function renderGroup(container, title, items){
+      if (items.length === 0) return;
+      if (title) {
+        var h = document.createElement('div');
+        h.textContent = title;
+        h.style.cssText = 'color:#a78bfa;font-size:14px;font-weight:600;margin:14px 0 4px;';
+        container.appendChild(h);
+      }
+      items.forEach(function(t){
+        var row = document.createElement('div');
+        row.style.cssText = 'display:flex;align-items:center;gap:10px;padding:10px 4px;border-bottom:1px solid #1f1f33;';
+        var cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.checked = !!t.is_done;
+        cb.style.cssText = 'width:20px;height:20px;flex:none;';
+        var txt = document.createElement('span');
+        txt.textContent = t.content;
+        txt.style.cssText = 'flex:1;color:' + (t.is_done ? '#6b7280;text-decoration:line-through;' : '#e5e7eb;') + 'font-size:15px;word-break:break-word;';
+        var del = document.createElement('button');
+        del.textContent = '🗑';
+        del.style.cssText = 'background:none;border:none;color:#6b7280;font-size:18px;cursor:pointer;flex:none;';
+        cb.onchange = async function(){
+          await _f('/api/tasks/' + t.id, { method: 'PATCH', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + tok }, body: JSON.stringify({ is_done: cb.checked }) });
+          txt.style.color = cb.checked ? '#6b7280' : '#e5e7eb';
+          txt.style.textDecoration = cb.checked ? 'line-through' : 'none';
+        };
+        del.onclick = async function(){
+          await _f('/api/tasks/' + t.id, { method: 'DELETE', headers: { 'Authorization': 'Bearer ' + tok } });
+          row.remove();
+        };
+        row.appendChild(cb); row.appendChild(txt); row.appendChild(del);
+        container.appendChild(row);
+      });
+    }
+    async function loadProjectsList(){
+      try {
+        var pr = await _f('/api/tasks/projects', { headers: { 'Authorization': 'Bearer ' + tok } });
+        var projects = await pr.json();
+        var dl = document.getElementById('tasksProjectsList');
+        if (dl && Array.isArray(projects)) dl.innerHTML = projects.map(function(p){ return '<option value="' + String(p).replace(/"/g, '&quot;') + '">'; }).join('');
+      } catch (e) {}
+    }
     async function load(){
       var box = document.getElementById('tasksList');
       try {
@@ -3850,43 +3950,30 @@ setTimeout(updateInstructionsPlaceholder, 500);
         var list = await r.json();
         if (!Array.isArray(list) || list.length === 0) { box.innerHTML = '<div style="padding:20px;text-align:center;">Aucune tâche pour l\'instant.</div>'; return; }
         box.innerHTML = '';
+        var byProject = {};
+        var noProject = [];
         list.forEach(function(t){
-          var row = document.createElement('div');
-          row.style.cssText = 'display:flex;align-items:center;gap:10px;padding:10px 4px;border-bottom:1px solid #1f1f33;';
-          var cb = document.createElement('input');
-          cb.type = 'checkbox';
-          cb.checked = !!t.is_done;
-          cb.style.cssText = 'width:20px;height:20px;flex:none;';
-          var txt = document.createElement('span');
-          txt.textContent = t.content;
-          txt.style.cssText = 'flex:1;color:' + (t.is_done ? '#6b7280;text-decoration:line-through;' : '#e5e7eb;') + 'font-size:15px;word-break:break-word;';
-          var del = document.createElement('button');
-          del.textContent = '🗑';
-          del.style.cssText = 'background:none;border:none;color:#6b7280;font-size:18px;cursor:pointer;flex:none;';
-          cb.onchange = async function(){
-            await _f('/api/tasks/' + t.id, { method: 'PATCH', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + tok }, body: JSON.stringify({ is_done: cb.checked }) });
-            txt.style.color = cb.checked ? '#6b7280' : '#e5e7eb';
-            txt.style.textDecoration = cb.checked ? 'line-through' : 'none';
-          };
-          del.onclick = async function(){
-            await _f('/api/tasks/' + t.id, { method: 'DELETE', headers: { 'Authorization': 'Bearer ' + tok } });
-            row.remove();
-          };
-          row.appendChild(cb); row.appendChild(txt); row.appendChild(del);
-          box.appendChild(row);
+          if (t.project_name) { (byProject[t.project_name] = byProject[t.project_name] || []).push(t); }
+          else noProject.push(t);
         });
+        Object.keys(byProject).sort().forEach(function(p){ renderGroup(box, '📂 ' + p, byProject[p]); });
+        renderGroup(box, Object.keys(byProject).length ? 'Sans projet' : null, noProject);
       } catch (e) { box.innerHTML = '<div style="padding:20px;text-align:center;color:#ef4444;">Erreur de chargement.</div>'; }
     }
     document.getElementById('tasksAddBtn').onclick = async function(){
       var inp = document.getElementById('tasksNewInput');
+      var projInp = document.getElementById('tasksNewProject');
       var v = inp.value.trim();
       if (!v) return;
       inp.value = '';
-      await _f('/api/tasks', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + tok }, body: JSON.stringify({ content: v }) });
+      var proj = projInp.value.trim();
+      await _f('/api/tasks', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + tok }, body: JSON.stringify({ content: v, project_name: proj || null }) });
       load();
+      loadProjectsList();
     };
     document.getElementById('tasksNewInput').onkeydown = function(e){ if (e.key === 'Enter') document.getElementById('tasksAddBtn').click(); };
     load();
+    loadProjectsList();
   };
 })();
 </script>
