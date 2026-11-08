@@ -1505,10 +1505,20 @@ console.log('🔖 searchSources au moment de l affichage:', JSON.stringify(searc
             if ((Array.isArray(dupProp) && dupProp.length > 0) || (Array.isArray(dupTask) && dupTask.length > 0)) {
               console.log('task_proposal ignore (doublon detecte) :', taskText);
             } else {
+              // Le plan deja donne par Guideon dans sa reponse (reply) est sauvegarde avec la tache
+              // (demande de Victor le 08/11/2026, "tel que toi Claude tu le fais avec moi ici") : quand
+              // la tache concerne un vrai travail (ex: "ajouter la recherche vocale"), Guideon a deja
+              // detaille des etapes dans sa reponse - les perdre obligerait a tout redemander a la
+              // reprise. Plafonne a 4000 caracteres par securite (reponses tres longues improbables
+              // mais pas impossibles).
+              const planText = String(reply || '').slice(0, 4000) || null;
+              const taskMeta = {};
+              if (detectedProject) taskMeta.project = detectedProject;
+              if (planText) taskMeta.plan = planText;
               const insRes = await fetch(`${DB}/notifications`, {
                 method: 'POST',
                 headers: { ...SB, 'Prefer': 'return=minimal' },
-                body: JSON.stringify([{ user_id: user.id, type: 'task_proposal', title: '📝 Tâche détectée', message: taskText, is_read: false, meta: detectedProject ? { project: detectedProject } : null }])
+                body: JSON.stringify([{ user_id: user.id, type: 'task_proposal', title: '📝 Tâche détectée', message: taskText, is_read: false, meta: Object.keys(taskMeta).length ? taskMeta : null }])
               });
               if (!insRes.ok) console.error('task_proposal insert error:', insRes.status, await insRes.text());
             }
@@ -4112,7 +4122,7 @@ app.post('/api/tasks', async (req, res) => {
     const token = req.headers.authorization?.split(' ')[1];
     const user = checkToken(token);
     if (!user) return res.status(401).json({ error: 'Non autorisé' });
-    const { content, project_name } = req.body;
+    const { content, project_name, plan } = req.body;
     if (!content || !String(content).trim()) return res.status(400).json({ error: 'Contenu requis' });
     const trimmedContent = String(content).trim();
     // Detection de doublon cote utilisateur (demande de Victor le 08/11/2026) : avant toute creation,
@@ -4129,6 +4139,9 @@ app.post('/api/tasks', async (req, res) => {
     }
     const payload = { user_id: user.id, content: trimmedContent };
     if (project_name != null && String(project_name).trim()) payload.project_name = String(project_name).trim();
+    // Plan de travail deja donne par Guideon, sauvegarde avec la tache pour pouvoir y revenir plus
+    // tard sans tout redemander (demande de Victor le 08/11/2026).
+    if (plan != null && String(plan).trim()) payload.plan = String(plan).trim().slice(0, 4000);
     const sbRes = await fetch(`${DB}/tasks`, { method: 'POST', headers: { ...SB, 'Prefer': 'return=representation' }, body: JSON.stringify(payload) });
     if (!sbRes.ok) { const errText = await sbRes.text(); console.error('tasks/add Supabase error:', sbRes.status, errText); return res.status(500).json({ error: 'Échec enregistrement : ' + errText }); }
     const created = await sbRes.json();

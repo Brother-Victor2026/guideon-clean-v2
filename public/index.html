@@ -1757,7 +1757,7 @@ Vous ne recevrez plus de notifications`,()=>{},()=>{document.getElementById('not
 Vos données seront sauvegardées en cloud
 Veuillez appuyer sur OK pour l'activer.`,()=>{},()=>{document.getElementById('cloudBackup').checked=false;});}else{showConfirmDialog(`❌ Sauvegarde cloud désactivée
 Vos données ne seront plus sauvegardées en cloud
-Êtes-vous sûr(e) de le désactiver ? Si oui, appuyez sur OK.`,()=>{},()=>{document.getElementById('cloudBackup').checked=true;});}" > Sauvegarder dans le cloud (vos conversations sont enregistrées en ligne et retrouvables sur tous vos appareils ; décochée, elles ne sont pas conservées)</label><label style="color:#9ca3af;font-size:12px;display:flex;align-items:center;gap:8px;margin-bottom:16px;"><input type="checkbox" id="deleteHistoryAuto" checked style="pointer-events:auto;" onchange="saveCheckboxState(this.id,this.checked);if(this.checked){showConfirmDialog('✅ Suppression automatique activée\nVotre historique sera supprimé après 30 jours d\'inactivité\nVeuillez appuyer sur OK pour l\'activer.',()=>{},()=>{document.getElementById('deleteHistoryAuto').checked=false;});}else{showConfirmDialog('❌ Suppression automatique désactivée\nVotre historique sera conservé\nÊtes-vous sûr(e) de le désactiver ? Si oui, appuyez sur OK.',()=>{},()=>{document.getElementById('deleteHistoryAuto').checked=true;});}"> Supprimer l'historique après 30 jours inactifs (auto-suppression)</label><h4 style="color:#a78bfa;">Données tierces</h4><div style="background:#0f0f1a;border-left:3px solid #7c3aed;padding:10px;border-radius:4px;margin-bottom:12px;"><p style="color:#9ca3af;font-size:11px;margin:0;">✓ Aucune donnée personnelle vendue à des tiers<br>✓ Chiffrement end-to-end disponible<br>✓ Droits RGPD & CCPA garantis</p></div><button onclick="downloadPrivacyReport()" style="width:100%;padding:10px;background:#1e3a8a;color:#fff;border:none;border-radius:8px;cursor:pointer;">📄 Rapport de confidentialité</button></div><div id="tab-updates" class="tab-content" style="display:none;"><h4 style="color:#a78bfa;">📦 Mises à jour</h4><div style="background:#0f0f1a;border:1px solid #2d1b69;border-radius:8px;padding:12px;margin-bottom:12px;"><div style="color:#a78bfa;font-size:16px;font-weight:600;margin-bottom:8px;">✅ Dernière version</div><div style="color:#7c3aed;font-size:14px;margin-bottom:4px;">v<span id="latestVersion">1.0.321</span><div id="versionDisplay" style="color:#9ca3af;font-size:11px;margin-top:8px;">⏱️ Auto-version activée</div></div><div style="color:#9ca3af;font-size:11px;margin-bottom:12px;">📅 <span id="updateDate">08/11/2026</span> à <span id="updateTime">19:20:32</span></div><button onclick="checkUpdate()" style="width:100%;padding:10px;background:#7c3aed;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;margin-bottom:12px;">✓ Vérifier mise à jour</button></div><div style="background:#0f0f1a;border:1px solid #2d1b69;border-radius:8px;padding:12px;"><div style="color:#a78bfa;font-size:12px;font-weight:600;margin-bottom:8px;">📋 Changelog</div><div style="color:#9ca3af;font-size:11px;line-height:1.8;"><div>✨ Endpoint /api/sessions/logout-others</div><div>🎨 Interface d'inscription améliorée</div><div>🔐 Nouvelles options de confidentialité</div><div>📊 Statistiques détaillées</div></div></div></div><div id="tab-realtime" class="tab-content" style="display:none;"><h4 style="color:#a78bfa;">📊 Données en temps réel</h4><button onclick="loadRealtime()" style="width:100%;padding:10px;background:#1e3a8a;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:12px;">🔄 Charger données</button><div id="realtimeData" style="background:#0f0f1a;border:1px solid #2d1b69;border-radius:8px;padding:12px;font-size:12px;color:#9ca3af;min-height:100px;"></div><p style="color:#6b7280;font-size:10.5px;margin-top:8px;line-height:1.5;">✓ Toutes les données ci-dessus sont réelles et mises à jour à chaque chargement, pas des valeurs inventées : météo via <strong>Open-Meteo</strong> (modèles météorologiques officiels tels que le DWD allemand et NOAA), actualités via de vrais flux RSS (Google News, Le Monde, BBC, etc.), cotations boursières via <strong>Yahoo Finance</strong>.</p></div><div id="tab-memories" class="tab-content" style="display:none;"><h4 style="color:#a78bfa;margin-bottom:12px;">🧠 Mes mémoires</h4><div id="memoriesList" style="max-height:300px;overflow-y:auto;margin-bottom:12px;border:1px solid #2d1b69;border-radius:8px;padding:8px;">Chargement...</div><textarea id="newMemory" placeholder="Ajouter une mémoire..." style="width:100%;padding:10px;background:#0f0f1a;color:#fff;border:1px solid #2d1b69;border-radius:8px;margin-bottom:8px;box-sizing:border-box;height:60px;resize:none;font-size:12px;"></textarea><button onclick="addMemory()" style="width:100%;padding:10px;background:#10b981;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:8px;">➕ Ajouter</button><button onclick="loadMemories()" style="width:100%;padding:8px;background:#6b7280;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:12px;">🔄 Rafraîchir</button></div><div id="tab-about" class="tab-content" style="display:none;"><h3 style="color:#a78bfa;font-size:18px;margin-bottom:4px;">Guidéon v2.0</h3><p style="color:#7c3aed;font-size:12px;margin-bottom:12px;">🎯 Production | Juillet 2026</p><h4 style="color:#a78bfa;">Liens</h4><div style="display:flex;flex-direction:column;gap:6px;"><a href="#" style="color:#7c3aed;text-decoration:none;font-size:12px;">📖 Docs</a><a href="mailto:support@guideon.ai" style="color:#7c3aed;text-decoration:none;font-size:12px;">📧 Support</a><a href="#" style="color:#7c3aed;text-decoration:none;font-size:12px;">📊 Status</a></div></div></div></div></div>
+Êtes-vous sûr(e) de le désactiver ? Si oui, appuyez sur OK.`,()=>{},()=>{document.getElementById('cloudBackup').checked=true;});}" > Sauvegarder dans le cloud (vos conversations sont enregistrées en ligne et retrouvables sur tous vos appareils ; décochée, elles ne sont pas conservées)</label><label style="color:#9ca3af;font-size:12px;display:flex;align-items:center;gap:8px;margin-bottom:16px;"><input type="checkbox" id="deleteHistoryAuto" checked style="pointer-events:auto;" onchange="saveCheckboxState(this.id,this.checked);if(this.checked){showConfirmDialog('✅ Suppression automatique activée\nVotre historique sera supprimé après 30 jours d\'inactivité\nVeuillez appuyer sur OK pour l\'activer.',()=>{},()=>{document.getElementById('deleteHistoryAuto').checked=false;});}else{showConfirmDialog('❌ Suppression automatique désactivée\nVotre historique sera conservé\nÊtes-vous sûr(e) de le désactiver ? Si oui, appuyez sur OK.',()=>{},()=>{document.getElementById('deleteHistoryAuto').checked=true;});}"> Supprimer l'historique après 30 jours inactifs (auto-suppression)</label><h4 style="color:#a78bfa;">Données tierces</h4><div style="background:#0f0f1a;border-left:3px solid #7c3aed;padding:10px;border-radius:4px;margin-bottom:12px;"><p style="color:#9ca3af;font-size:11px;margin:0;">✓ Aucune donnée personnelle vendue à des tiers<br>✓ Chiffrement end-to-end disponible<br>✓ Droits RGPD & CCPA garantis</p></div><button onclick="downloadPrivacyReport()" style="width:100%;padding:10px;background:#1e3a8a;color:#fff;border:none;border-radius:8px;cursor:pointer;">📄 Rapport de confidentialité</button></div><div id="tab-updates" class="tab-content" style="display:none;"><h4 style="color:#a78bfa;">📦 Mises à jour</h4><div style="background:#0f0f1a;border:1px solid #2d1b69;border-radius:8px;padding:12px;margin-bottom:12px;"><div style="color:#a78bfa;font-size:16px;font-weight:600;margin-bottom:8px;">✅ Dernière version</div><div style="color:#7c3aed;font-size:14px;margin-bottom:4px;">v<span id="latestVersion">1.0.322</span><div id="versionDisplay" style="color:#9ca3af;font-size:11px;margin-top:8px;">⏱️ Auto-version activée</div></div><div style="color:#9ca3af;font-size:11px;margin-bottom:12px;">📅 <span id="updateDate">08/11/2026</span> à <span id="updateTime">19:40:54</span></div><button onclick="checkUpdate()" style="width:100%;padding:10px;background:#7c3aed;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;margin-bottom:12px;">✓ Vérifier mise à jour</button></div><div style="background:#0f0f1a;border:1px solid #2d1b69;border-radius:8px;padding:12px;"><div style="color:#a78bfa;font-size:12px;font-weight:600;margin-bottom:8px;">📋 Changelog</div><div style="color:#9ca3af;font-size:11px;line-height:1.8;"><div>✨ Endpoint /api/sessions/logout-others</div><div>🎨 Interface d'inscription améliorée</div><div>🔐 Nouvelles options de confidentialité</div><div>📊 Statistiques détaillées</div></div></div></div><div id="tab-realtime" class="tab-content" style="display:none;"><h4 style="color:#a78bfa;">📊 Données en temps réel</h4><button onclick="loadRealtime()" style="width:100%;padding:10px;background:#1e3a8a;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:12px;">🔄 Charger données</button><div id="realtimeData" style="background:#0f0f1a;border:1px solid #2d1b69;border-radius:8px;padding:12px;font-size:12px;color:#9ca3af;min-height:100px;"></div><p style="color:#6b7280;font-size:10.5px;margin-top:8px;line-height:1.5;">✓ Toutes les données ci-dessus sont réelles et mises à jour à chaque chargement, pas des valeurs inventées : météo via <strong>Open-Meteo</strong> (modèles météorologiques officiels tels que le DWD allemand et NOAA), actualités via de vrais flux RSS (Google News, Le Monde, BBC, etc.), cotations boursières via <strong>Yahoo Finance</strong>.</p></div><div id="tab-memories" class="tab-content" style="display:none;"><h4 style="color:#a78bfa;margin-bottom:12px;">🧠 Mes mémoires</h4><div id="memoriesList" style="max-height:300px;overflow-y:auto;margin-bottom:12px;border:1px solid #2d1b69;border-radius:8px;padding:8px;">Chargement...</div><textarea id="newMemory" placeholder="Ajouter une mémoire..." style="width:100%;padding:10px;background:#0f0f1a;color:#fff;border:1px solid #2d1b69;border-radius:8px;margin-bottom:8px;box-sizing:border-box;height:60px;resize:none;font-size:12px;"></textarea><button onclick="addMemory()" style="width:100%;padding:10px;background:#10b981;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:8px;">➕ Ajouter</button><button onclick="loadMemories()" style="width:100%;padding:8px;background:#6b7280;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:12px;">🔄 Rafraîchir</button></div><div id="tab-about" class="tab-content" style="display:none;"><h3 style="color:#a78bfa;font-size:18px;margin-bottom:4px;">Guidéon v2.0</h3><p style="color:#7c3aed;font-size:12px;margin-bottom:12px;">🎯 Production | Juillet 2026</p><h4 style="color:#a78bfa;">Liens</h4><div style="display:flex;flex-direction:column;gap:6px;"><a href="#" style="color:#7c3aed;text-decoration:none;font-size:12px;">📖 Docs</a><a href="mailto:support@guideon.ai" style="color:#7c3aed;text-decoration:none;font-size:12px;">📧 Support</a><a href="#" style="color:#7c3aed;text-decoration:none;font-size:12px;">📊 Status</a></div></div></div></div></div>
 </div></div>
 <div id="sharemod" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9998;align-items:center;justify-content:center;">
 <div style="background:#1a1a2e;padding:24px;border-radius:16px;width:88%;max-width:340px;border:1px solid #2d1b69;">
@@ -3769,6 +3769,33 @@ setTimeout(updateInstructionsPlaceholder, 500);
       })
       .catch(function(){ btn.textContent = '❌ Erreur, réessaie'; btn.disabled = false; });
   };
+  // Demande "maintenant ou plus tard" apres ajout d'une tache qui a un plan (demande de Victor,
+  // 08/11/2026). "Maintenant" : rien a faire techniquement, le plan est deja visible juste au-dessus
+  // dans la conversation, on confirme simplement et la discussion continue normalement. "Plus tard" :
+  // confirme que le plan reste sauvegarde avec la tache (consultable dans le modal Taches, et
+  // rappele automatiquement a la reprise via la suggestion de tache suivante - voir
+  // gShowTaskCompleteProposal).
+  window.gAskWorkNowOrLater = function(){
+    var chat = document.getElementById('chat');
+    if (!chat) return;
+    var id = 'workwhen-' + Date.now();
+    var d = document.createElement('div');
+    d.className = 'msg g';
+    d.id = id;
+    d.innerHTML = '<div class="av g">🧠</div><div class="mc"><div class="bub">Tu veux qu\'on s\'y mette maintenant, ou on garde ça pour une prochaine session de travail ?</div><div class="ba" style="margin-top:6px;"><button class="cb" data-act="now">🚀 Maintenant</button><button class="cb" data-act="later">📋 Plus tard</button></div></div>';
+    chat.appendChild(d);
+    try { gSmartScroll(); } catch (e) {}
+    var btnNow = d.querySelector('[data-act="now"]');
+    var btnLater = d.querySelector('[data-act="later"]');
+    if (btnNow) btnNow.onclick = function(){
+      var bar = d.querySelector('.ba'); if (bar) bar.remove();
+      d.querySelector('.bub').insertAdjacentHTML('beforeend', '<div style="margin-top:6px;color:#34d399;font-size:13px;">Parfait, on continue ! 💪</div>');
+    };
+    if (btnLater) btnLater.onclick = function(){
+      var bar = d.querySelector('.ba'); if (bar) bar.remove();
+      d.querySelector('.bub').insertAdjacentHTML('beforeend', '<div style="margin-top:6px;color:#9ca3af;font-size:13px;">Entendu, le plan reste sauvegardé avec la tâche. Je te le rappellerai à la reprise.</div>');
+    };
+  };
   window.gShowTaskProposal = function(n){
     if (!n || n.id == null || document.getElementById('taskprop-' + n.id)) return;
     var chat = document.getElementById('chat');
@@ -3776,6 +3803,7 @@ setTimeout(updateInstructionsPlaceholder, 500);
     var token = localStorage.getItem('gtoken');
     var meta = n.meta || {};
     var proj = meta.project || null;
+    var plan = meta.plan || null;
     var safeMsg = String(n.message || '').replace(/</g, '&lt;');
     var projHtml = proj ? (' <span style="opacity:0.8;">(projet : ' + String(proj).replace(/</g, '&lt;') + ')</span>') : '';
     var d = document.createElement('div');
@@ -3790,7 +3818,7 @@ setTimeout(updateInstructionsPlaceholder, 500);
     if (btnOui) btnOui.onclick = async function(){
       btnOui.disabled = true; if (btnNon) btnNon.disabled = true;
       try {
-        var r = await _f('/api/tasks', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }, body: JSON.stringify({ content: n.message, project_name: proj }) });
+        var r = await _f('/api/tasks', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }, body: JSON.stringify({ content: n.message, project_name: proj, plan: plan }) });
         var bar = d.querySelector('.ba'); if (bar) bar.remove();
         // Doublon detecte cote serveur (demande de Victor, 08/11/2026) : informe clairement au lieu
         // d'afficher a tort "Ajoutee".
@@ -3798,6 +3826,11 @@ setTimeout(updateInstructionsPlaceholder, 500);
           d.querySelector('.bub').insertAdjacentHTML('beforeend', '<div style="margin-top:6px;color:#f59e0b;font-size:13px;">⚠️ Cette tâche était déjà dans ta liste.</div>');
         } else if (r.ok) {
           d.querySelector('.bub').insertAdjacentHTML('beforeend', '<div style="margin-top:6px;color:#34d399;font-size:13px;">✅ Ajoutée à tes tâches.</div>');
+          // Demande de Victor (08/11/2026, "tel que toi Claude tu manifestes ou reagis intelligemment
+          // envers moi") : si Guideon a deja donne un plan pour cette tache, demander maintenant si
+          // l'utilisateur veut s'y mettre tout de suite ou garder ca pour une prochaine session - le
+          // plan reste de toute facon sauvegarde avec la tache (voir openTasksModal).
+          if (plan) setTimeout(function(){ try { window.gAskWorkNowOrLater && window.gAskWorkNowOrLater(); } catch (e) {} }, 400);
         } else {
           d.querySelector('.bub').insertAdjacentHTML('beforeend', '<div style="margin-top:6px;color:#ef4444;font-size:13px;">❌ Erreur, réessaie plus tard.</div>');
         }
@@ -3846,7 +3879,12 @@ setTimeout(updateInstructionsPlaceholder, 500);
             if (meta.project) next = pending.find(function(t){ return t.project_name === meta.project; });
             if (!next) next = pending[0];
             if (next) {
-              setTimeout(function(){ try { am('guideon', '➡️ Tu veux continuer avec la tâche suivante : « ' + next.content + ' » ?'); } catch (e) {} }, 500);
+              // Si la tache suivante a un plan sauvegarde (demande de Victor, 08/11/2026), on le
+              // rappelle directement ici - comme Claude le fait en reprenant un travail en cours -
+              // plutot que de forcer l'utilisateur a rouvrir le modal Taches pour le retrouver.
+              var nextMsg = '➡️ Tu veux continuer avec la tâche suivante : « ' + next.content + ' » ?';
+              if (next.plan) nextMsg += '\n\n📋 Voici le plan qu\'on avait :\n' + next.plan;
+              setTimeout(function(){ try { am('guideon', nextMsg); } catch (e) {} }, 500);
             }
           }
         } catch (e) {}
@@ -3938,6 +3976,7 @@ setTimeout(updateInstructionsPlaceholder, 500);
         container.appendChild(h);
       }
       items.forEach(function(t){
+        var wrap = document.createElement('div');
         var row = document.createElement('div');
         row.style.cssText = 'display:flex;align-items:center;gap:10px;padding:10px 4px;border-bottom:1px solid #1f1f33;';
         var cb = document.createElement('input');
@@ -3957,10 +3996,28 @@ setTimeout(updateInstructionsPlaceholder, 500);
         };
         del.onclick = async function(){
           await _f('/api/tasks/' + t.id, { method: 'DELETE', headers: { 'Authorization': 'Bearer ' + tok } });
-          row.remove();
+          wrap.remove();
         };
-        row.appendChild(cb); row.appendChild(txt); row.appendChild(del);
-        container.appendChild(row);
+        row.appendChild(cb); row.appendChild(txt);
+        // Plan de travail sauvegarde avec la tache (demande de Victor, 08/11/2026) : bouton repliable
+        // pour le consulter sans avoir a redemander a Guideon ce qui avait deja ete dit.
+        if (t.plan) {
+          var planBtn = document.createElement('button');
+          planBtn.textContent = '📋';
+          planBtn.title = 'Voir le plan';
+          planBtn.style.cssText = 'background:none;border:none;color:#a78bfa;font-size:17px;cursor:pointer;flex:none;';
+          row.appendChild(planBtn);
+        }
+        row.appendChild(del);
+        wrap.appendChild(row);
+        if (t.plan) {
+          var planBox = document.createElement('div');
+          planBox.style.cssText = 'display:none;background:#15152a;border-radius:10px;padding:10px 12px;margin:0 4px 10px;color:#9ca3af;font-size:12.5px;line-height:1.5;white-space:pre-wrap;';
+          planBox.textContent = t.plan;
+          wrap.appendChild(planBox);
+          planBtn.onclick = function(){ planBox.style.display = (planBox.style.display === 'none') ? 'block' : 'none'; };
+        }
+        container.appendChild(wrap);
       });
     }
     async function loadProjectsList(){
