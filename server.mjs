@@ -1441,7 +1441,13 @@ console.log('🔖 searchSources au moment de l affichage:', JSON.stringify(searc
     // une notification de type 'task_proposal', affichee cote client comme une carte Oui/Non dans le
     // chat (voir gHandleTaskProposal dans public/index.html). Meme architecture Groq que l'extraction
     // de memories ci-dessus, modele separe, prompt dedie.
-    if (reply && user && user.id) {
+    // reminderDone === true signifie qu'un rappel personnel avec heure precise vient d'etre cree
+    // CE TOUR-CI via la balise [CREATE_REMINDER] (voir plus haut) : on evite alors de proposer EN PLUS
+    // une tache en double pour exactement le meme contenu - c'est deja trace comme rappel. L'utilisateur
+    // peut toujours l'ajouter aussi comme tache manuellement via le bouton dedie sur la carte de rappel
+    // (demande de Victor le 08/11/2026 : "les rappels... peuvent etre aussi ajoutes comme des taches si
+    // l'utilisateur veut").
+    if (reply && user && user.id && !reminderDone) {
       try {
         // Liste des projets DEJA existants pour cet utilisateur (demande de Victor le 07/11/2026) :
         // le modele ne peut rattacher une tache qu'a un projet DEJA CREE par l'utilisateur (manuellement
@@ -3206,6 +3212,12 @@ async function notifyNewVersion() {
       const known = !!byHost[SERVER_HOST];
       await mergeUserCheckboxes(u.id, { lastNotifiedVersionByHost: { ...byHost, [SERVER_HOST]: v } });
       if (!known) continue;
+      // Si plusieurs versions sortent rapprochees (deploiements successifs en cours de developpement),
+      // on marque comme lues les anciennes notifications "nouvelle version" non lues avant d'inserer la
+      // nouvelle : seule la derniere version reste affichee comme non lue, au lieu de s'empiler en
+      // plusieurs cartes quasi identiques (signale par Victor le 08/11/2026).
+      const { error: clearUpdateErr } = await sbAdmin.from('notifications').update({ is_read: true }).eq('user_id', u.id).eq('type', 'update').eq('is_read', false);
+      if (clearUpdateErr) console.error('Nouvelle version (purge anciennes non lues):', clearUpdateErr.message);
       await sbAdmin.from('notifications').insert([{ user_id: u.id, type: 'update', title: '📦 Nouvelle version disponible', message: `Guidéon ${v} est maintenant disponible. Rafraîchissez pour mettre à jour.`, is_read: false }]);
       sendPush(u.id, 'general', { title: '📦 Nouvelle version disponible', body: `Guidéon ${v} est disponible.`, url: '/', updateAction: true }).catch(e => console.error('sendPush (nouvelle version):', e.message));
     }
