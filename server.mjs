@@ -4093,7 +4093,20 @@ app.post('/api/tasks', async (req, res) => {
     if (!user) return res.status(401).json({ error: 'Non autorisé' });
     const { content, project_name } = req.body;
     if (!content || !String(content).trim()) return res.status(400).json({ error: 'Contenu requis' });
-    const payload = { user_id: user.id, content: String(content).trim() };
+    const trimmedContent = String(content).trim();
+    // Detection de doublon cote utilisateur (demande de Victor le 08/11/2026) : avant toute creation,
+    // on verifie si une tache NON terminee avec exactement le meme contenu (insensible a la casse)
+    // existe deja pour cet utilisateur - que l'ajout vienne du modal manuel, de la confirmation d'une
+    // proposition automatique, ou du bouton "Ajouter aussi comme tache" sur un rappel. La detection
+    // automatique (extraction Groq) verifiait deja ca avant de PROPOSER une tache (v1.0.315) ; ceci
+    // couvre en plus la creation manuelle elle-meme, pour qu'aucun chemin ne puisse creer un doublon.
+    const encDupContent = encodeURIComponent(trimmedContent.replace(/[,()]/g, ' ').trim());
+    const dupCheckRes = await fetch(`${DB}/tasks?user_id=eq.${user.id}&is_done=eq.false&content=ilike.${encDupContent}&select=id,content,project_name`, { headers: SB });
+    const dupCheck = dupCheckRes.ok ? await dupCheckRes.json() : [];
+    if (Array.isArray(dupCheck) && dupCheck.length > 0) {
+      return res.status(409).json({ error: 'duplicate', message: 'Cette tâche existe déjà dans ta liste.', existing: dupCheck[0] });
+    }
+    const payload = { user_id: user.id, content: trimmedContent };
     if (project_name != null && String(project_name).trim()) payload.project_name = String(project_name).trim();
     const sbRes = await fetch(`${DB}/tasks`, { method: 'POST', headers: { ...SB, 'Prefer': 'return=representation' }, body: JSON.stringify(payload) });
     if (!sbRes.ok) { const errText = await sbRes.text(); console.error('tasks/add Supabase error:', sbRes.status, errText); return res.status(500).json({ error: 'Échec enregistrement : ' + errText }); }
