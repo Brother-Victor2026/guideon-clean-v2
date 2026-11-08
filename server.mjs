@@ -3217,7 +3217,20 @@ setTimeout(notifyNewVersion, 60 * 1000);
 setInterval(notifyNewVersion, 6 * 60 * 60 * 1000);
 
 // Notifications importantes automatiques : une seule fois par evenement, pour les comptes qui ont active les notifications
+// Verrou en memoire contre les appels concurrents sur le meme (utilisateur, mark) - demande de
+// Victor le 08/11/2026 apres avoir constate 4 notifications "Taches en attente" identiques creees
+// en 1,4 seconde. Cause reelle : le client appelle /api/memory/view depuis plusieurs endroits
+// differents (profil, instructions, etc.), et plusieurs peuvent arriver quasi simultanement a la
+// reouverture de l'app, chacun redeclenchant independamment ces verifications AVANT que la premiere
+// ait eu le temps d'enregistrer qu'elle l'avait deja fait (lecture-puis-ecriture non atomique).
+// Le serveur ne tournant qu'en un seul processus (WEB_CONCURRENCY=1), un verrou en memoire synchrone
+// (donc sans fenetre de course possible en JS) suffit a bloquer completement ce doublon, quel que
+// soit le nombre d'appels concurrents.
+const notifyOnceInFlight = new Set();
 async function notifyOnce(u, mark, minGapMs, row, extra = {}) {
+  const lockKey = u.id + ':' + mark;
+  if (notifyOnceInFlight.has(lockKey)) return false;
+  notifyOnceInFlight.add(lockKey);
   try {
     const cb0 = u.checkboxes || {};
     const marks0 = (cb0.notifMarks && typeof cb0.notifMarks === 'object') ? cb0.notifMarks : {};
@@ -3231,6 +3244,7 @@ async function notifyOnce(u, mark, minGapMs, row, extra = {}) {
     sendPush(u.id, 'general', { title: row.title, body: row.message, url: '/', ...extra }).catch(e => console.error('sendPush (notifyOnce, ' + mark + '):', e.message));
     return true;
   } catch (e) { console.error('Notification', mark, ':', e.message); return false; }
+  finally { notifyOnceInFlight.delete(lockKey); }
 }
 async function runImportantNotifications() {
   try {
@@ -3417,6 +3431,13 @@ async function maybeSendDailyBriefing(u) {
   if (cb.notifCheck !== true) return;
   const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Porto-Novo' }).format(new Date());
   if (cb.lastBriefingDate === today) return;
+  // Meme verrou en memoire que notifyOnce (demande de Victor le 08/11/2026) : plusieurs appels
+  // concurrents a /api/memory/view passaient tous le test ci-dessus avant que le premier n'ait eu le
+  // temps d'enregistrer lastBriefingDate, creant plusieurs briefings identiques le meme jour.
+  const lockKey = 'briefing:' + u.id;
+  if (notifyOnceInFlight.has(lockKey)) return;
+  notifyOnceInFlight.add(lockKey);
+  try {
   const message = await buildDailyBriefingMessage(u);
   if (!message) return;
   await mergeUserCheckboxes(u.id, { lastBriefingDate: today });
@@ -3433,6 +3454,7 @@ async function maybeSendDailyBriefing(u) {
   // l'appareil - demande de Victor le 07/11/2026 (avant ce correctif, toucher la notification se
   // contentait de la fermer/ouvrir la page d'accueil sans rien montrer du contenu).
   sendPush(u.id, 'general', { title: '☀️ Votre briefing du jour', body: message, url: '/', briefingAction: true }).catch(e => console.error('sendPush (briefing):', e.message));
+  } finally { notifyOnceInFlight.delete(lockKey); }
 }
 
 // Demander suppression données utilisateur (RGPD)
