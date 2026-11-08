@@ -1152,6 +1152,10 @@ const sysContent = (userRealName ? `Prenom reel de l'utilisateur (donnee fiable 
       geminiBodyObj.reasoning_effort = 'medium';
       geminiBodyObj.messages = [
         { role: 'system', content: "IMPORTANT POUR TA REFLEXION INTERNE (avant ta reponse finale) : reflechis UNIQUEMENT en francais, jamais en anglais. Structure ta reflexion comme une liste de themes courts que tu vas traiter, un theme par ligne (exemple: 'Theme 1: le match d hier', 'Theme 2: le contexte du tournoi'), PAS une note technique de planification ni du texte en anglais. Chaque ligne doit etre un vrai sujet lisible par un humain, pas une instruction de formatage." },
+        // Demande de Victor (08/11/2026, "comme toi Claude") : les reponses techniques detaillees
+        // tournaient au style "article de journal" (longs paragraphes sous chaque titre). On garde la
+        // structure (titres, listes, etapes numerotees) mais on vise la concision point par point.
+        { role: 'system', content: "IMPORTANT POUR TA REPONSE FINALE : reste concis et direct, meme sur un sujet technique detaille. Pour chaque point, etape ou ligne d'une liste, prefere une ou deux phrases courtes a un long paragraphe explicatif - comme une liste de travail entre collegues, pas un article a lire. Garde les titres, puces ou etapes numerotees quand ils aident a structurer, mais n'ajoute pas d'introduction ni de transition superflue entre les points. Developpe un point sur plusieurs phrases SEULEMENT si c'est indispensable a la comprehension." },
         ...geminiBodyObj.messages
       ];
     }
@@ -1191,9 +1195,35 @@ const sysContent = (userRealName ? `Prenom reel de l'utilisateur (donnee fiable 
         res.end();
         return;
       }
-      res.write(`data: ${JSON.stringify({ error: errData.error?.message || JSON.stringify(errData) })}\n\n`);
-      res.end();
-      return;
+      // "Request too large ... tokens per minute (TPM)" (signale par Victor le 08/11/2026, capture
+      // d'ecran montrant l'erreur brute du fournisseur affichee telle quelle dans le chat) : la
+      // conversation (historique + message) depasse le quota de tokens par minute du modele. On
+      // retente UNE fois avec un historique reduit (les 6 derniers messages) avant d'abandonner -
+      // suffit dans la grande majorite des cas a repasser sous la limite.
+      const isTooLarge = response.status === 413 || /request too large|tokens per minute|\btpm\b/i.test(errData.error?.message || '');
+      if (isTooLarge) {
+        console.error('GEMINI TPM/trop volumineux - nouvelle tentative avec historique reduit.');
+        const shortHist = hist.slice(-6).filter(h=>h&&h.role&&h.content).map(h => ({ role: h.role, content: h.content }));
+        const retryMessages = isComplexRequest
+          ? [geminiBodyObj.messages[0], SYSTEM_MSG, ...shortHist, { role: 'user', content: message }]
+          : [SYSTEM_MSG, ...shortHist, { role: 'user', content: message }];
+        const retryRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+          method: "POST",
+          headers: { "Authorization": `Bearer ${API_KEY}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ ...geminiBodyObj, messages: retryMessages })
+        });
+        if (retryRes.ok) {
+          response = retryRes;
+        } else {
+          res.write(`data: ${JSON.stringify({ error: "Ta conversation est devenue trop longue pour une seule r\u00e9ponse. Essaie d'envoyer un message plus court, ou commence une nouvelle conversation." })}\n\n`);
+          res.end();
+          return;
+        }
+      } else {
+        res.write(`data: ${JSON.stringify({ error: errData.error?.message || JSON.stringify(errData) })}\n\n`);
+        res.end();
+        return;
+      }
     }
 
     
