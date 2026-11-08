@@ -1466,7 +1466,7 @@ console.log('🔖 searchSources au moment de l affichage:', JSON.stringify(searc
             model: 'qwen/qwen3.8-27b',
             max_tokens: 150,
             messages: [
-              { role: 'system', content: 'Tu es un extracteur de TACHES STRICT. N\'extrait une tache QUE si l\'utilisateur exprime CLAIREMENT une intention d\'action future et concrete qu\'il doit accomplir lui-meme (ex: "il faut que je...", "je dois...", "n\'oublie pas de...", "je vais devoir..."). Ignore : les taches deja faites ou terminees, les simples questions, les faits sans action, les intentions vagues ou hypothetiques ("je devrais peut-etre un jour..."). ' + projectsHint + ' Si une tache claire est exprimee ET que l\'utilisateur mentionne EXPLICITEMENT un de ces projets existants, reponds avec UNE SEULE ligne au format exact "- texte court et actionnable de la tache | projet: NomDuProjetExact" (le nom du projet doit etre copie EXACTEMENT comme dans la liste fournie). Si une tache claire est exprimee SANS mention explicite d\'un projet existant, reponds avec UNE SEULE ligne au format exact "- texte court et actionnable de la tache" (sans le "| projet:"). Si aucune tache claire n\'est exprimee, reponds UNIQUEMENT "AUCUNE".' },
+              { role: 'system', content: 'Tu es un extracteur de TACHES DE TRAVAIL STRICT - PAS un extracteur de rappels personnels. Une tache de travail est une action liee au TRAVAIL OU AUX PROJETS menes EN COLLABORATION avec Guideon dans cette conversation (ex: coder, rediger, corriger, finaliser, tester, avancer sur un projet commun avec Guideon). Ce n\'est JAMAIS une action personnelle de la vie quotidienne de l\'utilisateur, sans rapport avec ce travail commun, meme exprimee avec "il faut que je...", "je dois..." ou "n\'oublie pas de..." (ex: aller au marche, acheter du pain, un rendez-vous, une course personnelle, un achat) : Guideon ne participe pas a ces actions-la (il ne peut pas aller au marche a la place de l\'utilisateur), donc ce sont des RAPPELS PERSONNELS (avec heure precise), jamais des taches. Pose-toi la question : Guideon participe-t-il reellement, dans le chat, a l\'accomplissement de cette action, ou est-ce purement personnel et hors du travail en cours ensemble ? Si c\'est purement personnel, reponds UNIQUEMENT "AUCUNE", meme si l\'intention d\'action est claire. Ignore aussi : les taches deja faites ou terminees, les simples questions, les faits sans action, les intentions vagues ou hypothetiques ("je devrais peut-etre un jour..."). ' + projectsHint + ' Si une VRAIE tache de travail est exprimee ET que l\'utilisateur mentionne EXPLICITEMENT un de ces projets existants, reponds avec UNE SEULE ligne au format exact "- texte court et actionnable de la tache | projet: NomDuProjetExact" (le nom du projet doit etre copie EXACTEMENT comme dans la liste fournie). Si une VRAIE tache de travail est exprimee SANS mention explicite d\'un projet existant, reponds avec UNE SEULE ligne au format exact "- texte court et actionnable de la tache" (sans le "| projet:", et sans aucun "|" final). Si aucune VRAIE tache de travail n\'est exprimee, reponds UNIQUEMENT "AUCUNE".' },
               { role: 'user', content: `Message utilisateur: ${message}\nReponse assistant: ${reply}` }
             ]
           })
@@ -1487,7 +1487,10 @@ console.log('🔖 searchSources au moment de l affichage:', JSON.stringify(searc
             const match = existingProjects.find(p => p.toLowerCase() === rawProject.toLowerCase());
             if (match) detectedProject = match;
           }
-          const taskText = taskLine;
+          // Garde defensive (signale par Victor le 08/11/2026, capture d'ecran "Aller au marche | ") :
+          // si le modele laisse un "|" final sans "projet:" correctement forme derriere, on le retire
+          // plutot que de stocker une tache au texte casse.
+          const taskText = taskLine.replace(/\|\s*$/, '').trim();
           if (taskText) {
             // Evite les doublons (signale par Victor le 07/11/2026) : si l'utilisateur reformule ou
             // repete une intention deja proposee (pas encore lue) ou deja confirmee dans sa liste de
@@ -3229,30 +3232,48 @@ setTimeout(notifyNewVersion, 60 * 1000);
 setInterval(notifyNewVersion, 6 * 60 * 60 * 1000);
 
 // Notifications importantes automatiques : une seule fois par evenement, pour les comptes qui ont active les notifications
-// Verrou en memoire contre les appels concurrents sur le meme (utilisateur, mark) - demande de
-// Victor le 08/11/2026 apres avoir constate 4 notifications "Taches en attente" identiques creees
-// en 1,4 seconde. Cause reelle : le client appelle /api/memory/view depuis plusieurs endroits
-// differents (profil, instructions, etc.), et plusieurs peuvent arriver quasi simultanement a la
-// reouverture de l'app, chacun redeclenchant independamment ces verifications AVANT que la premiere
-// ait eu le temps d'enregistrer qu'elle l'avait deja fait (lecture-puis-ecriture non atomique).
-// Le serveur ne tournant qu'en un seul processus (WEB_CONCURRENCY=1), un verrou en memoire synchrone
-// (donc sans fenetre de course possible en JS) suffit a bloquer completement ce doublon, quel que
-// soit le nombre d'appels concurrents.
+// Verrou ATOMIQUE EN BASE (table notification_locks, migration du 08/11/2026) contre les doublons de
+// notification. Historique : un premier correctif (verrou en memoire, meme journee) n'a PAS suffi -
+// Victor a signale 2 nouvelles notifications "Taches en attente" identiques creees a 2,66 secondes
+// d'intervalle APRES le deploiement de ce premier correctif (ids 1240/1242, 13:40:44 et 13:40:47 UTC
+// le 08/11/2026), un ecart bien trop grand pour une course intra-processus (qui se resout en quelques
+// dizaines de ms). Cause reelle : Victor fait tourner en parallele son serveur local (Termux,
+// localhost:9000) ET le serveur Render deploye, sur le MEME compte - deux processus Node distincts,
+// chacun avec son propre verrou en memoire, qui ne peuvent donc pas se proteger l'un de l'autre meme si
+// chacun lit/ecrit la meme ligne Supabase. Seul un verrou atomique cote base de donnees (ici : une
+// tentative de renouvellement conditionnelle UPDATE...WHERE cooldown expire, puis a defaut une creation
+// qui echoue naturellement sur conflit de cle primaire si la ligne existe deja) protege correctement
+// contre N'IMPORTE QUEL nombre de processus concurrents, locaux ou distants.
+async function acquireNotifLock(userId, mark, minGapMs) {
+  try {
+    const nowIso = new Date().toISOString();
+    const cutoffIso = new Date(Date.now() - minGapMs).toISOString();
+    const { data: renewed, error: renewErr } = await sbAdmin
+      .from('notification_locks')
+      .update({ last_sent: nowIso })
+      .eq('user_id', userId).eq('mark', mark).lt('last_sent', cutoffIso)
+      .select('user_id');
+    if (renewErr) { console.error('acquireNotifLock (renew)', mark, ':', renewErr.message); return false; }
+    if (Array.isArray(renewed) && renewed.length > 0) return true;
+    const { error: insErr } = await sbAdmin.from('notification_locks').insert([{ user_id: userId, mark, last_sent: nowIso }]);
+    if (!insErr) return true;
+    if (insErr.code !== '23505') console.error('acquireNotifLock (insert)', mark, ':', insErr.message);
+    return false;
+  } catch (e) { console.error('acquireNotifLock', mark, ':', e.message); return false; }
+}
+// Verrou en memoire LOCAL conserve en complement (optimisation : evite un aller-retour DB pour deux
+// appels quasi simultanes du MEME processus) - la protection reelle contre les doublons vient desormais
+// de acquireNotifLock ci-dessus, qui fonctionne meme entre processus differents.
 const notifyOnceInFlight = new Set();
 async function notifyOnce(u, mark, minGapMs, row, extra = {}) {
   const lockKey = u.id + ':' + mark;
   if (notifyOnceInFlight.has(lockKey)) return false;
   notifyOnceInFlight.add(lockKey);
   try {
-    const cb0 = u.checkboxes || {};
-    const marks0 = (cb0.notifMarks && typeof cb0.notifMarks === 'object') ? cb0.notifMarks : {};
-    if (marks0[mark] && Date.now() - Number(marks0[mark]) < minGapMs) return false;
+    const won = await acquireNotifLock(u.id, mark, minGapMs);
+    if (!won) return false;
     const { error } = await sbAdmin.from('notifications').insert([{ user_id: u.id, is_read: false, ...row }]);
     if (error) { console.error('Notification', mark, ':', error.message); return false; }
-    const { data: fresh } = await sbAdmin.from('users').select('checkboxes').eq('id', u.id).single();
-    const cb1 = (fresh && fresh.checkboxes) || cb0;
-    cb1.notifMarks = { ...(cb1.notifMarks || {}), [mark]: Date.now() };
-    await sbAdmin.from('users').update({ checkboxes: cb1 }).eq('id', u.id);
     sendPush(u.id, 'general', { title: row.title, body: row.message, url: '/', ...extra }).catch(e => console.error('sendPush (notifyOnce, ' + mark + '):', e.message));
     return true;
   } catch (e) { console.error('Notification', mark, ':', e.message); return false; }
@@ -3442,17 +3463,17 @@ async function maybeSendDailyBriefing(u) {
   const cb = u.checkboxes || {};
   if (cb.notifCheck !== true) return;
   const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Porto-Novo' }).format(new Date());
-  if (cb.lastBriefingDate === today) return;
-  // Meme verrou en memoire que notifyOnce (demande de Victor le 08/11/2026) : plusieurs appels
-  // concurrents a /api/memory/view passaient tous le test ci-dessus avant que le premier n'ait eu le
-  // temps d'enregistrer lastBriefingDate, creant plusieurs briefings identiques le meme jour.
+  // Verrou atomique en base, mark scope par jour (remplace le verrou en memoire seul + cb.lastBriefingDate,
+  // insuffisants face a deux processus distincts - serveur local Termux et serveur Render actifs en
+  // parallele sur le meme compte - voir le commentaire detaille sur acquireNotifLock plus haut).
   const lockKey = 'briefing:' + u.id;
   if (notifyOnceInFlight.has(lockKey)) return;
   notifyOnceInFlight.add(lockKey);
   try {
+  const won = await acquireNotifLock(u.id, 'briefing_' + today, 22 * 60 * 60 * 1000);
+  if (!won) return;
   const message = await buildDailyBriefingMessage(u);
   if (!message) return;
-  await mergeUserCheckboxes(u.id, { lastBriefingDate: today });
   // Marque comme lus les briefings precedents jamais vus (demande de Victor le 07/11/2026) : sans
   // cela, chaque jour d'absence laissait un briefing "non lu" en base, et ils s'affichaient TOUS
   // d'un coup (plusieurs cartes empilees dans le chat) a la prochaine connexion. Un utilisateur ne
