@@ -76,10 +76,26 @@ function isSearchQuery(message) {
     'bonheur', 'ton avis', 'votre avis', 'penses-tu', 'pensez-vous', 'crois-tu', 'croyez-vous',
     'que penses', 'philosophie', 'philosophique', 'plus important dans la vie', 'plus importante dans la vie'];
   if (opinionPhrases.some(p => m.includes(p))) return false;
-  const searchWords = ['qui est', 'cherche', 'recherche', "c'est quoi", 'qui a', 'quel est', 'donne-moi', 'explique',
+  const searchWords = ['qui est', "c'est quoi", 'qui a', 'quel est', 'donne-moi', 'explique',
     'actuellement', 'en ce moment', 'derniere', 'dernier', 'nouveau', 'nouvelle', "aujourd'hui", 'recent', 'recente',
     'combien coute', 'prix de', 'resultat', 'classement', 'date de', 'quand est', 'ou se trouve', 'capitale de', 'match', 'contre', 'affronte', 'score', 'resultat du match', 'joue avec', 'joue contre', ' vs ', 'calendrier des matchs', 'detail', 'details', 'plus d\'infos', 'plus d\'informations', 'precise', 'complete', 'developpe', 'en savoir plus', 'actualit', 'news'];
   if (searchWords.some(w => m.includes(w))) return true;
+  // "cherche"/"recherche" ne declenchent une recherche web QUE dans un sens de VERBE d'action web (ex:
+  // "fais une recherche sur...", "cherche sur internet..."), jamais comme simple NOM d'une
+  // fonctionnalite technique (ex: "fonction de recherche vocale", "barre de recherche", "moteur de
+  // recherche"). Bug signale par Victor le 08/11/2026 : son message "ajouter la fonction de recherche
+  // vocale a Guideon" (une fonctionnalite de reconnaissance VOCALE, rien a voir avec le web)
+  // declenchait a tort une vraie recherche web (a cause du seul mot "recherche"), dont les resultats
+  // hors-sujet (actualites sur des moteurs de recherche web pirates) ont ensuite fait completement
+  // derailer le plan de Guideon vers l'integration d'un moteur de recherche WEB au lieu de la
+  // reconnaissance vocale demandee - confirme en lisant la reponse complete en base.
+  const webSearchVerbPhrases = ['fais une recherche', 'fait une recherche', 'effectue une recherche',
+    'lance une recherche', 'cherche sur internet', 'cherche sur le web', 'cherche sur google',
+    'recherche sur internet', 'recherche sur le web', 'recherche sur google', 'peux-tu chercher',
+    'peux-tu rechercher', 'cherche des informations', 'cherche des infos', 'cherche-moi',
+    'recherche-moi', 'cherche moi', 'recherche moi', 'recherche des informations',
+    'recherche des infos', 'trouve-moi des informations', 'trouve des informations sur'];
+  if (webSearchVerbPhrases.some(p => m.includes(p))) return true;
   if (/\b(19|20)\d{2}\b/.test(m)) return true;
   if (/[A-ZÀ-Ý][a-zà-ÿ]+\s+[A-ZÀ-Ý][a-zà-ÿ]+/.test(String(message || ''))) return true;
   var words = String(message || '').trim().split(/\s+/);
