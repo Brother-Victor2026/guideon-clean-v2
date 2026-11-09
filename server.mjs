@@ -1402,6 +1402,113 @@ console.log('🔖 searchSources au moment de l affichage:', JSON.stringify(searc
         }
       } catch (e) { console.error('Erreur suggestions:', e.message); }
     }
+    // Extraction de tache (demande de Victor le 07/11/2026, puis repositionnee le 09/11/2026) : detecte
+    // quand l'utilisateur exprime une intention d'action future ("il faut que je...", "je dois...",
+    // "n'oublie pas de..."), SANS jamais l'ajouter automatiquement - seulement une PROPOSITION envoyee
+    // au client DANS LE MEME FLUX SSE que la reponse (voir "taskProposal" plus bas), affichee cote
+    // client comme une carte Oui/Non dans le chat (voir gShowTaskProposal dans public/index.html).
+    // Deplacee ICI (avant res.end(), avec les suggestions ci-dessus) le 09/11/2026 : auparavant cette
+    // extraction tournait APRES res.end(), et seul le sondage en arriere-plan (fetchNotifications,
+    // toutes les 30s ou 3s apres la reponse) pouvait ensuite afficher la carte - ce qui la faisait
+    // parfois apparaitre bien plus tard, decalee par rapport au tour de conversation qui l'a produite
+    // (signale par Victor le 09/11/2026 : carte affichee avant son message suivant au lieu d'apparaitre
+    // juste apres la reponse de Guideon). Desormais la carte est TOUJOURS positionnee au bon endroit,
+    // immediatement apres la reponse complete, sans dependre du sondage (qui reste un filet de secours
+    // pour les autres onglets/appareils).
+    // reminderDone === true signifie qu'un rappel personnel avec heure precise vient d'etre cree
+    // CE TOUR-CI via la balise [CREATE_REMINDER] (voir plus haut) : on evite alors de proposer EN PLUS
+    // une tache en double pour exactement le meme contenu - c'est deja trace comme rappel. L'utilisateur
+    // peut toujours l'ajouter aussi comme tache manuellement via le bouton dedie sur la carte de rappel.
+    if (reply && user && user.id && !reminderDone && !clientGone && !res.writableEnded) {
+      try {
+        // Liste des projets DEJA existants pour cet utilisateur (demande de Victor le 07/11/2026) :
+        // le modele ne peut rattacher une tache qu'a un projet DEJA CREE par l'utilisateur (manuellement
+        // ou via une tache precedente), jamais en inventer un nouveau tout seul - securite anti-erreur
+        // explicitement demandee ("sans erreur de fonctionnement ni de risque").
+        const existingProjectsRes = await fetch(`${DB}/tasks?user_id=eq.${user.id}&project_name=not.is.null&select=project_name`, { headers: SB });
+        const existingProjectsRows = existingProjectsRes.ok ? await existingProjectsRes.json() : [];
+        const existingProjects = [...new Set((existingProjectsRows || []).map(r => r.project_name).filter(Boolean))];
+        const projectsHint = existingProjects.length
+          ? `Projets existants de l'utilisateur (tu peux UNIQUEMENT choisir parmi ceux-ci, jamais en inventer un autre) : ${existingProjects.join(', ')}.`
+          : "L'utilisateur n'a encore aucun projet existant, donc ne propose JAMAIS de projet.";
+        const taskRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${API_KEY}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: 'qwen/qwen3.8-27b',
+            max_tokens: 150,
+            messages: [
+              { role: 'system', content: 'Tu es un extracteur de TACHES DE TRAVAIL STRICT - PAS un extracteur de rappels personnels. Une tache de travail est une action liee au TRAVAIL OU AUX PROJETS menes EN COLLABORATION avec Guideon dans cette conversation (ex: coder, rediger, corriger, finaliser, tester, avancer sur un projet commun avec Guideon). Ce n\'est JAMAIS une action personnelle de la vie quotidienne de l\'utilisateur, sans rapport avec ce travail commun, meme exprimee avec "il faut que je...", "je dois..." ou "n\'oublie pas de..." (ex: aller au marche, acheter du pain, un rendez-vous, une course personnelle, un achat) : Guideon ne participe pas a ces actions-la (il ne peut pas aller au marche a la place de l\'utilisateur), donc ce sont des RAPPELS PERSONNELS (avec heure precise), jamais des taches. Pose-toi la question : Guideon participe-t-il reellement, dans le chat, a l\'accomplissement de cette action, ou est-ce purement personnel et hors du travail en cours ensemble ? Si c\'est purement personnel, reponds UNIQUEMENT "AUCUNE", meme si l\'intention d\'action est claire. Ignore aussi : les taches deja faites ou terminees, les simples questions, les faits sans action, les intentions vagues ou hypothetiques ("je devrais peut-etre un jour..."). ' + projectsHint + ' Si une VRAIE tache de travail est exprimee ET que l\'utilisateur mentionne EXPLICITEMENT un de ces projets existants, reponds avec UNE SEULE ligne au format exact "- texte court et actionnable de la tache | projet: NomDuProjetExact" (le nom du projet doit etre copie EXACTEMENT comme dans la liste fournie). Si une VRAIE tache de travail est exprimee SANS mention explicite d\'un projet existant, reponds avec UNE SEULE ligne au format exact "- texte court et actionnable de la tache" (sans le "| projet:", et sans aucun "|" final). Si aucune VRAIE tache de travail n\'est exprimee, reponds UNIQUEMENT "AUCUNE".' },
+              { role: 'user', content: `Message utilisateur: ${message}\nReponse assistant: ${reply}` }
+            ]
+          })
+        });
+        if (!taskRes.ok) console.error('EXTRACTION TACHE GROQ ERROR:', taskRes.status, await taskRes.text());
+        const taskData = taskRes.ok ? await taskRes.json() : null;
+        const taskRaw = taskData?.choices?.[0]?.message?.content?.trim() || '';
+        if (taskRaw && taskRaw !== 'AUCUNE' && taskRaw.startsWith('-')) {
+          let taskLine = taskRaw.slice(1).trim();
+          let detectedProject = null;
+          const pipeIdx = taskLine.indexOf('| projet:');
+          if (pipeIdx !== -1) {
+            const rawProject = taskLine.slice(pipeIdx + '| projet:'.length).trim();
+            taskLine = taskLine.slice(0, pipeIdx).trim();
+            // Verification stricte cote serveur : le projet propose par le modele doit correspondre
+            // EXACTEMENT (insensible a la casse) a un projet deja existant - sinon on l'ignore plutot
+            // que de risquer un nom invente ou mal copie.
+            const match = existingProjects.find(p => p.toLowerCase() === rawProject.toLowerCase());
+            if (match) detectedProject = match;
+          }
+          // Garde defensive (signale par Victor le 08/11/2026, capture d'ecran "Aller au marche | ") :
+          // si le modele laisse un "|" final sans "projet:" correctement forme derriere, on le retire
+          // plutot que de stocker une tache au texte casse.
+          const taskText = taskLine.replace(/\|\s*$/, '').trim();
+          if (taskText) {
+            // Evite les doublons (signale par Victor le 07/11/2026) : si l'utilisateur reformule ou
+            // repete une intention deja proposee (pas encore lue) ou deja confirmee dans sa liste de
+            // taches, on ne recree pas une proposition identique dans le chat.
+            const encText = encodeURIComponent(taskText.replace(/[,()]/g, ' ').trim());
+            const [dupPropRes, dupTaskRes] = await Promise.all([
+              fetch(`${DB}/notifications?user_id=eq.${user.id}&type=eq.task_proposal&is_read=eq.false&message=ilike.${encText}&select=id`, { headers: SB }),
+              fetch(`${DB}/tasks?user_id=eq.${user.id}&is_done=eq.false&content=ilike.${encText}&select=id`, { headers: SB })
+            ]);
+            const dupProp = dupPropRes.ok ? await dupPropRes.json() : [];
+            const dupTask = dupTaskRes.ok ? await dupTaskRes.json() : [];
+            if ((Array.isArray(dupProp) && dupProp.length > 0) || (Array.isArray(dupTask) && dupTask.length > 0)) {
+              console.log('task_proposal ignore (doublon detecte) :', taskText);
+            } else {
+              // Le plan deja donne par Guideon dans sa reponse (reply) est sauvegarde avec la tache
+              // (demande de Victor le 08/11/2026, "tel que toi Claude tu le fais avec moi ici") : quand
+              // la tache concerne un vrai travail (ex: "ajouter la recherche vocale"), Guideon a deja
+              // detaille des etapes dans sa reponse - les perdre obligerait a tout redemander a la
+              // reprise. Plafonne a 4000 caracteres par securite (reponses tres longues improbables
+              // mais pas impossibles).
+              const planText = String(reply || '').slice(0, 4000) || null;
+              const taskMeta = {};
+              if (detectedProject) taskMeta.project = detectedProject;
+              if (planText) taskMeta.plan = planText;
+              // Prefer: return=representation (plutot que return=minimal) : on a besoin de l'id reel
+              // de la ligne creee pour l'envoyer tout de suite au client via le flux SSE (voir plus
+              // bas), afin que la carte s'affiche au bon endroit sans dependre du sondage en arriere-plan.
+              const insRes = await fetch(`${DB}/notifications`, {
+                method: 'POST',
+                headers: { ...SB, 'Prefer': 'return=representation' },
+                body: JSON.stringify([{ user_id: user.id, type: 'task_proposal', title: '📝 Tâche détectée', message: taskText, is_read: false, meta: Object.keys(taskMeta).length ? taskMeta : null }])
+              });
+              if (!insRes.ok) {
+                console.error('task_proposal insert error:', insRes.status, await insRes.text());
+              } else {
+                const insData = await insRes.json();
+                const newRow = Array.isArray(insData) ? insData[0] : null;
+                if (newRow && newRow.id != null && !res.writableEnded) {
+                  res.write(`data: ${JSON.stringify({ taskProposal: { id: newRow.id, message: taskText, meta: Object.keys(taskMeta).length ? taskMeta : null } })}\n\n`);
+                }
+              }
+            }
+          }
+        }
+      } catch (e) { console.error('task extraction error:', e.message); }
+    }
     res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
     res.end();
     if (reply && user && user.id && typeof adaptNext !== 'undefined' && adaptNext) {
@@ -1480,97 +1587,6 @@ console.log('🔖 searchSources au moment de l affichage:', JSON.stringify(searc
           }
         }
       } catch(e) { console.error('memories save error:', e.message); }
-    }
-    // Extraction de taches en arriere-plan (demande de Victor le 07/11/2026) : detecte quand
-    // l'utilisateur exprime une intention d'action future ("il faut que je...", "je dois...",
-    // "n'oublie pas de..."), SANS jamais l'ajouter automatiquement - seulement une PROPOSITION via
-    // une notification de type 'task_proposal', affichee cote client comme une carte Oui/Non dans le
-    // chat (voir gHandleTaskProposal dans public/index.html). Meme architecture Groq que l'extraction
-    // de memories ci-dessus, modele separe, prompt dedie.
-    // reminderDone === true signifie qu'un rappel personnel avec heure precise vient d'etre cree
-    // CE TOUR-CI via la balise [CREATE_REMINDER] (voir plus haut) : on evite alors de proposer EN PLUS
-    // une tache en double pour exactement le meme contenu - c'est deja trace comme rappel. L'utilisateur
-    // peut toujours l'ajouter aussi comme tache manuellement via le bouton dedie sur la carte de rappel
-    // (demande de Victor le 08/11/2026 : "les rappels... peuvent etre aussi ajoutes comme des taches si
-    // l'utilisateur veut").
-    if (reply && user && user.id && !reminderDone) {
-      try {
-        // Liste des projets DEJA existants pour cet utilisateur (demande de Victor le 07/11/2026) :
-        // le modele ne peut rattacher une tache qu'a un projet DEJA CREE par l'utilisateur (manuellement
-        // ou via une tache precedente), jamais en inventer un nouveau tout seul - securite anti-erreur
-        // explicitement demandee ("sans erreur de fonctionnement ni de risque").
-        const existingProjectsRes = await fetch(`${DB}/tasks?user_id=eq.${user.id}&project_name=not.is.null&select=project_name`, { headers: SB });
-        const existingProjectsRows = existingProjectsRes.ok ? await existingProjectsRes.json() : [];
-        const existingProjects = [...new Set((existingProjectsRows || []).map(r => r.project_name).filter(Boolean))];
-        const projectsHint = existingProjects.length
-          ? `Projets existants de l'utilisateur (tu peux UNIQUEMENT choisir parmi ceux-ci, jamais en inventer un autre) : ${existingProjects.join(', ')}.`
-          : "L'utilisateur n'a encore aucun projet existant, donc ne propose JAMAIS de projet.";
-        const taskRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-          method: 'POST',
-          headers: { 'Authorization': `Bearer ${API_KEY}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            model: 'qwen/qwen3.8-27b',
-            max_tokens: 150,
-            messages: [
-              { role: 'system', content: 'Tu es un extracteur de TACHES DE TRAVAIL STRICT - PAS un extracteur de rappels personnels. Une tache de travail est une action liee au TRAVAIL OU AUX PROJETS menes EN COLLABORATION avec Guideon dans cette conversation (ex: coder, rediger, corriger, finaliser, tester, avancer sur un projet commun avec Guideon). Ce n\'est JAMAIS une action personnelle de la vie quotidienne de l\'utilisateur, sans rapport avec ce travail commun, meme exprimee avec "il faut que je...", "je dois..." ou "n\'oublie pas de..." (ex: aller au marche, acheter du pain, un rendez-vous, une course personnelle, un achat) : Guideon ne participe pas a ces actions-la (il ne peut pas aller au marche a la place de l\'utilisateur), donc ce sont des RAPPELS PERSONNELS (avec heure precise), jamais des taches. Pose-toi la question : Guideon participe-t-il reellement, dans le chat, a l\'accomplissement de cette action, ou est-ce purement personnel et hors du travail en cours ensemble ? Si c\'est purement personnel, reponds UNIQUEMENT "AUCUNE", meme si l\'intention d\'action est claire. Ignore aussi : les taches deja faites ou terminees, les simples questions, les faits sans action, les intentions vagues ou hypothetiques ("je devrais peut-etre un jour..."). ' + projectsHint + ' Si une VRAIE tache de travail est exprimee ET que l\'utilisateur mentionne EXPLICITEMENT un de ces projets existants, reponds avec UNE SEULE ligne au format exact "- texte court et actionnable de la tache | projet: NomDuProjetExact" (le nom du projet doit etre copie EXACTEMENT comme dans la liste fournie). Si une VRAIE tache de travail est exprimee SANS mention explicite d\'un projet existant, reponds avec UNE SEULE ligne au format exact "- texte court et actionnable de la tache" (sans le "| projet:", et sans aucun "|" final). Si aucune VRAIE tache de travail n\'est exprimee, reponds UNIQUEMENT "AUCUNE".' },
-              { role: 'user', content: `Message utilisateur: ${message}\nReponse assistant: ${reply}` }
-            ]
-          })
-        });
-        if (!taskRes.ok) console.error('EXTRACTION TACHE GROQ ERROR:', taskRes.status, await taskRes.text());
-        const taskData = taskRes.ok ? await taskRes.json() : null;
-        const taskRaw = taskData?.choices?.[0]?.message?.content?.trim() || '';
-        if (taskRaw && taskRaw !== 'AUCUNE' && taskRaw.startsWith('-')) {
-          let taskLine = taskRaw.slice(1).trim();
-          let detectedProject = null;
-          const pipeIdx = taskLine.indexOf('| projet:');
-          if (pipeIdx !== -1) {
-            const rawProject = taskLine.slice(pipeIdx + '| projet:'.length).trim();
-            taskLine = taskLine.slice(0, pipeIdx).trim();
-            // Verification stricte cote serveur : le projet propose par le modele doit correspondre
-            // EXACTEMENT (insensible a la casse) a un projet deja existant - sinon on l'ignore plutot
-            // que de risquer un nom invente ou mal copie.
-            const match = existingProjects.find(p => p.toLowerCase() === rawProject.toLowerCase());
-            if (match) detectedProject = match;
-          }
-          // Garde defensive (signale par Victor le 08/11/2026, capture d'ecran "Aller au marche | ") :
-          // si le modele laisse un "|" final sans "projet:" correctement forme derriere, on le retire
-          // plutot que de stocker une tache au texte casse.
-          const taskText = taskLine.replace(/\|\s*$/, '').trim();
-          if (taskText) {
-            // Evite les doublons (signale par Victor le 07/11/2026) : si l'utilisateur reformule ou
-            // repete une intention deja proposee (pas encore lue) ou deja confirmee dans sa liste de
-            // taches, on ne recree pas une proposition identique dans le chat.
-            const encText = encodeURIComponent(taskText.replace(/[,()]/g, ' ').trim());
-            const [dupPropRes, dupTaskRes] = await Promise.all([
-              fetch(`${DB}/notifications?user_id=eq.${user.id}&type=eq.task_proposal&is_read=eq.false&message=ilike.${encText}&select=id`, { headers: SB }),
-              fetch(`${DB}/tasks?user_id=eq.${user.id}&is_done=eq.false&content=ilike.${encText}&select=id`, { headers: SB })
-            ]);
-            const dupProp = dupPropRes.ok ? await dupPropRes.json() : [];
-            const dupTask = dupTaskRes.ok ? await dupTaskRes.json() : [];
-            if ((Array.isArray(dupProp) && dupProp.length > 0) || (Array.isArray(dupTask) && dupTask.length > 0)) {
-              console.log('task_proposal ignore (doublon detecte) :', taskText);
-            } else {
-              // Le plan deja donne par Guideon dans sa reponse (reply) est sauvegarde avec la tache
-              // (demande de Victor le 08/11/2026, "tel que toi Claude tu le fais avec moi ici") : quand
-              // la tache concerne un vrai travail (ex: "ajouter la recherche vocale"), Guideon a deja
-              // detaille des etapes dans sa reponse - les perdre obligerait a tout redemander a la
-              // reprise. Plafonne a 4000 caracteres par securite (reponses tres longues improbables
-              // mais pas impossibles).
-              const planText = String(reply || '').slice(0, 4000) || null;
-              const taskMeta = {};
-              if (detectedProject) taskMeta.project = detectedProject;
-              if (planText) taskMeta.plan = planText;
-              const insRes = await fetch(`${DB}/notifications`, {
-                method: 'POST',
-                headers: { ...SB, 'Prefer': 'return=minimal' },
-                body: JSON.stringify([{ user_id: user.id, type: 'task_proposal', title: '📝 Tâche détectée', message: taskText, is_read: false, meta: Object.keys(taskMeta).length ? taskMeta : null }])
-              });
-              if (!insRes.ok) console.error('task_proposal insert error:', insRes.status, await insRes.text());
-            }
-          }
-        }
-      } catch (e) { console.error('task extraction error:', e.message); }
     }
     // Detection de fin de tache (demande de Victor le 07/11/2026) : fournit au modele la liste EXACTE
     // des taches en attente de l'utilisateur et lui demande si l'une d'elles vient d'etre terminee.
@@ -1677,13 +1693,15 @@ app.post('/api/image', async (req, res) => {
   } catch(e) { console.error('ERREUR /api/image:', e.message); res.status(500).json({ error: e.message }); }
 });
 
-app.post('/api/search', async (req, res) => {
+// Actualites generales (flux RSS) : fonction autonome, appelable DIRECTEMENT en code - voir les appels
+// dans buildDailyBriefingMessage() et /api/realtime/news plus bas. Extraite du corps de /api/search
+// __GENERAL_NEWS__ le 09/11/2026 : ces deux appelants faisaient avant un aller-retour HTTP vers
+// localhost:PORT/api/search, fragile juste apres un redemarrage/deploiement (rien ne garantit que le
+// listener HTTP du processus accepte deja des connexions au moment exact ou la fonction est appelee -
+// cause probable du briefing du 09/11/2026 sans meteo ni actualites, voir le commentaire plus bas).
+async function getGeneralNewsSummary(query) {
   try {
-    const { query } = req.body;
-
-    if (String(query || '').startsWith('__GENERAL_NEWS__')) {
-      try {
-        const UA2 = { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36' };
+    const UA2 = { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36' };
         async function genFeed(url, label) {
           try {
             const c = new AbortController();
@@ -1741,7 +1759,7 @@ app.post('/api/search', async (req, res) => {
         } else {
           all = feedsList.flat().slice(0, 25);
         }
-        if (all.length === 0) return res.json({ result: 'Aucun résultat trouvé', sources: [], success: false });
+        if (all.length === 0) return { result: 'Aucun résultat trouvé', sources: [], success: false };
         const text = '[Actualités générales du jour] ' + all.map(a => a.title).join(' | ');
         const sources = [];
         const seenNames = new Set();
@@ -1752,11 +1770,19 @@ app.post('/api/search', async (req, res) => {
           }
         }
         console.log('✅ Search result length:', text.length, '| sources: actualites generales');
-        return res.json({ result: text.substring(0, 2500), sources, success: true });
-      } catch (e) {
-        console.error('❌ General news error:', e.message);
-        return res.json({ result: null, sources: [], error: e.message, success: false });
-      }
+        return { result: text.substring(0, 2500), sources, success: true };
+  } catch (e) {
+    console.error('❌ General news error:', e.message);
+    return { result: null, sources: [], error: e.message, success: false };
+  }
+}
+
+app.post('/api/search', async (req, res) => {
+  try {
+    const { query } = req.body;
+
+    if (String(query || '').startsWith('__GENERAL_NEWS__')) {
+      return res.json(await getGeneralNewsSummary(query));
     }
 
     if (!query || typeof query !== 'string' || query.trim().length === 0) {
@@ -2811,21 +2837,8 @@ app.get('/api/realtime/news', async (req, res) => {
   // global suffit, et reduit fortement le nombre d'appels aux 18 flux RSS sous-jacents.
   const cached = cacheGet('news:general');
   if (cached) return res.json(cached);
-  const c = new AbortController();
-  const t = setTimeout(() => c.abort(), 9000);
-  let r;
   try {
-    r = await fetch(`http://localhost:${process.env.PORT || 9000}/api/search`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query: '__GENERAL_NEWS__' }), signal: c.signal });
-  } catch (e) {
-    clearTimeout(t);
-    const reason = e.name === 'AbortError' ? 'délai dépassé (connexion réseau trop lente ou instable)' : (e.message || 'erreur réseau');
-    console.error('realtime/news fetch:', reason);
-    return res.status(502).json({ error: `Actualités indisponibles : ${reason}` });
-  }
-  clearTimeout(t);
-  try {
-    if (!r.ok) return res.status(502).json({ error: `Actualités indisponibles : erreur HTTP ${r.status}` });
-    const d = await r.json();
+    const d = await getGeneralNewsSummary('__GENERAL_NEWS__');
     if (!d || !d.success || !d.result) return res.status(502).json({ error: `Actualités indisponibles : ${(d && d.error) || 'aucun flux RSS n\'a répondu'}` });
     const titles = String(d.result).replace('[Actualités générales du jour] ', '').split(' | ').filter(Boolean);
     const sources = Array.isArray(d.sources) ? d.sources : [];
@@ -3484,20 +3497,23 @@ async function buildDailyBriefingMessage(u) {
       if (w.rain_chance) line += `, risque de pluie ${w.rain_chance}`;
       if (w.cloud_cover) line += `, nuages ${w.cloud_cover}`;
       parts.push(line);
+    } else {
+      // fetchRealWeather ne renvoie jamais une valeur "vide" sans lever d'erreur normalement - ce log
+      // couvre quand meme ce cas pour ne plus jamais perdre la meteo du briefing en silence (constate
+      // le 09/11/2026 : ni meteo ni actu dans le briefing de Victor, sans AUCUNE erreur dans les logs).
+      console.error('Briefing - meteo : fetchRealWeather a renvoye une valeur vide sans lever d\'erreur.');
     }
   } catch (e) { console.error('Briefing - meteo:', e.message); }
 
-  // 3) Court resume d'actualite : reutilise (appel interne, sans toucher la route) la recherche
-  // d'actualites generales deja utilisee par le chat (flux RSS reels, voir /api/search __GENERAL_NEWS__)
+  // 3) Court resume d'actualite : appelle DIRECTEMENT getGeneralNewsSummary() (plus d'aller-retour HTTP
+  // vers son propre serveur depuis le 09/11/2026 - voir le commentaire au-dessus de cette fonction).
   try {
-    const c = new AbortController();
-    const t = setTimeout(() => c.abort(), 9000);
-    const r = await fetch(`http://localhost:${process.env.PORT || 9000}/api/search`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query: '__GENERAL_NEWS__' }), signal: c.signal });
-    clearTimeout(t);
-    const d = await r.json();
+    const d = await getGeneralNewsSummary('__GENERAL_NEWS__');
     if (d && d.success && d.result) {
       const titles = String(d.result).replace('[Actualités générales du jour] ', '').split(' | ').filter(Boolean).slice(0, 2);
       if (titles.length > 0) parts.push(`📰 Actu : ${titles.join(' • ')}`);
+    } else {
+      console.error('Briefing - actu : getGeneralNewsSummary a échoué ou n\'a renvoyé aucun résultat :', (d && d.error) || JSON.stringify(d));
     }
   } catch (e) { console.error('Briefing - actu:', e.message); }
 
