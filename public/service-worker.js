@@ -28,7 +28,12 @@ self.addEventListener('notificationclick', event => {
   const fullBody = event.notification.body || '';
   event.notification.close();
   const data = event.notification.data || {};
-  const wantActivate = event.action === 'activate' || data.activate === true;
+  // IMPORTANT (10/11/2026) : wantActivate doit etre VRAI uniquement si l'utilisateur a appuye sur le
+  // bouton d'action "Activer" lui-meme (event.action==='activate'). Avant ce correctif, data.activate
+  // etait mis a true sur la notification d'invitation elle-meme (voir gInvite()), donc un simple tap
+  // sur le CORPS de la notification (pour l'ouvrir/la regarder, sans vouloir rien activer) activait
+  // quand meme silencieusement les notifications de reponse en arriere-plan, sans consentement reel.
+  const wantActivate = event.action === 'activate';
   const wantInstall = event.action === 'install';
   const wantVerify = event.action === 'verify';
   const wantBriefing = data.briefing === true;
