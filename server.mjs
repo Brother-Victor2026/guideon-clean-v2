@@ -2064,6 +2064,7 @@ app.get('/api/memory/view', async (req, res) => {
     // lui demander d'autorisation, contrairement au GPS) ; il pourra toujours la preciser lui-meme.
     if (row && row.checkboxes) {
       maybeSendDailyBriefing({ id: user.id, checkboxes: row.checkboxes }).catch(e => console.error('maybeSendDailyBriefing (connexion):', e.message));
+      maybeSendWeeklyMemorySummary({ id: user.id, checkboxes: row.checkboxes }).catch(e => console.error('maybeSendWeeklyMemorySummary (connexion):', e.message));
       maybeSendInstallReminder({ id: user.id, checkboxes: row.checkboxes }).catch(e => console.error('maybeSendInstallReminder (connexion):', e.message));
       maybeSendTaskReminder({ id: user.id, checkboxes: row.checkboxes }).catch(e => console.error('maybeSendTaskReminder (connexion):', e.message));
       if (typeof row.checkboxes.userLat !== 'number') {
@@ -3559,6 +3560,50 @@ async function maybeSendDailyBriefing(u) {
   // l'appareil - demande de Victor le 07/11/2026 (avant ce correctif, toucher la notification se
   // contentait de la fermer/ouvrir la page d'accueil sans rien montrer du contenu).
   sendPush(u.id, 'general', { title: '☀️ Votre briefing du jour', body: message, url: '/', briefingAction: true }).catch(e => console.error('sendPush (briefing):', e.message));
+  } finally { notifyOnceInFlight.delete(lockKey); }
+}
+
+// Resume hebdomadaire de la memoire (idee de Victor, 10/11/2026) : "cette semaine Guideon a retenu
+// que...", pour voir ce qui a ete appris sans ouvrir manuellement "Mes souvenirs". Construit a partir
+// des lignes de la table memories ajoutees dans les 7 derniers jours pour cet utilisateur.
+async function buildWeeklyMemorySummary(u) {
+  const sinceIso = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+  const { data: rows, error } = await sbAdmin
+    .from('memories')
+    .select('content, created_at')
+    .eq('user_id', u.id)
+    .gte('created_at', sinceIso)
+    .order('created_at', { ascending: true })
+    .limit(12);
+  if (error) { console.error('Resume memoire hebdo (lecture):', error.message); return null; }
+  if (!Array.isArray(rows) || rows.length === 0) return null; // Rien de nouveau cette semaine : pas de resume vide.
+  const lines = rows.map(r => `• ${String(r.content || '').slice(0, 180)}`);
+  let message = lines.join('\n');
+  if (message.length > 1800) message = message.slice(0, 1800) + '…';
+  return message;
+}
+
+// Envoie le resume hebdomadaire de la memoire a UN utilisateur si : notifications activees (meme
+// case que le briefing - aucune nouvelle case demandee), et pas deja envoye il y a moins de 6 jours
+// (verrou atomique en base, meme mecanisme que le briefing - voir acquireNotifLock plus haut).
+// IMPORTANT (securite/confidentialite, decision de Victor pour le briefing le 07/11/2026, reappliquee
+// ici) : ce resume contient des faits personnels memorises (potentiellement sensibles) - on insere
+// donc la notification SANS jamais appeler sendPush() : elle n'apparait qu'EN INTERNE dans l'app
+// (toast + historique des notifications), jamais dans une notification Android/push dont l'apercu sur
+// l'ecran verrouille n'est pas un canal prive comme la conversation elle-meme.
+async function maybeSendWeeklyMemorySummary(u) {
+  const cb = u.checkboxes || {};
+  if (cb.notifCheck !== true) return;
+  const lockKey = 'weeklymem:' + u.id;
+  if (notifyOnceInFlight.has(lockKey)) return;
+  notifyOnceInFlight.add(lockKey);
+  try {
+    const won = await acquireNotifLock(u.id, 'weekly_memory_summary', 6 * 24 * 60 * 60 * 1000);
+    if (!won) return;
+    const message = await buildWeeklyMemorySummary(u);
+    if (!message) return;
+    const { error } = await sbAdmin.from('notifications').insert([{ user_id: u.id, type: 'info', title: '🧠 Cette semaine, j\'ai retenu que...', message, is_read: false }]);
+    if (error) console.error('Resume memoire hebdo (insertion):', error.message);
   } finally { notifyOnceInFlight.delete(lockKey); }
 }
 
