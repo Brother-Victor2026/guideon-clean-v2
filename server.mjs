@@ -17,6 +17,27 @@ const app = express();
 app.use(compression({ filter: (req, res) => req.path === '/api/chat' ? false : compression.filter(req, res) }));
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const API_KEY = process.env.GROQ_API_KEY;
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+// 11/11/2026 : bascule de secours vers l'API Gemini (endpoint compatible OpenAI) quand Groq renvoie
+// un quota depasse (429). Demande de Victor : Groq plafonne a 8K TPM / 200K TPD sur son compte, et il
+// n'a pas les moyens de passer a un plan payant. gemini-2.0-flash est gratuit (aucune carte requise),
+// verifie sur la doc officielle Google (ai.google.dev/gemini-api/docs/rate-limits) avec un plafond
+// bien plus large (1 000 000 TPM / 1 500 RPD). Le format de requete/reponse etant compatible OpenAI,
+// on peut reutiliser exactement le meme format de messages et le meme parsing de flux SSE que pour Groq.
+async function callGeminiFallback(messages, temperature) {
+  if (!GEMINI_API_KEY) return null;
+  try {
+    const r = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
+      method: "POST",
+      headers: { "Authorization": `Bearer ${GEMINI_API_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ model: "gemini-2.0-flash", messages, temperature: isNaN(temperature) ? 0.7 : temperature, stream: true })
+    });
+    return r.ok ? r : null;
+  } catch (e) {
+    console.error('callGeminiFallback error:', e.message);
+    return null;
+  }
+}
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_KEY;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
@@ -1204,12 +1225,22 @@ const sysContent = (userRealName ? `Prenom reel de l'utilisateur (donnee fiable 
       console.error("GEMINI ERROR:", JSON.stringify(errData));
       const isQuotaExceeded = response.status === 429 || errData.error?.code === 429;
       if (isQuotaExceeded) {
-        const { displayTime } = getQuotaResetTime();
-        const quotaMsg = `Vous avez atteint la limite de votre conversation pour aujourd'hui. Revenez vers ${displayTime} pour une nouvelle conversation.`;
-        res.write(`data: ${JSON.stringify({ quotaExceeded: true, error: quotaMsg, resetTime: displayTime, resetAt: resetUTC.toISOString() })}\n\n`);
-        res.end();
-        return;
-      }
+        // 11/11/2026 : avant d'abandonner, on tente une bascule vers Gemini (gratuit, quota bien plus
+        // large) - voir callGeminiFallback(). Si Gemini n'est pas configure ou echoue aussi, on retombe
+        // sur l'ancien message de limite atteinte.
+        console.error('GROQ 429 - tentative de bascule vers Gemini...');
+        const fallbackRes = await callGeminiFallback(geminiBodyObj.messages, geminiBodyObj.temperature);
+        if (fallbackRes) {
+          console.log('✅ Bascule Gemini réussie.');
+          response = fallbackRes;
+        } else {
+          const { displayTime } = getQuotaResetTime();
+          const quotaMsg = `Vous avez atteint la limite de votre conversation pour aujourd'hui. Revenez vers ${displayTime} pour une nouvelle conversation.`;
+          res.write(`data: ${JSON.stringify({ quotaExceeded: true, error: quotaMsg, resetTime: displayTime, resetAt: resetUTC.toISOString() })}\n\n`);
+          res.end();
+          return;
+        }
+      } else {
       const isOverloaded = response.status === 503;
       if (isOverloaded) {
         res.write(`data: ${JSON.stringify({ overloaded: true, error: "Guid\u00e9on est momentan\u00e9ment surcharg\u00e9. R\u00e9essayez dans quelques secondes." })}\n\n`);
@@ -1236,14 +1267,23 @@ const sysContent = (userRealName ? `Prenom reel de l'utilisateur (donnee fiable 
         if (retryRes.ok) {
           response = retryRes;
         } else {
-          res.write(`data: ${JSON.stringify({ error: "Ta conversation est devenue trop longue pour une seule r\u00e9ponse. Essaie d'envoyer un message plus court, ou commence une nouvelle conversation." })}\n\n`);
-          res.end();
-          return;
+          // 11/11/2026 : meme en dernier recours ici (historique deja reduit et Groq refuse encore),
+          // on tente Gemini avant d'abandonner pour de bon - evite un echec sec pour l'utilisateur.
+          const lastFallback = await callGeminiFallback(retryMessages, geminiBodyObj.temperature);
+          if (lastFallback) {
+            console.log('\u2705 Bascule Gemini r\u00e9ussie (apr\u00e8s historique r\u00e9duit).');
+            response = lastFallback;
+          } else {
+            res.write(`data: ${JSON.stringify({ error: "Ta conversation est devenue trop longue pour une seule r\u00e9ponse. Essaie d'envoyer un message plus court, ou commence une nouvelle conversation." })}\n\n`);
+            res.end();
+            return;
+          }
         }
       } else {
         res.write(`data: ${JSON.stringify({ error: errData.error?.message || JSON.stringify(errData) })}\n\n`);
         res.end();
         return;
+      }
       }
     }
 
