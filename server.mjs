@@ -3127,15 +3127,37 @@ app.post('/api/analyze', async (req, res) => {
       })
     });
 
+    let d;
     if (!r.ok) {
       const errText = await r.text();
       console.error('Mistral analyse image erreur:', r.status, errText.slice(0, 300));
-      return res.status(500).json({ error: "Erreur du service d'analyse d'image: " + errText.slice(0, 200) });
+      // 11/11/2026 : si Mistral refuse (quota depasse ou autre erreur), on tente Gemini en secours -
+      // gemini-2.0-flash supporte aussi la vision via l'endpoint compatible OpenAI, meme cle deja en
+      // place pour le chat. Demande de Victor : augmenter la marge dispo pour l'analyse de documents.
+      console.error('Tentative de bascule Gemini pour analyse image...');
+      const geminiRes = GEMINI_API_KEY ? await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${GEMINI_API_KEY}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "gemini-2.0-flash",
+          messages: [{ role: 'user', content: [
+            { type: 'text', text: prompt },
+            { type: 'image_url', image_url: { url: img } }
+          ]}],
+          max_tokens: 800
+        })
+      }).catch(() => null) : null;
+      if (!geminiRes || !geminiRes.ok) {
+        return res.status(500).json({ error: "Erreur du service d'analyse d'image: " + errText.slice(0, 200) });
+      }
+      console.log('✅ Bascule Gemini réussie (analyse image).');
+      d = await geminiRes.json();
+    } else {
+      d = await r.json();
     }
-    
-    const d = await r.json();
+
     const reply = d.choices?.[0]?.message?.content || 'Image analysée mais pas de réponse détaillée.';
-    
+
     res.json({ reply });
   } catch(e) {
     console.error('❌ Analyze error:', e.message);
