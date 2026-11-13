@@ -169,6 +169,21 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // Initialiser Resend
 const resend = new Resend(process.env.RESEND_API_KEY);
+if (!process.env.RESEND_API_KEY) {
+  console.log('⚠️ RESEND_API_KEY absente : aucun email de réclamation ne peut être envoyé');
+} else {
+  // Diagnostic ponctuel (12/11/2026) : vérifier si un domaine est validé sur le compte Resend,
+  // ce qui conditionne la délivrabilité réelle des emails envoyés depuis le domaine de test resend.dev.
+  resend.domains.list().then(({ data, error }) => {
+    if (error) { console.log('🔍 Diagnostic Resend - erreur:', error.message || error); return; }
+    const domains = (data && data.data) || [];
+    if (domains.length === 0) {
+      console.log('🔍 Diagnostic Resend : aucun domaine vérifié sur le compte → les emails envoyés depuis test@resend.dev ne peuvent être délivrés qu\'à l\'adresse email du compte Resend lui-même, pas aux utilisateurs.');
+    } else {
+      console.log('🔍 Diagnostic Resend - domaines trouvés:', JSON.stringify(domains.map(d => ({ name: d.name, status: d.status }))));
+    }
+  }).catch(e => console.log('🔍 Diagnostic Resend - exception:', e.message));
+}
 
 // Suppression automatique des conversations inactives depuis 30 jours (messages + conversation).
 // Ignore les comptes qui ont decoche la case de suppression et les conversations epinglees.
