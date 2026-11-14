@@ -3765,8 +3765,8 @@ app.post('/api/send-complaint-email', async (req, res) => {
         <p>👨‍💼 Victor Hugo Bossou</p>
         <p>🏢 Guidéon Labs</p>
         <p>🌍 Bénin, Afrique</p>
-        <p>📧 victorbossou59@gmail.com</p>
-        <p>🔗 <a href="https://guideon.ai" style="color:#f59e0b;text-decoration:none;">guideon.ai</a></p>
+        <p>📧 codjovictorbossou@gmail.com</p>
+        <p>🔗 <a href="https://guideon-8h4m.onrender.com" style="color:#f59e0b;text-decoration:none;">guideon-8h4m.onrender.com</a></p>
       </div>
     </div>
     `;
@@ -3796,7 +3796,7 @@ app.post('/api/send-complaint-email', async (req, res) => {
         
         <p style="font-size:12px;color:#7c3aed;"><strong>Besoin d'aide?</strong></p>
         <p style="font-size:12px;color:#9ca3af;">
-          Contactez: <a href="mailto:victorbossou59@gmail.com" style="color:#f59e0b;text-decoration:none;">victorbossou59@gmail.com</a><br>
+          Contactez: <a href="mailto:codjovictorbossou@gmail.com" style="color:#f59e0b;text-decoration:none;">codjovictorbossou@gmail.com</a><br>
           Référence: ${complaintId}
         </p>
       </div>
