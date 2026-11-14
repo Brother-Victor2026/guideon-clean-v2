@@ -49,7 +49,6 @@ const SECRET = process.env.JWT_SECRET || 'guideon2026';
 const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN;
 const WHATSAPP_PHONE_NUMBER_ID = process.env.WHATSAPP_PHONE_NUMBER_ID;
 const WHATSAPP_VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN;
-const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 // Solution de secours meteo (voir fetchRealWeather) : utilisee uniquement si Open-Meteo echoue
 // (ex: erreur HTTP 429 due au quota gratuit partage par IP sur Render - voir echange avec Victor du
 // 05/11/2026). Optionnelle : si absente, le code se comporte comme avant (Open-Meteo seul).
@@ -3949,85 +3948,6 @@ app.post('/api/whatsapp/webhook', async (req, res) => {
 
     await sendWhatsAppMessage(from, reply);
   } catch (e) { console.error('WhatsApp webhook error:', e.message); }
-});
-
-// ===== Telegram Bot API =====
-async function sendTelegramMessage(chatId, text) {
-  try {
-    await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ chat_id: chatId, text })
-    });
-  } catch (e) { console.error('Telegram send error:', e.message); }
-}
-
-app.post('/api/telegram/webhook', async (req, res) => {
-  res.sendStatus(200);
-  try {
-    const msg = req.body.message;
-    if (!msg || typeof msg.text !== 'string') return;
-    const chatId = String(msg.chat.id);
-    const text = msg.text.trim();
-    if (!text) return;
-
-    const { data: existing } = await sbAdmin.from('telegram_users').select('*').eq('chat_id', chatId).single();
-    let tu = existing;
-    if (!tu) {
-      const { data: created } = await sbAdmin.from('telegram_users').insert([{ chat_id: chatId, status: 'active', history: [] }]).select().single();
-      tu = created;
-    }
-    if (!tu) return;
-
-    const lower = text.toLowerCase();
-    if (['stop', '/stop', 'pause', 'desactiver', 'désactiver'].includes(lower)) {
-      await sbAdmin.from('telegram_users').update({ status: 'paused' }).eq('chat_id', chatId);
-      await sendTelegramMessage(chatId, '⏸️ Guidéon est en pause. Écrivez "activer" pour me réactiver à tout moment.');
-      return;
-    }
-    if (['activer', '/start', 'start', 'reprendre'].includes(lower)) {
-      await sbAdmin.from('telegram_users').update({ status: 'active' }).eq('chat_id', chatId);
-      await sendTelegramMessage(chatId, '✅ Je suis réactivé, je suis de nouveau à votre écoute !');
-      return;
-    }
-    if (tu.status === 'paused') return;
-
-    const hist = Array.isArray(tu.history) ? tu.history : [];
-    const base = process.env.APP_URL || 'https://guideon-8h4m.onrender.com';
-    const r = await fetch(`${base}/api/chat`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: text, history: hist.slice(-20) })
-    });
-    let full = '';
-    if (r.body && r.body.getReader) {
-      const reader = r.body.getReader();
-      const dec = new TextDecoder();
-      let buf = '';
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buf += dec.decode(value, { stream: true });
-        const lines = buf.split('\n');
-        buf = lines.pop();
-        for (const line of lines) {
-          const t = line.trim();
-          if (!t.startsWith('data: ')) continue;
-          const dd = t.slice(6);
-          try {
-            const p = JSON.parse(dd);
-            if (p.content) full += p.content;
-          } catch (e) {}
-        }
-      }
-    }
-    const reply = full || "Désolé, je n'ai pas pu générer de réponse pour le moment.";
-
-    const newHist = hist.concat([{ role: 'user', content: text }, { role: 'assistant', content: reply }]).slice(-20);
-    await sbAdmin.from('telegram_users').update({ history: newHist, last_message_at: new Date().toISOString() }).eq('chat_id', chatId);
-
-    await sendTelegramMessage(chatId, reply);
-  } catch (e) { console.error('Telegram webhook error:', e.message); }
 });
 
 app.listen(process.env.PORT || 9000, () => console.log("Guideon actif !"));
