@@ -4234,11 +4234,38 @@ app.get('/api/reminders', async (req, res) => {
     const user = checkToken(token);
     if (!user) return res.status(401).json({ error: 'Non autorise' });
     const { data, error } = await sbAdmin.from('reminders')
-      .select('id,message,remind_at,sent,created_at')
+      .select('id,message,remind_at,sent,created_at,category')
       .eq('user_id', String(user.id)).eq('sent', false)
       .order('remind_at', { ascending: true }).limit(50);
     if (error) throw error;
     res.json({ ok: true, reminders: data || [] });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.put('/api/reminders/:id', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    const user = checkToken(token);
+    if (!user) return res.status(401).json({ error: 'Non autorise' });
+    const id = Number(req.params.id);
+    if (!Number.isFinite(id)) return res.status(400).json({ error: 'Identifiant invalide' });
+    const update = {};
+    if (typeof req.body?.message === 'string') {
+      const msg = req.body.message.trim().slice(0, 300);
+      if (!msg) return res.status(400).json({ error: 'Message de rappel requis' });
+      update.message = msg;
+    }
+    if (typeof req.body?.category === 'string') {
+      update.category = req.body.category.trim().slice(0, 40) || null;
+    } else if (req.body?.category === null) {
+      update.category = null;
+    }
+    if (Object.keys(update).length === 0) return res.status(400).json({ error: 'Aucune modification fournie' });
+    const { data, error } = await sbAdmin.from('reminders')
+      .update(update).eq('id', id).eq('user_id', String(user.id)).select().single();
+    if (error) throw error;
+    if (!data) return res.status(404).json({ error: 'Rappel introuvable' });
+    res.json({ ok: true, reminder: data });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
