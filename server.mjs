@@ -49,6 +49,7 @@ const SECRET = process.env.JWT_SECRET || 'guideon2026';
 const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN;
 const WHATSAPP_PHONE_NUMBER_ID = process.env.WHATSAPP_PHONE_NUMBER_ID;
 const WHATSAPP_VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN;
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 // Solution de secours meteo (voir fetchRealWeather) : utilisee uniquement si Open-Meteo echoue
 // (ex: erreur HTTP 429 due au quota gratuit partage par IP sur Render - voir echange avec Victor du
 // 05/11/2026). Optionnelle : si absente, le code se comporte comme avant (Open-Meteo seul).
@@ -259,6 +260,45 @@ app.post('/api/login', async (req, res) => {
     if (!isMatch) return res.status(401).json({ error: 'Identifiants incorrects' });
     res.json({ token: makeToken(users[0].id, email), name: users[0].name, email, userid: users[0].userid || generateUserId(users[0].id) });
   } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// Connexion "Se connecter avec Google" (15/11/2026) : verifie le jeton d'identite renvoye par le
+// bouton Google (Google Identity Services, cote client) via l'endpoint officiel tokeninfo de Google -
+// pas de nouvelle dependance npm necessaire. On verifie que ce jeton a bien ete emis POUR notre
+// Client ID (champ aud) et que l'email est verifie par Google, avant de creer/connecter le compte.
+app.post('/api/login-google', async (req, res) => {
+  try {
+    const { credential } = req.body;
+    if (!credential) return res.status(400).json({ error: 'Jeton Google manquant' });
+    if (!GOOGLE_CLIENT_ID) return res.status(500).json({ error: 'Connexion Google non configurée sur le serveur' });
+    const vr = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(credential)}`);
+    const payload = await vr.json();
+    if (!vr.ok || !payload || payload.aud !== GOOGLE_CLIENT_ID) {
+      return res.status(401).json({ error: 'Jeton Google invalide' });
+    }
+    if (payload.email_verified !== 'true' && payload.email_verified !== true) {
+      return res.status(401).json({ error: 'Email Google non vérifié' });
+    }
+    const email = payload.email;
+    const name = payload.name || email.split('@')[0];
+    const r = await fetch(`${DB}/users?email=eq.${encodeURIComponent(email)}`, { headers: SB });
+    const users = await r.json();
+    let user = Array.isArray(users) && users[0] ? users[0] : null;
+    if (!user) {
+      const SB_SERVICE = { 'apikey': (SUPABASE_SERVICE_KEY || SUPABASE_KEY), 'Authorization': `Bearer ${SUPABASE_SERVICE_KEY || SUPABASE_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=representation' };
+      // Mot de passe aleatoire et inutilisable : ce compte ne pourra jamais se connecter par mot de
+      // passe (seulement via Google), mais la colonne password (NOT NULL) reste satisfaite.
+      const randomPwd = hashPwd(crypto.randomBytes(32).toString('hex'));
+      const created = await fetch(`${DB}/users`, { method: 'POST', headers: SB_SERVICE, body: JSON.stringify({ email, password: randomPwd, name }) });
+      const createdData = await created.json();
+      if (!Array.isArray(createdData) || !createdData[0]) return res.status(500).json({ error: 'Erreur création de compte Google' });
+      user = createdData[0];
+      const newUserid = generateUserId(user.id);
+      await fetch(`${DB}/users?id=eq.${user.id}`, { method: 'PATCH', headers: SB_SERVICE, body: JSON.stringify({ userid: newUserid }) });
+      user.userid = newUserid;
+    }
+    res.json({ token: makeToken(user.id, email), name: user.name || name, email, userid: user.userid || generateUserId(user.id) });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 const IMG_TAG_START = '[GENERATE_IMAGE';
