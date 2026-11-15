@@ -1249,6 +1249,7 @@ const sysContent = (userRealName ? `Prenom reel de l'utilisateur (donnee fiable 
     console.log('🧠 isComplexRequest:', isComplexRequest, '| reasoning_effort envoye:', geminiBodyObj.reasoning_effort || 'aucun');
     const geminiBody = JSON.stringify(geminiBodyObj);
     let response;
+    let usedFallbackModel = false;
     res.write(`data: ${JSON.stringify({ reasoning: "Redaction de la reponse...\n" })}\n\n`);
     for (let attempt = 0; attempt < 2; attempt++) {
       if (attempt > 0) await new Promise(r => setTimeout(r, 2000));
@@ -1276,6 +1277,7 @@ const sysContent = (userRealName ? `Prenom reel de l'utilisateur (donnee fiable 
         if (fallbackRes) {
           console.log('✅ Bascule Gemini réussie.');
           response = fallbackRes;
+          usedFallbackModel = true;
         } else {
           const { displayTime } = getQuotaResetTime();
           const quotaMsg = `Vous avez atteint la limite de votre conversation pour aujourd'hui. Revenez vers ${displayTime} pour une nouvelle conversation.`;
@@ -1316,6 +1318,7 @@ const sysContent = (userRealName ? `Prenom reel de l'utilisateur (donnee fiable 
           if (lastFallback) {
             console.log('\u2705 Bascule Gemini r\u00e9ussie (apr\u00e8s historique r\u00e9duit).');
             response = lastFallback;
+            usedFallbackModel = true;
           } else {
             res.write(`data: ${JSON.stringify({ error: "Ta conversation est devenue trop longue pour une seule r\u00e9ponse. Essaie d'envoyer un message plus court, ou commence une nouvelle conversation." })}\n\n`);
             res.end();
@@ -1330,7 +1333,9 @@ const sysContent = (userRealName ? `Prenom reel de l'utilisateur (donnee fiable 
       }
     }
 
-    
+    if (usedFallbackModel) {
+      res.write(`data: ${JSON.stringify({ fallbackModel: true })}\n\n`);
+    }
 
     let reply = '';
     let reasoningSeenThisRequest = false;
