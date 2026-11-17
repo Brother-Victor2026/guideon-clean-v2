@@ -488,14 +488,14 @@ async function saveToneStyle(){const tone=document.getElementById('toneInput')?.
 
 function saveLang(){const lang=document.getElementById('langSelect')?.value||'auto';const langLabels={'auto':'Auto','fr':'Fr','en':'An'};const langLabel=langLabels[lang]||lang;if(confirm('✅ Langue: '+langLabel+' ?')){localStorage.setItem('glang',lang);alert('✅ Langue: '+langLabel+' sauvegardée!');}else{console.log('❌ Annulé');}}
 
-function exportCC37(){let text='=== TRANSCRIPTION GUIDÉON ===\n\n';const items=document.querySelectorAll('#ccHistory37 div[data-caption]');items.forEach(item=>{text+=item.getAttribute('data-caption')+'\n';});const blob=new Blob([text],{type:'text/plain'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='captions-guideon.txt';a.click();}
 
 
 
 
 
-function updateCCSize(size){const ccHistory=document.getElementById('ccHistory37');if(ccHistory)ccHistory.style.fontSize=size+'px';}function clearCC37(){const ccHistory=document.getElementById('ccHistory37');if(ccHistory)ccHistory.innerHTML='<div style="color:#9db3d9;text-align:center;padding:20px;">Historique effacé</div>';}function exportCC37(){let text='=== TRANSCRIPTION GUIDÉON ===\n';const items=document.querySelectorAll('#ccHistory37 div[data-caption]');items.forEach(item=>{text+=item.getAttribute('data-caption')+'\n';});const blob=new Blob([text],{type:'text/plain'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='captions.txt';a.click();}
-function updateCCColor(color){const ccHistory=document.getElementById('ccHistory37');if(ccHistory){const entries=ccHistory.querySelectorAll('div');entries.forEach(e=>{const textDiv=e.querySelector('[style*="color:#"]');if(textDiv){textDiv.style.color=color;}});}}
+
+
+
 </script>
 <script src="functions.js">function exportCC37(){let text='=== TRANSCRIPTION GUIDÉON ===\n\n';const items=document.querySelectorAll('#ccHistory37 div[data-caption]');items.forEach(item=>{text+=item.getAttribute('data-caption')+'\n';});const blob=new Blob([text],{type:'text/plain'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='captions-guideon.txt';a.click();}
 
@@ -530,106 +530,19 @@ async function sendForgot() {
         }
 }
 
-function loadRealtime(){
-  const el = document.getElementById('realtimeData');
-  el.innerHTML = 'Chargement...';
-  const tok = localStorage.getItem('gtoken');
-  const authHeaders = tok ? { 'Authorization': 'Bearer ' + tok } : {};
-  // Promise.allSettled (et non Promise.all) : si une seule des trois sources echoue (reseau, service
-  // momentanement indisponible...), les deux autres s'affichent quand meme au lieu de tout faire
-  // planter. On envoie aussi le token pour que la meteo utilise la position enregistree par
-  // l'utilisateur (GPS/IP/pays) au lieu de toujours interroger Paris par defaut.
-  Promise.allSettled([
-    fetch('/api/realtime/weather', { headers: authHeaders }).then(r=>r.json()),
-    fetch('/api/realtime/news?category=tech').then(r=>r.json()),
-    fetch('/api/realtime/stocks?symbols=AAPL,GOOGL').then(r=>r.json())
-  ]).then(([wr,nr,sr]) => {
-    const w = wr.status === 'fulfilled' ? wr.value : null;
-    const n = nr.status === 'fulfilled' ? nr.value : null;
-    const s = sr.status === 'fulfilled' ? sr.value : null;
-    let html = '';
-    if (w && w.weather && w.weather.temperature) {
-      html += '<h5>🌤️ Météo (' + w.city + ') : ' + w.weather.temperature + (w.weather.temp_min && w.weather.temp_max ? ' (min ' + w.weather.temp_min + ' / max ' + w.weather.temp_max + ')' : '') + ' - ' + w.weather.condition + (w.weather.source ? ' <span style="color:#6b7280;">[' + w.weather.source + ']</span>' : '') + '</h5><h5>☔ Risque de pluie : ' + (w.weather.rain_chance || 'n/d') + ' · ☁️ Couverture nuageuse : ' + (w.weather.cloud_cover || 'n/d') + ' · 💧 Humidité : ' + w.weather.humidity + ' · 🌬️ Vent : ' + w.weather.wind_speed + '</h5>';
-    } else {
-      html += '<h5>🌤️ Météo : indisponible pour le moment' + (w && w.error ? ' (' + w.error + ')' : '') + '</h5>';
-    }
-    if (n && Array.isArray(n.articles) && n.articles.length > 0) {
-      html += '<h5>📰 Actu : ' + n.articles.slice(0,3).map(a=>a.title+' ('+a.source+')').join('<br>') + '</h5>';
-    } else {
-      html += '<h5>📰 Actu : indisponible pour le moment' + (n && n.error ? ' (' + n.error + ')' : '') + '</h5>';
-    }
-    if (s && Array.isArray(s.stocks) && s.stocks.length > 0) {
-      html += '<h5>📈 Bourse : ' + s.stocks.map(st=>st.symbol+' : '+st.price+' ('+st.change_percent+')').join('<br>') + '</h5>';
-    } else {
-      html += '<h5>📈 Bourse : indisponible pour le moment' + (s && s.error ? ' (' + s.error + ')' : '') + '</h5>';
-    }
-    el.innerHTML = html;
-  });
-}
-function loadForecast7d(){
-  const el = document.getElementById('forecast7dData');
-  if (!el) return;
-  el.style.display = 'flex';
-  el.innerHTML = 'Chargement...';
-  const tok = localStorage.getItem('gtoken');
-  const authHeaders = tok ? { 'Authorization': 'Bearer ' + tok } : {};
-  fetch('/api/realtime/weather-forecast?days=7', { headers: authHeaders }).then(r=>r.json()).then(d=>{
-    if (!d || !Array.isArray(d.forecast) || d.forecast.length === 0) {
-      el.innerHTML = '<span>Prévisions indisponibles pour le moment' + (d && d.error ? ' (' + d.error + ')' : '') + '.</span>';
-      return;
-    }
-    const jours = ['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
-    el.innerHTML = d.forecast.map(function(day, i){
-      const dt = new Date(day.date + 'T12:00:00');
-      const label = i === 0 ? "Aujourd'hui" : jours[dt.getDay()];
-      return '<div style="flex:0 0 auto;min-width:78px;text-align:center;background:#1a1a2e;border-radius:8px;padding:8px 6px;">'
-        + '<div style="font-size:11px;color:#a78bfa;margin-bottom:4px;">' + label + '</div>'
-        + '<div style="font-size:10px;margin-bottom:4px;">' + (day.condition || '') + '</div>'
-        + '<div style="font-size:12px;color:#fff;">' + (day.temp_max || '?') + '</div>'
-        + '<div style="font-size:11px;color:#6b7280;">' + (day.temp_min || '?') + '</div>'
-        + (day.rain_chance ? '<div style="font-size:10px;color:#60a5fa;margin-top:2px;">☔ ' + day.rain_chance + '</div>' : '')
-        + '</div>';
-    }).join('');
-  }).catch(function(){ el.innerHTML = '<span>Prévisions indisponibles pour le moment (connexion impossible).</span>'; });
-}
-function loadProfile(){
-  const tok = localStorage.getItem('gtoken');
-  fetch('/api/profile', {headers: {'Authorization': 'Bearer '+tok}})
-    .then(r=>r.json())
-    .then(d => {
-      document.getElementById('profileData').innerHTML = '👥 ' + d.profile.name + '<br>✉️ ' + d.profile.email;
-      document.getElementById('pn').value = d.profile.name || '';
-      document.getElementById('toneInput').value = d.profile.tone || '';
-      document.getElementById('styleInput').value = d.profile.style || '';
-      loadStats();
-    })
-    .catch(e => document.getElementById('profileData').innerHTML = '❌ ' + e.message);
-}
-function updateProfile(){
-  const tok = localStorage.getItem('gtoken');
-  const tone = document.getElementById('toneInput').value;
-  const style = document.getElementById('styleInput').value;
-  fetch('/api/profile/update', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer '+tok},
-    body: JSON.stringify({tone, style})
-  }).then(r=>r.json()).then(d => alert(d.message || '✅ Sauvegardé')).catch(e => alert('❌ ' + e.message));
-}
-function loadStats(){
-  const tok = localStorage.getItem('gtoken');
-  fetch('/api/feedback/stats', {headers: {'Authorization': 'Bearer '+tok}})
-    .then(r=>r.json())
-    .then(d => document.getElementById('statsData').innerHTML = '📈 Feedback total: ' + d.total_feedbacks + '<br>😊 Satisfaction: ' + d.satisfaction_rate)
-    .catch(e => document.getElementById('statsData').innerHTML = '❌ ' + e.message);
-}
-function exportCC37(){let text='=== TRANSCRIPTION GUIDÉON ===\n\n';const items=document.querySelectorAll('#ccHistory37 div[data-caption]');items.forEach(item=>{text+=item.getAttribute('data-caption')+'\n';});const blob=new Blob([text],{type:'text/plain'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='captions-guideon.txt';a.click();}
 
 
 
 
 
-function updateCCSize(size){const ccHistory=document.getElementById('ccHistory37');if(ccHistory)ccHistory.style.fontSize=size+'px';}function clearCC37(){const ccHistory=document.getElementById('ccHistory37');if(ccHistory)ccHistory.innerHTML='<div style="color:#9db3d9;text-align:center;padding:20px;">Historique effacé</div>';}function exportCC37(){let text='=== TRANSCRIPTION GUIDÉON ===\n';const items=document.querySelectorAll('#ccHistory37 div[data-caption]');items.forEach(item=>{text+=item.getAttribute('data-caption')+'\n';});const blob=new Blob([text],{type:'text/plain'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='captions.txt';a.click();}
-function updateCCColor(color){const ccHistory=document.getElementById('ccHistory37');if(ccHistory){const entries=ccHistory.querySelectorAll('div');entries.forEach(e=>{const textDiv=e.querySelector('[style*="color:#"]');if(textDiv){textDiv.style.color=color;}});}}
+
+
+
+
+
+
+
+
 </script>
 <script>
 window.downloadPrivacyReport = function() {
@@ -1044,106 +957,19 @@ window.addEventListener('load', function() {
   }, 1200);
 });
 
-function loadRealtime(){
-  const el = document.getElementById('realtimeData');
-  el.innerHTML = 'Chargement...';
-  const tok = localStorage.getItem('gtoken');
-  const authHeaders = tok ? { 'Authorization': 'Bearer ' + tok } : {};
-  // Promise.allSettled (et non Promise.all) : si une seule des trois sources echoue (reseau, service
-  // momentanement indisponible...), les deux autres s'affichent quand meme au lieu de tout faire
-  // planter. On envoie aussi le token pour que la meteo utilise la position enregistree par
-  // l'utilisateur (GPS/IP/pays) au lieu de toujours interroger Paris par defaut.
-  Promise.allSettled([
-    fetch('/api/realtime/weather', { headers: authHeaders }).then(r=>r.json()),
-    fetch('/api/realtime/news?category=tech').then(r=>r.json()),
-    fetch('/api/realtime/stocks?symbols=AAPL,GOOGL').then(r=>r.json())
-  ]).then(([wr,nr,sr]) => {
-    const w = wr.status === 'fulfilled' ? wr.value : null;
-    const n = nr.status === 'fulfilled' ? nr.value : null;
-    const s = sr.status === 'fulfilled' ? sr.value : null;
-    let html = '';
-    if (w && w.weather && w.weather.temperature) {
-      html += '<h5>🌤️ Météo (' + w.city + ') : ' + w.weather.temperature + (w.weather.temp_min && w.weather.temp_max ? ' (min ' + w.weather.temp_min + ' / max ' + w.weather.temp_max + ')' : '') + ' - ' + w.weather.condition + (w.weather.source ? ' <span style="color:#6b7280;">[' + w.weather.source + ']</span>' : '') + '</h5><h5>☔ Risque de pluie : ' + (w.weather.rain_chance || 'n/d') + ' · ☁️ Couverture nuageuse : ' + (w.weather.cloud_cover || 'n/d') + ' · 💧 Humidité : ' + w.weather.humidity + ' · 🌬️ Vent : ' + w.weather.wind_speed + '</h5>';
-    } else {
-      html += '<h5>🌤️ Météo : indisponible pour le moment' + (w && w.error ? ' (' + w.error + ')' : '') + '</h5>';
-    }
-    if (n && Array.isArray(n.articles) && n.articles.length > 0) {
-      html += '<h5>📰 Actu : ' + n.articles.slice(0,3).map(a=>a.title+' ('+a.source+')').join('<br>') + '</h5>';
-    } else {
-      html += '<h5>📰 Actu : indisponible pour le moment' + (n && n.error ? ' (' + n.error + ')' : '') + '</h5>';
-    }
-    if (s && Array.isArray(s.stocks) && s.stocks.length > 0) {
-      html += '<h5>📈 Bourse : ' + s.stocks.map(st=>st.symbol+' : '+st.price+' ('+st.change_percent+')').join('<br>') + '</h5>';
-    } else {
-      html += '<h5>📈 Bourse : indisponible pour le moment' + (s && s.error ? ' (' + s.error + ')' : '') + '</h5>';
-    }
-    el.innerHTML = html;
-  });
-}
-function loadForecast7d(){
-  const el = document.getElementById('forecast7dData');
-  if (!el) return;
-  el.style.display = 'flex';
-  el.innerHTML = 'Chargement...';
-  const tok = localStorage.getItem('gtoken');
-  const authHeaders = tok ? { 'Authorization': 'Bearer ' + tok } : {};
-  fetch('/api/realtime/weather-forecast?days=7', { headers: authHeaders }).then(r=>r.json()).then(d=>{
-    if (!d || !Array.isArray(d.forecast) || d.forecast.length === 0) {
-      el.innerHTML = '<span>Prévisions indisponibles pour le moment' + (d && d.error ? ' (' + d.error + ')' : '') + '.</span>';
-      return;
-    }
-    const jours = ['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
-    el.innerHTML = d.forecast.map(function(day, i){
-      const dt = new Date(day.date + 'T12:00:00');
-      const label = i === 0 ? "Aujourd'hui" : jours[dt.getDay()];
-      return '<div style="flex:0 0 auto;min-width:78px;text-align:center;background:#1a1a2e;border-radius:8px;padding:8px 6px;">'
-        + '<div style="font-size:11px;color:#a78bfa;margin-bottom:4px;">' + label + '</div>'
-        + '<div style="font-size:10px;margin-bottom:4px;">' + (day.condition || '') + '</div>'
-        + '<div style="font-size:12px;color:#fff;">' + (day.temp_max || '?') + '</div>'
-        + '<div style="font-size:11px;color:#6b7280;">' + (day.temp_min || '?') + '</div>'
-        + (day.rain_chance ? '<div style="font-size:10px;color:#60a5fa;margin-top:2px;">☔ ' + day.rain_chance + '</div>' : '')
-        + '</div>';
-    }).join('');
-  }).catch(function(){ el.innerHTML = '<span>Prévisions indisponibles pour le moment (connexion impossible).</span>'; });
-}
-function loadProfile(){
-  const tok = localStorage.getItem('gtoken');
-  fetch('/api/profile', {headers: {'Authorization': 'Bearer '+tok}})
-    .then(r=>r.json())
-    .then(d => {
-      document.getElementById('profileData').innerHTML = '👥 ' + d.profile.name + '<br>✉️ ' + d.profile.email;
-      document.getElementById('pn').value = d.profile.name || '';
-      document.getElementById('toneInput').value = d.profile.tone || '';
-      document.getElementById('styleInput').value = d.profile.style || '';
-      loadStats();
-    })
-    .catch(e => document.getElementById('profileData').innerHTML = '❌ ' + e.message);
-}
-function updateProfile(){
-  const tok = localStorage.getItem('gtoken');
-  const tone = document.getElementById('toneInput').value;
-  const style = document.getElementById('styleInput').value;
-  fetch('/api/profile/update', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer '+tok},
-    body: JSON.stringify({tone, style})
-  }).then(r=>r.json()).then(d => alert(d.message || '✅ Sauvegardé')).catch(e => alert('❌ ' + e.message));
-}
-function loadStats(){
-  const tok = localStorage.getItem('gtoken');
-  fetch('/api/feedback/stats', {headers: {'Authorization': 'Bearer '+tok}})
-    .then(r=>r.json())
-    .then(d => document.getElementById('statsData').innerHTML = '📈 Feedback total: ' + d.total_feedbacks + '<br>😊 Satisfaction: ' + d.satisfaction_rate)
-    .catch(e => document.getElementById('statsData').innerHTML = '❌ ' + e.message);
-}
-function exportCC37(){let text='=== TRANSCRIPTION GUIDÉON ===\n\n';const items=document.querySelectorAll('#ccHistory37 div[data-caption]');items.forEach(item=>{text+=item.getAttribute('data-caption')+'\n';});const blob=new Blob([text],{type:'text/plain'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='captions-guideon.txt';a.click();}
 
 
 
 
 
-function updateCCSize(size){const ccHistory=document.getElementById('ccHistory37');if(ccHistory)ccHistory.style.fontSize=size+'px';}function clearCC37(){const ccHistory=document.getElementById('ccHistory37');if(ccHistory)ccHistory.innerHTML='<div style="color:#9db3d9;text-align:center;padding:20px;">Historique effacé</div>';}function exportCC37(){let text='=== TRANSCRIPTION GUIDÉON ===\n';const items=document.querySelectorAll('#ccHistory37 div[data-caption]');items.forEach(item=>{text+=item.getAttribute('data-caption')+'\n';});const blob=new Blob([text],{type:'text/plain'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='captions.txt';a.click();}
-function updateCCColor(color){const ccHistory=document.getElementById('ccHistory37');if(ccHistory){const entries=ccHistory.querySelectorAll('div');entries.forEach(e=>{const textDiv=e.querySelector('[style*="color:#"]');if(textDiv){textDiv.style.color=color;}});}}
+
+
+
+
+
+
+
+
 </script><div class="mo" id="lm">
 <div class="mb2">
 <div style="font-size:40px;margin-bottom:10px">🧠</div>
@@ -1192,14 +1018,14 @@ function updateCCColor(color){const ccHistory=document.getElementById('ccHistory
     });
   }
 })();
-function exportCC37(){let text='=== TRANSCRIPTION GUIDÉON ===\n\n';const items=document.querySelectorAll('#ccHistory37 div[data-caption]');items.forEach(item=>{text+=item.getAttribute('data-caption')+'\n';});const blob=new Blob([text],{type:'text/plain'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='captions-guideon.txt';a.click();}
 
 
 
 
 
-function updateCCSize(size){const ccHistory=document.getElementById('ccHistory37');if(ccHistory)ccHistory.style.fontSize=size+'px';}function clearCC37(){const ccHistory=document.getElementById('ccHistory37');if(ccHistory)ccHistory.innerHTML='<div style="color:#9db3d9;text-align:center;padding:20px;">Historique effacé</div>';}function exportCC37(){let text='=== TRANSCRIPTION GUIDÉON ===\n';const items=document.querySelectorAll('#ccHistory37 div[data-caption]');items.forEach(item=>{text+=item.getAttribute('data-caption')+'\n';});const blob=new Blob([text],{type:'text/plain'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='captions.txt';a.click();}
-function updateCCColor(color){const ccHistory=document.getElementById('ccHistory37');if(ccHistory){const entries=ccHistory.querySelectorAll('div');entries.forEach(e=>{const textDiv=e.querySelector('[style*="color:#"]');if(textDiv){textDiv.style.color=color;}});}}
+
+
+
 </script>
 <button class="pb" onclick="cc()">🗑️ Effacer</button>
 <button class="pb" onclick="exportChatMenu()">📥 Exporter</button>
@@ -1671,106 +1497,19 @@ ve=false;gSetStreaming(false);
 document.getElementById('ui').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sm();}});
 let inputDebounce;document.getElementById('ui').addEventListener('input',function(){clearTimeout(inputDebounce);this.style.height='auto';this.style.height=Math.min(this.scrollHeight,220)+'px';inputDebounce=setTimeout(()=>{},300);});
 
-function loadRealtime(){
-  const el = document.getElementById('realtimeData');
-  el.innerHTML = 'Chargement...';
-  const tok = localStorage.getItem('gtoken');
-  const authHeaders = tok ? { 'Authorization': 'Bearer ' + tok } : {};
-  // Promise.allSettled (et non Promise.all) : si une seule des trois sources echoue (reseau, service
-  // momentanement indisponible...), les deux autres s'affichent quand meme au lieu de tout faire
-  // planter. On envoie aussi le token pour que la meteo utilise la position enregistree par
-  // l'utilisateur (GPS/IP/pays) au lieu de toujours interroger Paris par defaut.
-  Promise.allSettled([
-    fetch('/api/realtime/weather', { headers: authHeaders }).then(r=>r.json()),
-    fetch('/api/realtime/news?category=tech').then(r=>r.json()),
-    fetch('/api/realtime/stocks?symbols=AAPL,GOOGL').then(r=>r.json())
-  ]).then(([wr,nr,sr]) => {
-    const w = wr.status === 'fulfilled' ? wr.value : null;
-    const n = nr.status === 'fulfilled' ? nr.value : null;
-    const s = sr.status === 'fulfilled' ? sr.value : null;
-    let html = '';
-    if (w && w.weather && w.weather.temperature) {
-      html += '<h5>🌤️ Météo (' + w.city + ') : ' + w.weather.temperature + (w.weather.temp_min && w.weather.temp_max ? ' (min ' + w.weather.temp_min + ' / max ' + w.weather.temp_max + ')' : '') + ' - ' + w.weather.condition + (w.weather.source ? ' <span style="color:#6b7280;">[' + w.weather.source + ']</span>' : '') + '</h5><h5>☔ Risque de pluie : ' + (w.weather.rain_chance || 'n/d') + ' · ☁️ Couverture nuageuse : ' + (w.weather.cloud_cover || 'n/d') + ' · 💧 Humidité : ' + w.weather.humidity + ' · 🌬️ Vent : ' + w.weather.wind_speed + '</h5>';
-    } else {
-      html += '<h5>🌤️ Météo : indisponible pour le moment' + (w && w.error ? ' (' + w.error + ')' : '') + '</h5>';
-    }
-    if (n && Array.isArray(n.articles) && n.articles.length > 0) {
-      html += '<h5>📰 Actu : ' + n.articles.slice(0,3).map(a=>a.title+' ('+a.source+')').join('<br>') + '</h5>';
-    } else {
-      html += '<h5>📰 Actu : indisponible pour le moment' + (n && n.error ? ' (' + n.error + ')' : '') + '</h5>';
-    }
-    if (s && Array.isArray(s.stocks) && s.stocks.length > 0) {
-      html += '<h5>📈 Bourse : ' + s.stocks.map(st=>st.symbol+' : '+st.price+' ('+st.change_percent+')').join('<br>') + '</h5>';
-    } else {
-      html += '<h5>📈 Bourse : indisponible pour le moment' + (s && s.error ? ' (' + s.error + ')' : '') + '</h5>';
-    }
-    el.innerHTML = html;
-  });
-}
-function loadForecast7d(){
-  const el = document.getElementById('forecast7dData');
-  if (!el) return;
-  el.style.display = 'flex';
-  el.innerHTML = 'Chargement...';
-  const tok = localStorage.getItem('gtoken');
-  const authHeaders = tok ? { 'Authorization': 'Bearer ' + tok } : {};
-  fetch('/api/realtime/weather-forecast?days=7', { headers: authHeaders }).then(r=>r.json()).then(d=>{
-    if (!d || !Array.isArray(d.forecast) || d.forecast.length === 0) {
-      el.innerHTML = '<span>Prévisions indisponibles pour le moment' + (d && d.error ? ' (' + d.error + ')' : '') + '.</span>';
-      return;
-    }
-    const jours = ['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
-    el.innerHTML = d.forecast.map(function(day, i){
-      const dt = new Date(day.date + 'T12:00:00');
-      const label = i === 0 ? "Aujourd'hui" : jours[dt.getDay()];
-      return '<div style="flex:0 0 auto;min-width:78px;text-align:center;background:#1a1a2e;border-radius:8px;padding:8px 6px;">'
-        + '<div style="font-size:11px;color:#a78bfa;margin-bottom:4px;">' + label + '</div>'
-        + '<div style="font-size:10px;margin-bottom:4px;">' + (day.condition || '') + '</div>'
-        + '<div style="font-size:12px;color:#fff;">' + (day.temp_max || '?') + '</div>'
-        + '<div style="font-size:11px;color:#6b7280;">' + (day.temp_min || '?') + '</div>'
-        + (day.rain_chance ? '<div style="font-size:10px;color:#60a5fa;margin-top:2px;">☔ ' + day.rain_chance + '</div>' : '')
-        + '</div>';
-    }).join('');
-  }).catch(function(){ el.innerHTML = '<span>Prévisions indisponibles pour le moment (connexion impossible).</span>'; });
-}
-function loadProfile(){
-  const tok = localStorage.getItem('gtoken');
-  fetch('/api/profile', {headers: {'Authorization': 'Bearer '+tok}})
-    .then(r=>r.json())
-    .then(d => {
-      document.getElementById('profileData').innerHTML = '👥 ' + d.profile.name + '<br>✉️ ' + d.profile.email;
-      document.getElementById('pn').value = d.profile.name || '';
-      document.getElementById('toneInput').value = d.profile.tone || '';
-      document.getElementById('styleInput').value = d.profile.style || '';
-      loadStats();
-    })
-    .catch(e => document.getElementById('profileData').innerHTML = '❌ ' + e.message);
-}
-function updateProfile(){
-  const tok = localStorage.getItem('gtoken');
-  const tone = document.getElementById('toneInput').value;
-  const style = document.getElementById('styleInput').value;
-  fetch('/api/profile/update', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer '+tok},
-    body: JSON.stringify({tone, style})
-  }).then(r=>r.json()).then(d => alert(d.message || '✅ Sauvegardé')).catch(e => alert('❌ ' + e.message));
-}
-function loadStats(){
-  const tok = localStorage.getItem('gtoken');
-  fetch('/api/feedback/stats', {headers: {'Authorization': 'Bearer '+tok}})
-    .then(r=>r.json())
-    .then(d => document.getElementById('statsData').innerHTML = '📈 Feedback total: ' + d.total_feedbacks + '<br>😊 Satisfaction: ' + d.satisfaction_rate)
-    .catch(e => document.getElementById('statsData').innerHTML = '❌ ' + e.message);
-}
-function exportCC37(){let text='=== TRANSCRIPTION GUIDÉON ===\n\n';const items=document.querySelectorAll('#ccHistory37 div[data-caption]');items.forEach(item=>{text+=item.getAttribute('data-caption')+'\n';});const blob=new Blob([text],{type:'text/plain'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='captions-guideon.txt';a.click();}
 
 
 
 
 
-function updateCCSize(size){const ccHistory=document.getElementById('ccHistory37');if(ccHistory)ccHistory.style.fontSize=size+'px';}function clearCC37(){const ccHistory=document.getElementById('ccHistory37');if(ccHistory)ccHistory.innerHTML='<div style="color:#9db3d9;text-align:center;padding:20px;">Historique effacé</div>';}function exportCC37(){let text='=== TRANSCRIPTION GUIDÉON ===\n';const items=document.querySelectorAll('#ccHistory37 div[data-caption]');items.forEach(item=>{text+=item.getAttribute('data-caption')+'\n';});const blob=new Blob([text],{type:'text/plain'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='captions.txt';a.click();}
-function updateCCColor(color){const ccHistory=document.getElementById('ccHistory37');if(ccHistory){const entries=ccHistory.querySelectorAll('div');entries.forEach(e=>{const textDiv=e.querySelector('[style*="color:#"]');if(textDiv){textDiv.style.color=color;}});}}
+
+
+
+
+
+
+
+
 </script><div id="am" style="display:none;position:fixed;inset:0;background:#0a0a1a;z-index:9999;align-items:center;justify-content:center;">
 <div id="authModal" style="background:#1a1a2e;padding:28px;border-radius:16px;width:88%;max-width:340px;border:1px solid #2d1b69;">
 <h2 style="color:#a78bfa;text-align:center;margin-bottom:6px;">🧠 Guidéon</h2>
@@ -1828,106 +1567,19 @@ window.addEventListener('load', function() {
     }
 });
 
-function loadRealtime(){
-  const el = document.getElementById('realtimeData');
-  el.innerHTML = 'Chargement...';
-  const tok = localStorage.getItem('gtoken');
-  const authHeaders = tok ? { 'Authorization': 'Bearer ' + tok } : {};
-  // Promise.allSettled (et non Promise.all) : si une seule des trois sources echoue (reseau, service
-  // momentanement indisponible...), les deux autres s'affichent quand meme au lieu de tout faire
-  // planter. On envoie aussi le token pour que la meteo utilise la position enregistree par
-  // l'utilisateur (GPS/IP/pays) au lieu de toujours interroger Paris par defaut.
-  Promise.allSettled([
-    fetch('/api/realtime/weather', { headers: authHeaders }).then(r=>r.json()),
-    fetch('/api/realtime/news?category=tech').then(r=>r.json()),
-    fetch('/api/realtime/stocks?symbols=AAPL,GOOGL').then(r=>r.json())
-  ]).then(([wr,nr,sr]) => {
-    const w = wr.status === 'fulfilled' ? wr.value : null;
-    const n = nr.status === 'fulfilled' ? nr.value : null;
-    const s = sr.status === 'fulfilled' ? sr.value : null;
-    let html = '';
-    if (w && w.weather && w.weather.temperature) {
-      html += '<h5>🌤️ Météo (' + w.city + ') : ' + w.weather.temperature + (w.weather.temp_min && w.weather.temp_max ? ' (min ' + w.weather.temp_min + ' / max ' + w.weather.temp_max + ')' : '') + ' - ' + w.weather.condition + (w.weather.source ? ' <span style="color:#6b7280;">[' + w.weather.source + ']</span>' : '') + '</h5><h5>☔ Risque de pluie : ' + (w.weather.rain_chance || 'n/d') + ' · ☁️ Couverture nuageuse : ' + (w.weather.cloud_cover || 'n/d') + ' · 💧 Humidité : ' + w.weather.humidity + ' · 🌬️ Vent : ' + w.weather.wind_speed + '</h5>';
-    } else {
-      html += '<h5>🌤️ Météo : indisponible pour le moment' + (w && w.error ? ' (' + w.error + ')' : '') + '</h5>';
-    }
-    if (n && Array.isArray(n.articles) && n.articles.length > 0) {
-      html += '<h5>📰 Actu : ' + n.articles.slice(0,3).map(a=>a.title+' ('+a.source+')').join('<br>') + '</h5>';
-    } else {
-      html += '<h5>📰 Actu : indisponible pour le moment' + (n && n.error ? ' (' + n.error + ')' : '') + '</h5>';
-    }
-    if (s && Array.isArray(s.stocks) && s.stocks.length > 0) {
-      html += '<h5>📈 Bourse : ' + s.stocks.map(st=>st.symbol+' : '+st.price+' ('+st.change_percent+')').join('<br>') + '</h5>';
-    } else {
-      html += '<h5>📈 Bourse : indisponible pour le moment' + (s && s.error ? ' (' + s.error + ')' : '') + '</h5>';
-    }
-    el.innerHTML = html;
-  });
-}
-function loadForecast7d(){
-  const el = document.getElementById('forecast7dData');
-  if (!el) return;
-  el.style.display = 'flex';
-  el.innerHTML = 'Chargement...';
-  const tok = localStorage.getItem('gtoken');
-  const authHeaders = tok ? { 'Authorization': 'Bearer ' + tok } : {};
-  fetch('/api/realtime/weather-forecast?days=7', { headers: authHeaders }).then(r=>r.json()).then(d=>{
-    if (!d || !Array.isArray(d.forecast) || d.forecast.length === 0) {
-      el.innerHTML = '<span>Prévisions indisponibles pour le moment' + (d && d.error ? ' (' + d.error + ')' : '') + '.</span>';
-      return;
-    }
-    const jours = ['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
-    el.innerHTML = d.forecast.map(function(day, i){
-      const dt = new Date(day.date + 'T12:00:00');
-      const label = i === 0 ? "Aujourd'hui" : jours[dt.getDay()];
-      return '<div style="flex:0 0 auto;min-width:78px;text-align:center;background:#1a1a2e;border-radius:8px;padding:8px 6px;">'
-        + '<div style="font-size:11px;color:#a78bfa;margin-bottom:4px;">' + label + '</div>'
-        + '<div style="font-size:10px;margin-bottom:4px;">' + (day.condition || '') + '</div>'
-        + '<div style="font-size:12px;color:#fff;">' + (day.temp_max || '?') + '</div>'
-        + '<div style="font-size:11px;color:#6b7280;">' + (day.temp_min || '?') + '</div>'
-        + (day.rain_chance ? '<div style="font-size:10px;color:#60a5fa;margin-top:2px;">☔ ' + day.rain_chance + '</div>' : '')
-        + '</div>';
-    }).join('');
-  }).catch(function(){ el.innerHTML = '<span>Prévisions indisponibles pour le moment (connexion impossible).</span>'; });
-}
-function loadProfile(){
-  const tok = localStorage.getItem('gtoken');
-  fetch('/api/profile', {headers: {'Authorization': 'Bearer '+tok}})
-    .then(r=>r.json())
-    .then(d => {
-      document.getElementById('profileData').innerHTML = '👥 ' + d.profile.name + '<br>✉️ ' + d.profile.email;
-      document.getElementById('pn').value = d.profile.name || '';
-      document.getElementById('toneInput').value = d.profile.tone || '';
-      document.getElementById('styleInput').value = d.profile.style || '';
-      loadStats();
-    })
-    .catch(e => document.getElementById('profileData').innerHTML = '❌ ' + e.message);
-}
-function updateProfile(){
-  const tok = localStorage.getItem('gtoken');
-  const tone = document.getElementById('toneInput').value;
-  const style = document.getElementById('styleInput').value;
-  fetch('/api/profile/update', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer '+tok},
-    body: JSON.stringify({tone, style})
-  }).then(r=>r.json()).then(d => alert(d.message || '✅ Sauvegardé')).catch(e => alert('❌ ' + e.message));
-}
-function loadStats(){
-  const tok = localStorage.getItem('gtoken');
-  fetch('/api/feedback/stats', {headers: {'Authorization': 'Bearer '+tok}})
-    .then(r=>r.json())
-    .then(d => document.getElementById('statsData').innerHTML = '📈 Feedback total: ' + d.total_feedbacks + '<br>😊 Satisfaction: ' + d.satisfaction_rate)
-    .catch(e => document.getElementById('statsData').innerHTML = '❌ ' + e.message);
-}
-function exportCC37(){let text='=== TRANSCRIPTION GUIDÉON ===\n\n';const items=document.querySelectorAll('#ccHistory37 div[data-caption]');items.forEach(item=>{text+=item.getAttribute('data-caption')+'\n';});const blob=new Blob([text],{type:'text/plain'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='captions-guideon.txt';a.click();}
 
 
 
 
 
-function updateCCSize(size){const ccHistory=document.getElementById('ccHistory37');if(ccHistory)ccHistory.style.fontSize=size+'px';}function clearCC37(){const ccHistory=document.getElementById('ccHistory37');if(ccHistory)ccHistory.innerHTML='<div style="color:#9db3d9;text-align:center;padding:20px;">Historique effacé</div>';}function exportCC37(){let text='=== TRANSCRIPTION GUIDÉON ===\n';const items=document.querySelectorAll('#ccHistory37 div[data-caption]');items.forEach(item=>{text+=item.getAttribute('data-caption')+'\n';});const blob=new Blob([text],{type:'text/plain'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='captions.txt';a.click();}
-function updateCCColor(color){const ccHistory=document.getElementById('ccHistory37');if(ccHistory){const entries=ccHistory.querySelectorAll('div');entries.forEach(e=>{const textDiv=e.querySelector('[style*="color:#"]');if(textDiv){textDiv.style.color=color;}});}}
+
+
+
+
+
+
+
+
 </script>
 <div style="display:flex;gap:8px;margin-bottom:16px;">
 <button onclick="stab('login')" class="tab-button active" data-tab="connexion" id="tl" style="flex:1;padding:8px;background:#2d1b69;color:#fff;border:none;border-radius:8px;cursor:pointer;">Connexion</button>
@@ -1984,7 +1636,7 @@ Vous ne recevrez plus de notifications`,()=>{},()=>{document.getElementById('not
 Vos données seront sauvegardées en cloud
 Veuillez appuyer sur OK pour l'activer.`,()=>{},()=>{document.getElementById('cloudBackup').checked=false;});}else{showConfirmDialog(`❌ Sauvegarde cloud désactivée
 Vos données ne seront plus sauvegardées en cloud
-Êtes-vous sûr(e) de le désactiver ? Si oui, appuyez sur OK.`,()=>{},()=>{document.getElementById('cloudBackup').checked=true;});}" > Sauvegarder dans le cloud (vos conversations sont enregistrées en ligne et retrouvables sur tous vos appareils ; décochée, elles ne sont pas conservées)</label><label style="color:#9ca3af;font-size:12px;display:flex;align-items:center;gap:8px;margin-bottom:16px;"><input type="checkbox" id="deleteHistoryAuto" checked style="pointer-events:auto;" onchange="saveCheckboxState(this.id,this.checked);if(this.checked){showConfirmDialog('✅ Suppression automatique activée\nVotre historique sera supprimé après 30 jours d\'inactivité\nVeuillez appuyer sur OK pour l\'activer.',()=>{},()=>{document.getElementById('deleteHistoryAuto').checked=false;});}else{showConfirmDialog('❌ Suppression automatique désactivée\nVotre historique sera conservé\nÊtes-vous sûr(e) de le désactiver ? Si oui, appuyez sur OK.',()=>{},()=>{document.getElementById('deleteHistoryAuto').checked=true;});}"> Supprimer l'historique après 30 jours inactifs (auto-suppression)</label><h4 style="color:#a78bfa;">Données tierces</h4><div style="background:#0f0f1a;border-left:3px solid #7c3aed;padding:10px;border-radius:4px;margin-bottom:12px;"><p style="color:#9ca3af;font-size:11px;margin:0;">✓ Aucune donnée personnelle vendue à des tiers<br>✓ Chiffrement end-to-end disponible<br>✓ Droits RGPD & CCPA garantis</p></div><button onclick="downloadPrivacyReport()" style="width:100%;padding:10px;background:#1e3a8a;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:8px;">📄 Rapport de confidentialité</button><a href="https://wa.me/2290155722973" onclick="window.gOpenWhatsAppContact&&window.gOpenWhatsAppContact(event)" rel="noopener" style="display:block;width:100%;text-align:center;padding:10px;background:#0f766e;color:#fff;border-radius:8px;text-decoration:none;font-size:13px;box-sizing:border-box;">📲 Une question sur vos données ? Parlez-nous</a></div><div id="tab-updates" class="tab-content" style="display:none;"><h4 style="color:#a78bfa;">📦 Mises à jour</h4><div style="background:#0f0f1a;border:1px solid #2d1b69;border-radius:8px;padding:12px;margin-bottom:12px;"><div style="color:#a78bfa;font-size:16px;font-weight:600;margin-bottom:8px;">✅ Dernière version</div><div style="color:#7c3aed;font-size:14px;margin-bottom:4px;">v<span id="latestVersion">1.0.360</span><div id="versionDisplay" style="color:#9ca3af;font-size:11px;margin-top:8px;">⏱️ Auto-version activée</div></div><div style="color:#9ca3af;font-size:11px;margin-bottom:12px;">📅 <span id="updateDate">17/11/2026</span> à <span id="updateTime">11:21:29</span></div><button onclick="checkUpdate()" style="width:100%;padding:10px;background:#7c3aed;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;margin-bottom:12px;">✓ Vérifier mise à jour</button></div><div style="background:#0f0f1a;border:1px solid #2d1b69;border-radius:8px;padding:12px;"><div style="color:#a78bfa;font-size:12px;font-weight:600;margin-bottom:8px;">📋 Changelog</div><div style="color:#9ca3af;font-size:11px;line-height:1.8;"><div>✨ Endpoint /api/sessions/logout-others</div><div>🎨 Interface d'inscription améliorée</div><div>🔐 Nouvelles options de confidentialité</div><div>📊 Statistiques détaillées</div></div></div></div><div id="tab-realtime" class="tab-content" style="display:none;"><h4 style="color:#a78bfa;">📊 Données en temps réel</h4><button onclick="loadRealtime()" style="width:100%;padding:10px;background:#1e3a8a;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:12px;">🔄 Charger données</button><div id="realtimeData" style="background:#0f0f1a;border:1px solid #2d1b69;border-radius:8px;padding:12px;font-size:12px;color:#9ca3af;min-height:100px;"></div><button onclick="loadForecast7d()" style="width:100%;padding:10px;background:#1e3a8a;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-top:14px;margin-bottom:12px;">📅 Prévisions météo sur 7 jours</button><div id="forecast7dData" style="background:#0f0f1a;border:1px solid #2d1b69;border-radius:8px;padding:12px;font-size:12px;color:#9ca3af;min-height:60px;display:flex;gap:8px;overflow-x:auto;"></div><p style="color:#6b7280;font-size:10.5px;margin-top:8px;line-height:1.5;">✓ Toutes les données ci-dessus sont réelles et mises à jour à chaque chargement, pas des valeurs inventées : météo via <strong>Open-Meteo</strong> (modèles météorologiques officiels tels que le DWD allemand et NOAA), actualités via de vrais flux RSS (Google News, Le Monde, BBC, etc.), cotations boursières via <strong>Yahoo Finance</strong>.</p></div><div id="tab-memories" class="tab-content" style="display:none;"><h4 style="color:#a78bfa;margin-bottom:12px;">🧠 Mes mémoires</h4><div id="memoriesList" style="max-height:300px;overflow-y:auto;margin-bottom:12px;border:1px solid #2d1b69;border-radius:8px;padding:8px;">Chargement...</div><textarea id="newMemory" placeholder="Ajouter une mémoire..." style="width:100%;padding:10px;background:#0f0f1a;color:#fff;border:1px solid #2d1b69;border-radius:8px;margin-bottom:8px;box-sizing:border-box;height:60px;resize:none;font-size:12px;"></textarea><button onclick="addMemory()" style="width:100%;padding:10px;background:#10b981;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:8px;">➕ Ajouter</button><button onclick="loadMemories()" style="width:100%;padding:8px;background:#6b7280;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:12px;">🔄 Rafraîchir</button></div><div id="tab-articles" class="tab-content" style="display:none;"><h4 style="color:#a78bfa;margin-bottom:4px;">📰 Articles & Aide</h4><p style="color:#6b7280;font-size:10.5px;margin-bottom:14px;">Ce que rapportent les utilisateurs, des suggestions d'amélioration, et des problèmes connus avec leur solution.</p><details style="margin-bottom:10px;"><summary style="color:#f59e0b;font-weight:600;font-size:12.5px;cursor:pointer;padding:8px;background:#0f0f1a;border-radius:8px;border:1px solid #2d1b69;">🗣️ Réclamations fréquentes</summary><div style="padding:10px 4px;color:#9ca3af;font-size:11.5px;line-height:1.7;"><strong style="color:#e5e7eb;">⏳ Réponses parfois plus lentes</strong><br>Quand le modèle IA principal atteint sa limite d'utilisation, Guidéon bascule automatiquement vers un modèle de secours, ce qui peut rallonger légèrement le temps de réponse.<br><br><strong style="color:#e5e7eb;">🎤 Micro vocal capricieux</strong><br>La reconnaissance vocale dépend du navigateur utilisé ; elle fonctionne de façon fiable sur Chrome/Chromium, moins bien sur certains autres navigateurs.<br><br><strong style="color:#e5e7eb;">⏰ Rappels non reçus</strong><br>Si les notifications n'ont jamais été activées explicitement (bouton "Activer"), aucune notification de rappel ne peut s'afficher en arrière-plan.<br><br><strong style="color:#e5e7eb;">🖼️ Génération d'image refusée</strong><br>Le service de génération d'image est limité à une image toutes les 45 secondes ; une demande trop rapprochée échoue.<br><br><strong style="color:#e5e7eb;">🧠 Conversations très longues</strong><br>Au-delà d'une certaine longueur, l'historique envoyé au modèle IA peut être automatiquement réduit pour que la requête puisse aboutir.</div></details><details style="margin-bottom:10px;"><summary style="color:#10b981;font-weight:600;font-size:12.5px;cursor:pointer;padding:8px;background:#0f0f1a;border-radius:8px;border:1px solid #2d1b69;">💡 Suggestions d'amélioration</summary><div style="padding:10px 4px;color:#9ca3af;font-size:11.5px;line-height:1.7;">• Afficher un indicateur visuel discret quand une réponse provient du modèle de secours plutôt que du modèle principal choisi.<br>• Ajouter un réglage pour couper uniquement la vibration des notifications sans désactiver le son.<br>• Élargir la capacité de réponse quotidienne en ajoutant d'autres sources IA gratuites en complément.<br>• Permettre de renommer ou classer les rappels programmés une fois créés.</div></details><details style="margin-bottom:10px;"><summary style="color:#ef4444;font-weight:600;font-size:12.5px;cursor:pointer;padding:8px;background:#0f0f1a;border-radius:8px;border:1px solid #2d1b69;">⚠️ Problèmes connus & solutions</summary><div style="padding:10px 4px;color:#9ca3af;font-size:11.5px;line-height:1.7;"><strong style="color:#e5e7eb;">« Limite atteinte » / quota dépassé</strong><br>→ Réessayez après quelques minutes, ou changez de modèle (Standard, Véloce, Créatif) dans le sélecteur.<br><br><strong style="color:#e5e7eb;">Micro non détecté</strong><br>→ Vérifiez l'autorisation microphone de votre navigateur et privilégiez Chrome.<br><br><strong style="color:#e5e7eb;">Rappel non reçu</strong><br>→ Assurez-vous d'avoir appuyé sur "Activer" lors de l'invitation aux notifications, pas seulement ouvert l'application.<br><br><strong style="color:#e5e7eb;">Image non générée</strong><br>→ Patientez 45 secondes entre deux demandes d'image.<br><br><strong style="color:#e5e7eb;">Déconnexion / session expirée</strong><br>→ Reconnectez-vous ; vos conversations restent disponibles si "Sauvegarde dans le cloud" est activée dans Mes données.</div></details><p style="color:#6b7280;font-size:10px;margin-top:10px;">Un problème non listé ici ? Utilisez le formulaire de réclamation (section Confidentialité avancée) pour le signaler.</p></div><div id="tab-about" class="tab-content" style="display:none;"><h3 style="color:#a78bfa;font-size:18px;margin-bottom:4px;">Guidéon v2.0</h3><p style="color:#7c3aed;font-size:12px;margin-bottom:12px;">🎯 Production | Novembre 2025</p><h4 style="color:#a78bfa;">Liens</h4><div style="display:flex;flex-direction:column;gap:6px;"><a href="#" onclick="event.preventDefault();window.gShowDocs&&window.gShowDocs();" style="color:#7c3aed;text-decoration:none;font-size:12px;">📖 Docs</a><a href="#" onclick="event.preventDefault();if(window.generateComplaintForm)window.generateComplaintForm();" style="color:#7c3aed;text-decoration:none;font-size:12px;">📧 Support</a><a href="https://wa.me/2290155722973" onclick="window.gOpenWhatsAppContact&&window.gOpenWhatsAppContact(event)" rel="noopener" style="color:#7c3aed;text-decoration:none;font-size:12px;">💬 Besoin d'aide ? Écrivez-nous</a><a href="#" onclick="event.preventDefault();window.gCheckStatus&&window.gCheckStatus();" style="color:#7c3aed;text-decoration:none;font-size:12px;">📊 Status</a></div><div style="margin-top:14px;text-align:center;"><button onclick="gToggleShareQr()" style="padding:8px 14px;background:#1a1a2e;border:1px solid #4c3a8f;color:#c4b5fd;border-radius:8px;cursor:pointer;font-size:12.5px;">📱 Afficher le QR code de partage</button><div id="gQrBox" style="display:none;margin-top:10px;"><canvas id="gQrCanvas" style="background:#fff;padding:8px;border-radius:8px;"></canvas><div style="color:#9ca3af;font-size:11px;margin-top:6px;">Scannez pour ouvrir Guidéon</div></div></div><div id="gStatusResult" style="display:none;margin-top:8px;font-size:12px;color:#9ca3af;background:#0f0f1a;border:1px solid #2d1b69;border-radius:8px;padding:8px;"></div></div></div></div></div>
+Êtes-vous sûr(e) de le désactiver ? Si oui, appuyez sur OK.`,()=>{},()=>{document.getElementById('cloudBackup').checked=true;});}" > Sauvegarder dans le cloud (vos conversations sont enregistrées en ligne et retrouvables sur tous vos appareils ; décochée, elles ne sont pas conservées)</label><label style="color:#9ca3af;font-size:12px;display:flex;align-items:center;gap:8px;margin-bottom:16px;"><input type="checkbox" id="deleteHistoryAuto" checked style="pointer-events:auto;" onchange="saveCheckboxState(this.id,this.checked);if(this.checked){showConfirmDialog('✅ Suppression automatique activée\nVotre historique sera supprimé après 30 jours d\'inactivité\nVeuillez appuyer sur OK pour l\'activer.',()=>{},()=>{document.getElementById('deleteHistoryAuto').checked=false;});}else{showConfirmDialog('❌ Suppression automatique désactivée\nVotre historique sera conservé\nÊtes-vous sûr(e) de le désactiver ? Si oui, appuyez sur OK.',()=>{},()=>{document.getElementById('deleteHistoryAuto').checked=true;});}"> Supprimer l'historique après 30 jours inactifs (auto-suppression)</label><h4 style="color:#a78bfa;">Données tierces</h4><div style="background:#0f0f1a;border-left:3px solid #7c3aed;padding:10px;border-radius:4px;margin-bottom:12px;"><p style="color:#9ca3af;font-size:11px;margin:0;">✓ Aucune donnée personnelle vendue à des tiers<br>✓ Chiffrement end-to-end disponible<br>✓ Droits RGPD & CCPA garantis</p></div><button onclick="downloadPrivacyReport()" style="width:100%;padding:10px;background:#1e3a8a;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:8px;">📄 Rapport de confidentialité</button><a href="https://wa.me/2290155722973" onclick="window.gOpenWhatsAppContact&&window.gOpenWhatsAppContact(event)" rel="noopener" style="display:block;width:100%;text-align:center;padding:10px;background:#0f766e;color:#fff;border-radius:8px;text-decoration:none;font-size:13px;box-sizing:border-box;">📲 Une question sur vos données ? Parlez-nous</a></div><div id="tab-updates" class="tab-content" style="display:none;"><h4 style="color:#a78bfa;">📦 Mises à jour</h4><div style="background:#0f0f1a;border:1px solid #2d1b69;border-radius:8px;padding:12px;margin-bottom:12px;"><div style="color:#a78bfa;font-size:16px;font-weight:600;margin-bottom:8px;">✅ Dernière version</div><div style="color:#7c3aed;font-size:14px;margin-bottom:4px;">v<span id="latestVersion">1.0.361</span><div id="versionDisplay" style="color:#9ca3af;font-size:11px;margin-top:8px;">⏱️ Auto-version activée</div></div><div style="color:#9ca3af;font-size:11px;margin-bottom:12px;">📅 <span id="updateDate">17/11/2026</span> à <span id="updateTime">21:30:30</span></div><button onclick="checkUpdate()" style="width:100%;padding:10px;background:#7c3aed;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;margin-bottom:12px;">✓ Vérifier mise à jour</button></div><div style="background:#0f0f1a;border:1px solid #2d1b69;border-radius:8px;padding:12px;"><div style="color:#a78bfa;font-size:12px;font-weight:600;margin-bottom:8px;">📋 Changelog</div><div style="color:#9ca3af;font-size:11px;line-height:1.8;"><div>✨ Endpoint /api/sessions/logout-others</div><div>🎨 Interface d'inscription améliorée</div><div>🔐 Nouvelles options de confidentialité</div><div>📊 Statistiques détaillées</div></div></div></div><div id="tab-realtime" class="tab-content" style="display:none;"><h4 style="color:#a78bfa;">📊 Données en temps réel</h4><button onclick="loadRealtime()" style="width:100%;padding:10px;background:#1e3a8a;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:12px;">🔄 Charger données</button><div id="realtimeData" style="background:#0f0f1a;border:1px solid #2d1b69;border-radius:8px;padding:12px;font-size:12px;color:#9ca3af;min-height:100px;"></div><button onclick="loadForecast7d()" style="width:100%;padding:10px;background:#1e3a8a;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-top:14px;margin-bottom:12px;">📅 Prévisions météo sur 7 jours</button><div id="forecast7dData" style="background:#0f0f1a;border:1px solid #2d1b69;border-radius:8px;padding:12px;font-size:12px;color:#9ca3af;min-height:60px;display:flex;gap:8px;overflow-x:auto;"></div><p style="color:#6b7280;font-size:10.5px;margin-top:8px;line-height:1.5;">✓ Toutes les données ci-dessus sont réelles et mises à jour à chaque chargement, pas des valeurs inventées : météo via <strong>Open-Meteo</strong> (modèles météorologiques officiels tels que le DWD allemand et NOAA), actualités via de vrais flux RSS (Google News, Le Monde, BBC, etc.), cotations boursières via <strong>Yahoo Finance</strong>.</p></div><div id="tab-memories" class="tab-content" style="display:none;"><h4 style="color:#a78bfa;margin-bottom:12px;">🧠 Mes mémoires</h4><div id="memoriesList" style="max-height:300px;overflow-y:auto;margin-bottom:12px;border:1px solid #2d1b69;border-radius:8px;padding:8px;">Chargement...</div><textarea id="newMemory" placeholder="Ajouter une mémoire..." style="width:100%;padding:10px;background:#0f0f1a;color:#fff;border:1px solid #2d1b69;border-radius:8px;margin-bottom:8px;box-sizing:border-box;height:60px;resize:none;font-size:12px;"></textarea><button onclick="addMemory()" style="width:100%;padding:10px;background:#10b981;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:8px;">➕ Ajouter</button><button onclick="loadMemories()" style="width:100%;padding:8px;background:#6b7280;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:12px;">🔄 Rafraîchir</button></div><div id="tab-articles" class="tab-content" style="display:none;"><h4 style="color:#a78bfa;margin-bottom:4px;">📰 Articles & Aide</h4><p style="color:#6b7280;font-size:10.5px;margin-bottom:14px;">Ce que rapportent les utilisateurs, des suggestions d'amélioration, et des problèmes connus avec leur solution.</p><details style="margin-bottom:10px;"><summary style="color:#f59e0b;font-weight:600;font-size:12.5px;cursor:pointer;padding:8px;background:#0f0f1a;border-radius:8px;border:1px solid #2d1b69;">🗣️ Réclamations fréquentes</summary><div style="padding:10px 4px;color:#9ca3af;font-size:11.5px;line-height:1.7;"><strong style="color:#e5e7eb;">⏳ Réponses parfois plus lentes</strong><br>Quand le modèle IA principal atteint sa limite d'utilisation, Guidéon bascule automatiquement vers un modèle de secours, ce qui peut rallonger légèrement le temps de réponse.<br><br><strong style="color:#e5e7eb;">🎤 Micro vocal capricieux</strong><br>La reconnaissance vocale dépend du navigateur utilisé ; elle fonctionne de façon fiable sur Chrome/Chromium, moins bien sur certains autres navigateurs.<br><br><strong style="color:#e5e7eb;">⏰ Rappels non reçus</strong><br>Si les notifications n'ont jamais été activées explicitement (bouton "Activer"), aucune notification de rappel ne peut s'afficher en arrière-plan.<br><br><strong style="color:#e5e7eb;">🖼️ Génération d'image refusée</strong><br>Le service de génération d'image est limité à une image toutes les 45 secondes ; une demande trop rapprochée échoue.<br><br><strong style="color:#e5e7eb;">🧠 Conversations très longues</strong><br>Au-delà d'une certaine longueur, l'historique envoyé au modèle IA peut être automatiquement réduit pour que la requête puisse aboutir.</div></details><details style="margin-bottom:10px;"><summary style="color:#10b981;font-weight:600;font-size:12.5px;cursor:pointer;padding:8px;background:#0f0f1a;border-radius:8px;border:1px solid #2d1b69;">💡 Suggestions d'amélioration</summary><div style="padding:10px 4px;color:#9ca3af;font-size:11.5px;line-height:1.7;">• Afficher un indicateur visuel discret quand une réponse provient du modèle de secours plutôt que du modèle principal choisi.<br>• Ajouter un réglage pour couper uniquement la vibration des notifications sans désactiver le son.<br>• Élargir la capacité de réponse quotidienne en ajoutant d'autres sources IA gratuites en complément.<br>• Permettre de renommer ou classer les rappels programmés une fois créés.</div></details><details style="margin-bottom:10px;"><summary style="color:#ef4444;font-weight:600;font-size:12.5px;cursor:pointer;padding:8px;background:#0f0f1a;border-radius:8px;border:1px solid #2d1b69;">⚠️ Problèmes connus & solutions</summary><div style="padding:10px 4px;color:#9ca3af;font-size:11.5px;line-height:1.7;"><strong style="color:#e5e7eb;">« Limite atteinte » / quota dépassé</strong><br>→ Réessayez après quelques minutes, ou changez de modèle (Standard, Véloce, Créatif) dans le sélecteur.<br><br><strong style="color:#e5e7eb;">Micro non détecté</strong><br>→ Vérifiez l'autorisation microphone de votre navigateur et privilégiez Chrome.<br><br><strong style="color:#e5e7eb;">Rappel non reçu</strong><br>→ Assurez-vous d'avoir appuyé sur "Activer" lors de l'invitation aux notifications, pas seulement ouvert l'application.<br><br><strong style="color:#e5e7eb;">Image non générée</strong><br>→ Patientez 45 secondes entre deux demandes d'image.<br><br><strong style="color:#e5e7eb;">Déconnexion / session expirée</strong><br>→ Reconnectez-vous ; vos conversations restent disponibles si "Sauvegarde dans le cloud" est activée dans Mes données.</div></details><p style="color:#6b7280;font-size:10px;margin-top:10px;">Un problème non listé ici ? Utilisez le formulaire de réclamation (section Confidentialité avancée) pour le signaler.</p></div><div id="tab-about" class="tab-content" style="display:none;"><h3 style="color:#a78bfa;font-size:18px;margin-bottom:4px;">Guidéon v2.0</h3><p style="color:#7c3aed;font-size:12px;margin-bottom:12px;">🎯 Production | Novembre 2025</p><h4 style="color:#a78bfa;">Liens</h4><div style="display:flex;flex-direction:column;gap:6px;"><a href="#" onclick="event.preventDefault();window.gShowDocs&&window.gShowDocs();" style="color:#7c3aed;text-decoration:none;font-size:12px;">📖 Docs</a><a href="#" onclick="event.preventDefault();if(window.generateComplaintForm)window.generateComplaintForm();" style="color:#7c3aed;text-decoration:none;font-size:12px;">📧 Support</a><a href="https://wa.me/2290155722973" onclick="window.gOpenWhatsAppContact&&window.gOpenWhatsAppContact(event)" rel="noopener" style="color:#7c3aed;text-decoration:none;font-size:12px;">💬 Besoin d'aide ? Écrivez-nous</a><a href="#" onclick="event.preventDefault();window.gCheckStatus&&window.gCheckStatus();" style="color:#7c3aed;text-decoration:none;font-size:12px;">📊 Status</a></div><div style="margin-top:14px;text-align:center;"><button onclick="gToggleShareQr()" style="padding:8px 14px;background:#1a1a2e;border:1px solid #4c3a8f;color:#c4b5fd;border-radius:8px;cursor:pointer;font-size:12.5px;">📱 Afficher le QR code de partage</button><div id="gQrBox" style="display:none;margin-top:10px;"><canvas id="gQrCanvas" style="background:#fff;padding:8px;border-radius:8px;"></canvas><div style="color:#9ca3af;font-size:11px;margin-top:6px;">Scannez pour ouvrir Guidéon</div></div></div><div id="gStatusResult" style="display:none;margin-top:8px;font-size:12px;color:#9ca3af;background:#0f0f1a;border:1px solid #2d1b69;border-radius:8px;padding:8px;"></div></div></div></div></div>
 </div></div>
 <div id="sharemod" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9998;align-items:center;justify-content:center;">
 <div style="background:#1a1a2e;padding:24px;border-radius:16px;width:88%;max-width:340px;border:1px solid #2d1b69;">
@@ -2062,14 +1714,7 @@ function showImgModal(){document.getElementById('imgmod').style.display='flex';}
 function showBar(n){const b=document.getElementById('ubar');b.style.display='flex';document.getElementById('uname').textContent='👥 '+n;document.body.style.paddingTop='50px';}
 function openSidebar(){document.getElementById('sidebar').style.display='flex';loadSessions();}
 function closeSidebar(){document.getElementById('sidebar').style.display='none';}
-function showProfile(){
-  document.getElementById('prof').style.display='flex';
-  const tok=localStorage.getItem('gtoken');setInterval(()=>{const tok=localStorage.getItem('gtoken');const am=document.getElementById('am');const chat=document.getElementById('chat');if(tok&&am&&am.style.display==='flex'){am.style.display='none';if(chat)chat.style.display='flex';}},200);window.addEventListener('popstate',(e)=>{const tok=localStorage.getItem('gtoken');if(tok){e.preventDefault();const am=document.getElementById('am');const chat=document.getElementById('chat');if(am)am.style.display='none';if(chat)chat.style.display='flex';}});
-window.addEventListener('popstate',()=>{const tok=localStorage.getItem('gtoken');if(tok){const am=document.getElementById('am');const chat=document.getElementById('chat');if(am&&am.style.display==='flex'){am.style.display='none';if(chat)chat.style.display='flex';}}});setTimeout(()=>{const db=document.getElementById('debugStatus');if(!db){const d=document.createElement('div');d.id='debugStatus';d.style.cssText='position:fixed;top:60px;right:10px;background:#0f0f1a;border:2px solid #7c3aed;color:#7c3aed;padding:8px 12px;border-radius:6px;font-size:11px;z-index:9999;max-width:150px;word-wrap:break-word;';d.innerHTML='🔍 gtoken: '+(tok?'✅ OK ('+tok.substring(0,10)+'...)':'❌ VIDE');document.body.appendChild(d);}},100);console.log('🔍 Au démarrage - gtoken:', tok ? '✅ Présent' : '❌ VIDE');if(tok)console.log('Token length:', tok.length);
-  const email=localStorage.getItem('gname')||'utilisateur@example.com';
-  document.getElementById('userEmail').textContent=localStorage.getItem('gname')||'Email non disponible';
-  fetch('/api/memory/view',{headers:{'Authorization':'Bearer '+tok}}).then(r=>r.json()).then(d=>{const savedInst=localStorage.getItem('ginst');if(savedInst){document.getElementById('inst').value=savedInst;}else if(d&&d.instructions){document.getElementById('inst').value=d.instructions;}}).catch(()=>{});
-}
+
 async function loadSessions(){
   const tok=localStorage.getItem('gtoken');if(!tok)return;
   try{
@@ -2864,14 +2509,14 @@ function loadStats(){
     .then(d => document.getElementById('statsData').innerHTML = '📈 Feedback total: ' + d.total_feedbacks + '<br>😊 Satisfaction: ' + d.satisfaction_rate)
     .catch(e => document.getElementById('statsData').innerHTML = '❌ ' + e.message);
 }
-function exportCC37(){let text='=== TRANSCRIPTION GUIDÉON ===\n\n';const items=document.querySelectorAll('#ccHistory37 div[data-caption]');items.forEach(item=>{text+=item.getAttribute('data-caption')+'\n';});const blob=new Blob([text],{type:'text/plain'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='captions-guideon.txt';a.click();}
 
 
 
 
 
-function updateCCSize(size){const ccHistory=document.getElementById('ccHistory37');if(ccHistory)ccHistory.style.fontSize=size+'px';}function clearCC37(){const ccHistory=document.getElementById('ccHistory37');if(ccHistory)ccHistory.innerHTML='<div style="color:#9db3d9;text-align:center;padding:20px;">Historique effacé</div>';}function exportCC37(){let text='=== TRANSCRIPTION GUIDÉON ===\n';const items=document.querySelectorAll('#ccHistory37 div[data-caption]');items.forEach(item=>{text+=item.getAttribute('data-caption')+'\n';});const blob=new Blob([text],{type:'text/plain'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='captions.txt';a.click();}
-function updateCCColor(color){const ccHistory=document.getElementById('ccHistory37');if(ccHistory){const entries=ccHistory.querySelectorAll('div');entries.forEach(e=>{const textDiv=e.querySelector('[style*="color:#"]');if(textDiv){textDiv.style.color=color;}});}}
+
+
+
 </script><div id="createProjectInterface" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:10000;justify-content:center;align-items:center;"><div style="background:#0f0f1a;border:1px solid #2d1b69;border-radius:16px;padding:24px;width:90%;max-width:500px;max-height:85vh;overflow-y:auto;"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;"><h1 style="color:#a78bfa;margin:0;font-size:20px;">Nouveau projet</h1><button onclick="closeCreateProjectInterface()" style="background:none;border:none;color:#9ca3af;font-size:24px;cursor:pointer;">✕</button></div><input id="projectMainInput" type="text" placeholder="par exemple, planification d'un anniversaire" style="width:100%;padding:12px;background:#1a1a2e;border:1px solid #2d1b69;border-radius:8px;color:#fff;font-size:14px;box-sizing:border-box;margin-bottom:20px;"><p style="color:#a78bfa;font-weight:bold;margin:0 0 12px 0;font-size:12px;">Sélectionne une catégorie:</p><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:20px;"><button class="categoryBtn" onclick="selectCategory('devoirs', this)" style="padding:10px;background:#2d1b69;color:#fff;border:1px solid #a78bfa;border-radius:8px;cursor:pointer;font-size:12px;transition:all 0.3s;">🏠 Devoirs</button><button class="categoryBtn" onclick="selectCategory('investissement', this)" style="padding:10px;background:#2d1b69;color:#fff;border:1px solid #a78bfa;border-radius:8px;cursor:pointer;font-size:12px;transition:all 0.3s;">💰 Investissement</button><button class="categoryBtn" onclick="selectCategory('ecriture', this)" style="padding:10px;background:#2d1b69;color:#fff;border:1px solid #a78bfa;border-radius:8px;cursor:pointer;font-size:12px;transition:all 0.3s;">✏️ Écriture</button><button class="categoryBtn" onclick="selectCategory('sante', this)" style="padding:10px;background:#2d1b69;color:#fff;border:1px solid #a78bfa;border-radius:8px;cursor:pointer;font-size:12px;transition:all 0.3s;">🏥 Santé</button><button class="categoryBtn" onclick="selectCategory('voyages', this)" style="padding:10px;background:#2d1b69;color:#fff;border:1px solid #a78bfa;border-radius:8px;cursor:pointer;font-size:12px;transition:all 0.3s;">✈️ Voyages</button><button class="categoryBtn" onclick="selectCategory('autre', this)" style="padding:10px;background:#2d1b69;color:#fff;border:1px solid #a78bfa;border-radius:8px;cursor:pointer;font-size:12px;transition:all 0.3s;">🎯 Autre</button></div><p style="color:#a78bfa;font-weight:bold;margin:0 0 8px 0;font-size:12px;">Description du projet (optionnel):</p><textarea id="projectDesc" placeholder="Ajoute plus de détails sur ton projet..." style="width:100%;padding:12px;background:#1a1a2e;border:1px solid #2d1b69;border-radius:8px;color:#fff;font-size:12px;box-sizing:border-box;margin-bottom:20px;height:120px;resize:none;"></textarea><p style="color:#a78bfa;font-weight:bold;margin:0 0 12px 0;font-size:12px;">Options supplémentaires:</p><label style="display:flex;align-items:center;gap:8px;margin-bottom:10px;color:#9ca3af;font-size:12px;cursor:pointer;"><input type="radio" name="newProjectMode" value="default" id="newModeDef" checked style="cursor:pointer;"><span><strong>Par défaut</strong> - Accès aux éléments d'autres chats</span></label><label style="display:flex;align-items:center;gap:8px;margin-bottom:20px;color:#9ca3af;font-size:12px;cursor:pointer;"><input type="radio" name="newProjectMode" value="only" id="newModeOnly" style="cursor:pointer;"><span><strong>Projet seulement</strong> - Éléments visibles seulement ici</span></label><div style="display:flex;gap:10px;"><button onclick="saveNewProject()" style="flex:1;padding:12px;background:#a78bfa;color:#000;border:none;border-radius:8px;font-weight:bold;cursor:pointer;font-size:14px;">✅ Créer un projet</button><button onclick="closeCreateProjectInterface()" style="flex:1;padding:12px;background:#2d1b69;color:#fff;border:1px solid #a78bfa;border-radius:8px;cursor:pointer;font-size:14px;">❌ Annuler</button></div></div>
 </div><div id="confirmCategoryModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:10001;justify-content:center;align-items:center;"><div style="background:#0f0f1a;border:1px solid #2d1b69;border-radius:12px;padding:20px;width:85%;max-width:350px;"><h2 style="color:#a78bfa;margin:0 0 15px 0;font-size:16px;">Confirmer la catégorie?</h2><p id="confirmCategoryText" style="color:#9ca3af;margin:0 0 20px 0;font-size:13px;"></p><div style="display:flex;gap:10px;"><button onclick="confirmCategory()" style="flex:1;padding:10px;background:#a78bfa;color:#000;border:none;border-radius:8px;font-weight:bold;cursor:pointer;">✅ OK</button><button onclick="closeConfirmCategory()" style="flex:1;padding:10px;background:#2d1b69;color:#fff;border:1px solid #a78bfa;border-radius:8px;cursor:pointer;">❌ Annuler</button></div></div>
 </div><div id="myProjectsModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:10000;justify-content:center;align-items:center;"><div style="background:#0f0f1a;border:1px solid #2d1b69;border-radius:12px;padding:20px;width:90%;max-width:450px;max-height:80vh;overflow-y:auto;"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;"><h2 style="color:#a78bfa;margin:0;font-size:16px;">📂 Mes Projets</h2><button onclick="closeMyProjectsModal()" style="background:none;border:none;color:#9ca3af;font-size:20px;cursor:pointer;">✕</button></div><div id="projectsListContainer" style="margin-bottom:15px;"></div><button onclick="closeMyProjectsModal()" style="width:100%;padding:10px;background:#2d1b69;color:#fff;border:1px solid #a78bfa;border-radius:8px;cursor:pointer;font-size:13px;">❌ Fermer</button></div>
@@ -2903,33 +2548,33 @@ function updateCCColor(color){const ccHistory=document.getElementById('ccHistory
     }
   }
 })();
-function exportCC37(){let text='=== TRANSCRIPTION GUIDÉON ===\n\n';const items=document.querySelectorAll('#ccHistory37 div[data-caption]');items.forEach(item=>{text+=item.getAttribute('data-caption')+'\n';});const blob=new Blob([text],{type:'text/plain'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='captions-guideon.txt';a.click();}
 
 
 
 
 
-function updateCCSize(size){const ccHistory=document.getElementById('ccHistory37');if(ccHistory)ccHistory.style.fontSize=size+'px';}function clearCC37(){const ccHistory=document.getElementById('ccHistory37');if(ccHistory)ccHistory.innerHTML='<div style="color:#9db3d9;text-align:center;padding:20px;">Historique effacé</div>';}function exportCC37(){let text='=== TRANSCRIPTION GUIDÉON ===\n';const items=document.querySelectorAll('#ccHistory37 div[data-caption]');items.forEach(item=>{text+=item.getAttribute('data-caption')+'\n';});const blob=new Blob([text],{type:'text/plain'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='captions.txt';a.click();}
-function updateCCColor(color){const ccHistory=document.getElementById('ccHistory37');if(ccHistory){const entries=ccHistory.querySelectorAll('div');entries.forEach(e=>{const textDiv=e.querySelector('[style*="color:#"]');if(textDiv){textDiv.style.color=color;}});}}
+
+
+
 </script>
 <div id="imgmod" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9999;align-items:center;justify-content:center;"><div style="background:#1a1a2e;padding:24px;border-radius:16px;width:90%;max-width:450px;border:1px solid #2d1b69;"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;"><h3 style="color:#a78bfa;margin:0;">🖼️ Analyser une image</h3><button onclick="document.getElementById('imgmod').style.display='none'" style="background:none;border:none;color:#6b7280;font-size:24px;cursor:pointer;">✕</button></div><div style="display:flex;gap:8px;margin-bottom:16px;border-bottom:1px solid #2d1b69;padding-bottom:8px;"><button onclick="document.getElementById('urlTab').style.display='block';document.getElementById('uploadTab').style.display='none'" style="background:none;border:none;color:#a78bfa;cursor:pointer;font-size:14px;padding:8px;">🔗 URL</button><button onclick="document.getElementById('uploadTab').style.display='block';document.getElementById('urlTab').style.display='none'" style="background:none;border:none;color:#6b7280;cursor:pointer;font-size:14px;padding:8px;">📱 Images</button></div><div id="urlTab" style="display:block;"><input type="url" id="imgUrl" placeholder="https://exemple.com/image.jpg" style="width:100%;padding:10px;background:#0f0f1a;border:1px solid #2d1b69;color:#e0e0e0;border-radius:6px;margin-bottom:12px;font-size:13px;"></div><div id="uploadTab" style="display:none;"><input type="file" id="imgFile" accept="image/*" style="width:100%;padding:8px;background:#0f0f1a;border:1px solid #2d1b69;color:#e0e0e0;border-radius:6px;margin-bottom:12px;font-size:13px;"></div><textarea id="imgDesc" placeholder="Optionnel: Pose une question..." style="width:100%;padding:10px;background:#0f0f1a;border:1px solid #2d1b69;color:#e0e0e0;border-radius:6px;margin-bottom:12px;font-size:13px;resize:vertical;height:80px;"></textarea><button onclick="analyzeImage()" style="width:100%;padding:10px;background:linear-gradient(135deg,#7c3aed,#2563eb);border:none;color:white;border-radius:6px;cursor:pointer;font-weight:bold;">📊 Analyser</button></div></div>
-<script>function analyzeImage(){const url=document.getElementById("imgUrl").value;const file=document.getElementById("imgFile").files[0];const desc=document.getElementById("imgDesc").value||"Décris cette image";if(!url&&!file){am("guideon","Fournis une URL ou upload une image");return;}ve=true;document.getElementById("imgmod").style.display="none";am("guideon","🔍 Analyse en cours, veuillez patienter (5-10 secondes)...");if(url){fetch("/api/analyze",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({imageUrl:url,question:desc})}).then(r=>r.json()).then(d=>{ve=false;am("guideon",d.reply||"Erreur");}).catch(e=>{ve=false;am("guideon","Erreur: "+e.message);});}else if(file){const reader=new FileReader();reader.onload=(e)=>{fetch("/api/analyze",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({imageBase64:e.target.result,question:desc})}).then(r=>r.json()).then(d=>{ve=false;am("guideon",d.reply||"Erreur");}).catch(e=>{ve=false;am("guideon","Erreur: "+e.message);});};reader.readAsDataURL(file);}}function exportCC37(){let text='=== TRANSCRIPTION GUIDÉON ===\n\n';const items=document.querySelectorAll('#ccHistory37 div[data-caption]');items.forEach(item=>{text+=item.getAttribute('data-caption')+'\n';});const blob=new Blob([text],{type:'text/plain'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='captions-guideon.txt';a.click();}
+<script>function analyzeImage(){const url=document.getElementById("imgUrl").value;const file=document.getElementById("imgFile").files[0];const desc=document.getElementById("imgDesc").value||"Décris cette image";if(!url&&!file){am("guideon","Fournis une URL ou upload une image");return;}ve=true;document.getElementById("imgmod").style.display="none";am("guideon","🔍 Analyse en cours, veuillez patienter (5-10 secondes)...");if(url){fetch("/api/analyze",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({imageUrl:url,question:desc})}).then(r=>r.json()).then(d=>{ve=false;am("guideon",d.reply||"Erreur");}).catch(e=>{ve=false;am("guideon","Erreur: "+e.message);});}else if(file){const reader=new FileReader();reader.onload=(e)=>{fetch("/api/analyze",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({imageBase64:e.target.result,question:desc})}).then(r=>r.json()).then(d=>{ve=false;am("guideon",d.reply||"Erreur");}).catch(e=>{ve=false;am("guideon","Erreur: "+e.message);});};reader.readAsDataURL(file);}}
 
 
 
 
 
-function updateCCSize(size){const ccHistory=document.getElementById('ccHistory37');if(ccHistory)ccHistory.style.fontSize=size+'px';}function clearCC37(){const ccHistory=document.getElementById('ccHistory37');if(ccHistory)ccHistory.innerHTML='<div style="color:#9db3d9;text-align:center;padding:20px;">Historique effacé</div>';}function exportCC37(){let text='=== TRANSCRIPTION GUIDÉON ===\n';const items=document.querySelectorAll('#ccHistory37 div[data-caption]');items.forEach(item=>{text+=item.getAttribute('data-caption')+'\n';});const blob=new Blob([text],{type:'text/plain'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='captions.txt';a.click();}
-function updateCCColor(color){const ccHistory=document.getElementById('ccHistory37');if(ccHistory){const entries=ccHistory.querySelectorAll('div');entries.forEach(e=>{const textDiv=e.querySelector('[style*="color:#"]');if(textDiv){textDiv.style.color=color;}});}}
+
+
 </script>
-<script>function analyzePdfWithWorker(pdfData){if(!window.pdfWorker){window.pdfWorker=new Worker('pdf-worker.js');}window.pdfWorker.onmessage=(e)=>{if(e.data.success){am('guideon','✅ '+e.data.text);}else{am('guideon','❌ Erreur PDF: '+e.data.error);}};window.pdfWorker.postMessage({pdfData});}function exportCC37(){let text='=== TRANSCRIPTION GUIDÉON ===\n\n';const items=document.querySelectorAll('#ccHistory37 div[data-caption]');items.forEach(item=>{text+=item.getAttribute('data-caption')+'\n';});const blob=new Blob([text],{type:'text/plain'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='captions-guideon.txt';a.click();}
+<script>function analyzePdfWithWorker(pdfData){if(!window.pdfWorker){window.pdfWorker=new Worker('pdf-worker.js');}window.pdfWorker.onmessage=(e)=>{if(e.data.success){am('guideon','✅ '+e.data.text);}else{am('guideon','❌ Erreur PDF: '+e.data.error);}};window.pdfWorker.postMessage({pdfData});}
 
 
 
 
 
-function updateCCSize(size){const ccHistory=document.getElementById('ccHistory37');if(ccHistory)ccHistory.style.fontSize=size+'px';}function clearCC37(){const ccHistory=document.getElementById('ccHistory37');if(ccHistory)ccHistory.innerHTML='<div style="color:#9db3d9;text-align:center;padding:20px;">Historique effacé</div>';}function exportCC37(){let text='=== TRANSCRIPTION GUIDÉON ===\n';const items=document.querySelectorAll('#ccHistory37 div[data-caption]');items.forEach(item=>{text+=item.getAttribute('data-caption')+'\n';});const blob=new Blob([text],{type:'text/plain'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='captions.txt';a.click();}
-function updateCCColor(color){const ccHistory=document.getElementById('ccHistory37');if(ccHistory){const entries=ccHistory.querySelectorAll('div');entries.forEach(e=>{const textDiv=e.querySelector('[style*="color:#"]');if(textDiv){textDiv.style.color=color;}});}}
+
+
 </script>
 
 <script>
@@ -2953,14 +2598,14 @@ function initColorPicker(){
   }
 }
 window.addEventListener('DOMContentLoaded',initColorPicker);
-function exportCC37(){let text='=== TRANSCRIPTION GUIDÉON ===\n\n';const items=document.querySelectorAll('#ccHistory37 div[data-caption]');items.forEach(item=>{text+=item.getAttribute('data-caption')+'\n';});const blob=new Blob([text],{type:'text/plain'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='captions-guideon.txt';a.click();}
 
 
 
 
 
-function updateCCSize(size){const ccHistory=document.getElementById('ccHistory37');if(ccHistory)ccHistory.style.fontSize=size+'px';}function clearCC37(){const ccHistory=document.getElementById('ccHistory37');if(ccHistory)ccHistory.innerHTML='<div style="color:#9db3d9;text-align:center;padding:20px;">Historique effacé</div>';}function exportCC37(){let text='=== TRANSCRIPTION GUIDÉON ===\n';const items=document.querySelectorAll('#ccHistory37 div[data-caption]');items.forEach(item=>{text+=item.getAttribute('data-caption')+'\n';});const blob=new Blob([text],{type:'text/plain'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='captions.txt';a.click();}
-function updateCCColor(color){const ccHistory=document.getElementById('ccHistory37');if(ccHistory){const entries=ccHistory.querySelectorAll('div');entries.forEach(e=>{const textDiv=e.querySelector('[style*="color:#"]');if(textDiv){textDiv.style.color=color;}});}}
+
+
+
 </script>
 
 <!-- MODAL VOCALE SESSION 37 -->
@@ -3002,7 +2647,7 @@ function normTxt37(s){return (s||'').toLowerCase().normalize('NFD').replace(/[\u
 
 function updateToggleBtn(btnId,isActive){const btn=document.getElementById(btnId);if(btn){btn.style.background=isActive?'rgba(124,58,237,0.6)':'rgba(124,58,237,0.2)';btn.style.color=isActive?'#a78bfa':'#7c3aed';}}
 
-function toggleMicrophone37(){if(voice37.recognition){voice37.recognition.abort();voice37.recognition=null;}const m=document.createElement('div');m.id='micModal37';m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:10002;display:flex;align-items:center;justify-content:center;padding:20px;';m.innerHTML=`<div style="background:#1a0533;padding:24px;border-radius:14px;max-width:600px;width:100%;max-height:85vh;overflow-y:auto;color:#c084fc;"><h3 style="margin:0 0 20px 0;font-size:18px;">🎤 Paramètres Microphone</h3><div style="background:rgba(124,58,237,0.1);padding:16px;border-radius:10px;margin-bottom:16px;"><div style="margin-bottom:14px;"><label style="font-size:12px;color:#9db3d9;display:block;margin-bottom:6px;">Microphone:</label><select id="micSelect" style="width:100%;padding:8px;background:#2d1b69;color:#7c3aed;border:1px solid #2d1b69;border-radius:6px;"><option>En cours de chargement...</option></select></div><div style="margin-bottom:14px;"><label style="font-size:12px;color:#9db3d9;display:block;margin-bottom:6px;">Gain: <span id="gainValue">50</span>%</label><input type="range" id="micGain" min="0" max="100" value="50" style="width:100%;cursor:pointer;" onchange="document.getElementById('gainValue').textContent=this.value;"></div><div style="margin-bottom:14px;"><label style="font-size:12px;color:#9db3d9;display:block;margin-bottom:6px;">Sensibilité: <span id="sensitivityLabel">Normal</span></label><select id="sensitivity" style="width:100%;padding:8px;background:#2d1b69;color:#7c3aed;border:1px solid #2d1b69;border-radius:6px;" onchange="updateSensitivity37(this.value)"><option value="low">Faible</option><option value="normal" selected>Normal</option><option value="high">Sensible</option></select></div><div style="margin-bottom:14px;"><label style="display:flex;align-items:center;gap:8px;cursor:pointer;"><input type="checkbox" id="echoCancel" checked><span style="font-size:12px;color:#9db3d9;">🔇 Echo cancellation</span></label></div><div style="margin-bottom:14px;"><label style="display:flex;align-items:center;gap:8px;cursor:pointer;"><input type="checkbox" id="noiseSuppression" checked><span style="font-size:12px;color:#9db3d9;">🔕 Noise suppression</span></label></div><div style="margin-bottom:14px;"><label style="display:flex;align-items:center;gap:8px;cursor:pointer;"><input type="checkbox" id="noiseBg" checked><span style="font-size:12px;color:#9db3d9;">🎵 Détection bruit</span></label></div><div style="margin-bottom:12px;"><label style="font-size:12px;color:#9db3d9;">Niveau audio:</label><div style="width:100%;height:30px;background:rgba(0,0,0,0.5);border-radius:6px;margin-top:8px;overflow:hidden;"><div id="audioLevel" style="height:100%;background:linear-gradient(90deg,#7c3aed,#2563eb);width:0%;transition:width 0.1s;"></div></div><div id="audioPercent" style="text-align:center;color:#7c3aed;font-weight:600;margin-top:8px;">0%</div></div><div style="margin-bottom:12px;"><label style="font-size:12px;color:#9db3d9;">Permissions:</label><div id="micPermission" style="color:#9db3d9;font-size:12px;margin-top:8px;">Vérification...</div></div></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;"><button onclick="testMicrophone37()" style="padding:10px;background:#7c3aed;color:white;border:none;border-radius:8px;cursor:pointer;font-weight:600;">🎙️ Tester</button><button onclick="recordTestAudio37()" style="padding:10px;background:#2563eb;color:white;border:none;border-radius:8px;cursor:pointer;font-weight:600;"><span id="recordBtn">🔴 Enregistrer</span></button><button onclick="resetMicSettings37()" style="padding:10px;background:rgba(167,139,250,0.2);color:#7c3aed;border:1px solid #7c3aed;border-radius:8px;cursor:pointer;font-weight:600;">↺ Reset</button><button onclick="document.getElementById('micModal37').remove();initVoiceRec37()" style="padding:10px;background:rgba(248,113,113,0.2);color:#f87171;border:none;border-radius:8px;cursor:pointer;font-weight:600;">Fermer</button></div></div>`;document.body.appendChild(m);loadMicrophones37();}function updateSensitivity37(val){const labels={low:'Faible',normal:'Normal',high:'Sensible'};document.getElementById('sensitivityLabel').textContent=labels[val];}function resetMicSettings37(){document.getElementById('micGain').value=50;document.getElementById('gainValue').textContent='50';document.getElementById('sensitivity').value='normal';document.getElementById('sensitivityLabel').textContent='Normal';document.getElementById('echoCancel').checked=true;document.getElementById('noiseSuppression').checked=true;document.getElementById('noiseBg').checked=true;['echoCancel','noiseSuppression','noiseBg'].forEach(function(i){localStorage.removeItem('gaudio_'+i);});}function recordTestAudio37(){const btn=document.getElementById('recordBtn');btn.textContent='⏹️ En cours...';navigator.mediaDevices.getUserMedia({audio:(window.gAudioConstraints?window.gAudioConstraints():true)}).then(stream=>{const rec=new MediaRecorder(stream);const chunks=[];rec.ondataavailable=e=>chunks.push(e.data);rec.onstop=()=>{const blob=new Blob(chunks,{type:'audio/webm'});const url=URL.createObjectURL(blob);localStorage.setItem("lastAudio37",url);const audio=new Audio(url);audio.play();stream.getTracks().forEach(t=>t.stop());btn.textContent='✅ Lecture...';setTimeout(()=>{btn.textContent='🔴 Enregistrer';},3000);};rec.start();setTimeout(()=>{rec.stop();},15000);}).catch(e=>{btn.textContent='❌ Erreur';});}function loadMicrophones37(){navigator.mediaDevices.enumerateDevices().then(devices=>{const mics=devices.filter(d=>d.kind==='audioinput');const select=document.getElementById('micSelect');if(select){select.innerHTML='';mics.forEach((mic,i)=>{const opt=document.createElement('option');opt.value=i;opt.textContent=mic.label||'Microphone '+i;select.appendChild(opt);});if(mics.length===0)select.innerHTML='<option>Aucun microphone trouvé</option>';}const permDiv=document.getElementById('micPermission');if(permDiv){if(mics.length>0)permDiv.textContent='✅ Permissions accordées';else permDiv.textContent='❌ Microphone non détecté';}}).catch(e=>{const permDiv=document.getElementById('micPermission');if(permDiv)permDiv.textContent='❌ Erreur: '+e.message;});}function testMicrophone37(){navigator.mediaDevices.getUserMedia({audio:(window.gAudioConstraints?window.gAudioConstraints():true)}).then(stream=>{const audioContext=new(window.AudioContext||window.webkitAudioContext)();const analyser=audioContext.createAnalyser();const source=audioContext.createMediaStreamSource(stream);source.connect(analyser);const dataArray=new Uint8Array(analyser.frequencyBinCount);const levelDiv=document.getElementById('audioLevel');const percentDiv=document.getElementById('audioPercent');let testDuration=3000;let startTime=Date.now();function updateLevel(){analyser.getByteFrequencyData(dataArray);const average=dataArray.reduce((a,b)=>a+b)/dataArray.length;const percent=Math.round((average/255)*100);if(levelDiv)levelDiv.style.width=percent+'%';if(percentDiv)percentDiv.textContent=percent+'%'+((document.getElementById('noiseBg')||{}).checked&&percent>=50?' 🔊 bruyant':'');if(Date.now()-startTime<testDuration)requestAnimationFrame(updateLevel);else{stream.getTracks().forEach(t=>t.stop());audioContext.close();}}updateLevel();}).catch(e=>{const permDiv=document.getElementById('micPermission');if(permDiv)permDiv.textContent='❌ Accès refusé: '+e.message;});}function updateVoiceDetails37(voiceId){voice37.currentVoice=voiceId;localStorage.setItem('voiceChoice',voiceId);const v=voice37.voices[voiceId];document.getElementById('pitchDetail').textContent=v.pitchDesc;document.getElementById('rateDetail').textContent=v.rateDesc;document.getElementById('tonDetail').textContent=v.tonDesc;}function changeVoice37(voiceId){voice37.currentVoice=voiceId;localStorage.setItem('voiceChoice',voiceId);console.log('🎙️ Voix changée en:',voice37.voices[voiceId].name);}function previewVoice37(){const b=document.getElementById('pb');const voiceId=voice37.currentVoice;const defs=voiceDefaults[voiceId];b.textContent='⏳ Veuillez patienter...';b.disabled=true;setTimeout(()=>{const voiceName=voice37.voices[voiceId].name;const u=new SpeechSynthesisUtterance('Je suis '+voiceName+', votre compagnon de voix');u.lang='fr-FR';u.pitch=defs.pitch;u.rate=defs.rate;b.textContent='🔊 Son de la voix';u.onend=()=>{b.textContent='🔊 Écouter';b.disabled=false;};window.speechSynthesis.speak(u);},1500);}function openVoiceSettings37(){if(voice37.recognition){voice37.recognition.abort();voice37.recognition=null;}const logDiv=document.createElement('div');logDiv.style.cssText='position:fixed;top:20px;right:20px;background:rgba(0,0,0,0.8);color:#0f0;padding:12px;border-radius:8px;z-index:99999;font-size:12px;max-width:300px;word-wrap:break-word;';logDiv.textContent='✅ Defaults réinitialisés';document.body.appendChild(logDiv);setTimeout(()=>logDiv.remove(),3000);const m=document.createElement('div');m.id='voiceSettingsModal';m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:10001;display:flex;align-items:center;justify-content:center;padding:20px;';let voicesHTML='';Object.entries(voice37.voices).forEach(([id,v])=>{voicesHTML+=`<div style="border:1px solid #2d1b69;padding:18px;border-radius:12px;background:rgba(124,58,237,0.08);margin-bottom:16px;"><label style="display:flex;align-items:center;gap:14px;cursor:pointer;margin-bottom:14px;"><input type="radio" name="voice" value="${id}" ${voice37.currentVoice==id?'checked':''} onchange="changeVoice37('${id}');"><span style="font-weight:700;font-size:16px;">${v.name}</span></label><div style="margin-left:36px;"><div style="color:#7c3aed;font-weight:600;font-size:14px;">✓ Pitch: ${v.pitch}</div><div style="color:#7c3aed;font-weight:600;font-size:14px;">✓ Rate: ${v.rate}</div><div style="color:#7c3aed;font-weight:600;font-size:14px;">✓ Ton: ${v.tonDesc}</div></div></div>`;});m.innerHTML=`<div style="background:#1a0533;padding:24px;border-radius:14px;max-width:600px;width:100%;max-height:85vh;overflow-y:auto;color:#c084fc;"><h3 style="margin:0 0 20px 0;font-size:18px;">⚙️ Paramètres Voix</h3>${voicesHTML}<div style="display:flex;gap:12px;margin-top:28px;"><button id="pb" onclick="previewVoice37()" style="flex:1;padding:12px;background:linear-gradient(135deg,#7c3aed,#2563eb);color:white;border:none;border-radius:8px;cursor:pointer;font-weight:600;">🔊 Écouter</button><button onclick="document.getElementById('voiceSettingsModal').remove();initVoiceRec37();" style="flex:1;padding:12px;background:rgba(248,113,113,0.2);color:#f87171;border:none;border-radius:8px;cursor:pointer;font-weight:600;">Fermer</button></div></div>`;document.body.appendChild(m);loadVoicePrefs();}function saveVoicePrefs(){localStorage.setItem('voiceChoice',voice37.currentVoice);Object.entries(voice37.voices).forEach(([id,v])=>{localStorage.setItem('voice-pitch-'+id,v.pitch);localStorage.setItem('voice-rate-'+id,v.rate);});}function loadVoicePrefs(){Object.entries(voice37.voices).forEach(([id,v])=>{const pitch=parseFloat(localStorage.getItem('voice-pitch-'+id));const rate=parseFloat(localStorage.getItem('voice-rate-'+id));if(pitch)voice37.voices[id].pitch=pitch;if(rate)voice37.voices[id].rate=rate;});}function showResultModal(title,content){const m=document.createElement('div');m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:10004;display:flex;align-items:center;justify-content:center;padding:20px;';m.innerHTML=`<div style="background:#1a0533;padding:24px;border-radius:14px;max-width:600px;width:100%;max-height:80vh;overflow-y:auto;color:#c084fc;"><h3 style="margin:0 0 16px 0;">${title}</h3><div style="background:rgba(124,58,237,0.1);padding:16px;border-radius:10px;margin-bottom:16px;color:#e0e0e0;font-size:14px;line-height:1.6;word-break:break-word;white-space:pre-wrap;">${content}</div><button onclick="this.closest('[style*=position:fixed]').remove()" style="width:100%;padding:12px;background:rgba(248,113,113,0.2);color:#f87171;border:none;border-radius:8px;cursor:pointer;font-weight:600;">Fermer</button></div>`;document.body.appendChild(m);}
+function toggleMicrophone37(){if(voice37.recognition){voice37.recognition.abort();voice37.recognition=null;}const m=document.createElement('div');m.id='micModal37';m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:10002;display:flex;align-items:center;justify-content:center;padding:20px;';m.innerHTML=`<div style="background:#1a0533;padding:24px;border-radius:14px;max-width:600px;width:100%;max-height:85vh;overflow-y:auto;color:#c084fc;"><h3 style="margin:0 0 20px 0;font-size:18px;">🎤 Paramètres Microphone</h3><div style="background:rgba(124,58,237,0.1);padding:16px;border-radius:10px;margin-bottom:16px;"><div style="margin-bottom:14px;"><label style="font-size:12px;color:#9db3d9;display:block;margin-bottom:6px;">Microphone:</label><select id="micSelect" style="width:100%;padding:8px;background:#2d1b69;color:#7c3aed;border:1px solid #2d1b69;border-radius:6px;"><option>En cours de chargement...</option></select></div><div style="margin-bottom:14px;"><label style="font-size:12px;color:#9db3d9;display:block;margin-bottom:6px;">Gain: <span id="gainValue">50</span>%</label><input type="range" id="micGain" min="0" max="100" value="50" style="width:100%;cursor:pointer;" onchange="document.getElementById('gainValue').textContent=this.value;"></div><div style="margin-bottom:14px;"><label style="font-size:12px;color:#9db3d9;display:block;margin-bottom:6px;">Sensibilité: <span id="sensitivityLabel">Normal</span></label><select id="sensitivity" style="width:100%;padding:8px;background:#2d1b69;color:#7c3aed;border:1px solid #2d1b69;border-radius:6px;" onchange="updateSensitivity37(this.value)"><option value="low">Faible</option><option value="normal" selected>Normal</option><option value="high">Sensible</option></select></div><div style="margin-bottom:14px;"><label style="display:flex;align-items:center;gap:8px;cursor:pointer;"><input type="checkbox" id="echoCancel" checked><span style="font-size:12px;color:#9db3d9;">🔇 Echo cancellation</span></label></div><div style="margin-bottom:14px;"><label style="display:flex;align-items:center;gap:8px;cursor:pointer;"><input type="checkbox" id="noiseSuppression" checked><span style="font-size:12px;color:#9db3d9;">🔕 Noise suppression</span></label></div><div style="margin-bottom:14px;"><label style="display:flex;align-items:center;gap:8px;cursor:pointer;"><input type="checkbox" id="noiseBg" checked><span style="font-size:12px;color:#9db3d9;">🎵 Détection bruit</span></label></div><div style="margin-bottom:12px;"><label style="font-size:12px;color:#9db3d9;">Niveau audio:</label><div style="width:100%;height:30px;background:rgba(0,0,0,0.5);border-radius:6px;margin-top:8px;overflow:hidden;"><div id="audioLevel" style="height:100%;background:linear-gradient(90deg,#7c3aed,#2563eb);width:0%;transition:width 0.1s;"></div></div><div id="audioPercent" style="text-align:center;color:#7c3aed;font-weight:600;margin-top:8px;">0%</div></div><div style="margin-bottom:12px;"><label style="font-size:12px;color:#9db3d9;">Permissions:</label><div id="micPermission" style="color:#9db3d9;font-size:12px;margin-top:8px;">Vérification...</div></div></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;"><button onclick="testMicrophone37()" style="padding:10px;background:#7c3aed;color:white;border:none;border-radius:8px;cursor:pointer;font-weight:600;">🎙️ Tester</button><button onclick="recordTestAudio37()" style="padding:10px;background:#2563eb;color:white;border:none;border-radius:8px;cursor:pointer;font-weight:600;"><span id="recordBtn">🔴 Enregistrer</span></button><button onclick="resetMicSettings37()" style="padding:10px;background:rgba(167,139,250,0.2);color:#7c3aed;border:1px solid #7c3aed;border-radius:8px;cursor:pointer;font-weight:600;">↺ Reset</button><button onclick="document.getElementById('micModal37').remove();initVoiceRec37()" style="padding:10px;background:rgba(248,113,113,0.2);color:#f87171;border:none;border-radius:8px;cursor:pointer;font-weight:600;">Fermer</button></div></div>`;document.body.appendChild(m);loadMicrophones37();}function updateSensitivity37(val){const labels={low:'Faible',normal:'Normal',high:'Sensible'};document.getElementById('sensitivityLabel').textContent=labels[val];}function resetMicSettings37(){document.getElementById('micGain').value=50;document.getElementById('gainValue').textContent='50';document.getElementById('sensitivity').value='normal';document.getElementById('sensitivityLabel').textContent='Normal';document.getElementById('echoCancel').checked=true;document.getElementById('noiseSuppression').checked=true;document.getElementById('noiseBg').checked=true;['echoCancel','noiseSuppression','noiseBg'].forEach(function(i){localStorage.removeItem('gaudio_'+i);});}function recordTestAudio37(){const btn=document.getElementById('recordBtn');btn.textContent='⏹️ En cours...';navigator.mediaDevices.getUserMedia({audio:(window.gAudioConstraints?window.gAudioConstraints():true)}).then(stream=>{const rec=new MediaRecorder(stream);const chunks=[];rec.ondataavailable=e=>chunks.push(e.data);rec.onstop=()=>{const blob=new Blob(chunks,{type:'audio/webm'});const url=URL.createObjectURL(blob);localStorage.setItem("lastAudio37",url);const audio=new Audio(url);audio.play();stream.getTracks().forEach(t=>t.stop());btn.textContent='✅ Lecture...';setTimeout(()=>{btn.textContent='🔴 Enregistrer';},3000);};rec.start();setTimeout(()=>{rec.stop();},15000);}).catch(e=>{btn.textContent='❌ Erreur';});}function loadMicrophones37(){navigator.mediaDevices.enumerateDevices().then(devices=>{const mics=devices.filter(d=>d.kind==='audioinput');const select=document.getElementById('micSelect');if(select){select.innerHTML='';mics.forEach((mic,i)=>{const opt=document.createElement('option');opt.value=i;opt.textContent=mic.label||'Microphone '+i;select.appendChild(opt);});if(mics.length===0)select.innerHTML='<option>Aucun microphone trouvé</option>';}const permDiv=document.getElementById('micPermission');if(permDiv){if(mics.length>0)permDiv.textContent='✅ Permissions accordées';else permDiv.textContent='❌ Microphone non détecté';}}).catch(e=>{const permDiv=document.getElementById('micPermission');if(permDiv)permDiv.textContent='❌ Erreur: '+e.message;});}function testMicrophone37(){navigator.mediaDevices.getUserMedia({audio:(window.gAudioConstraints?window.gAudioConstraints():true)}).then(stream=>{const audioContext=new(window.AudioContext||window.webkitAudioContext)();const analyser=audioContext.createAnalyser();const source=audioContext.createMediaStreamSource(stream);source.connect(analyser);const dataArray=new Uint8Array(analyser.frequencyBinCount);const levelDiv=document.getElementById('audioLevel');const percentDiv=document.getElementById('audioPercent');let testDuration=3000;let startTime=Date.now();function updateLevel(){analyser.getByteFrequencyData(dataArray);const average=dataArray.reduce((a,b)=>a+b)/dataArray.length;const percent=Math.round((average/255)*100);if(levelDiv)levelDiv.style.width=percent+'%';if(percentDiv)percentDiv.textContent=percent+'%'+((document.getElementById('noiseBg')||{}).checked&&percent>=50?' 🔊 bruyant':'');if(Date.now()-startTime<testDuration)requestAnimationFrame(updateLevel);else{stream.getTracks().forEach(t=>t.stop());audioContext.close();}}updateLevel();}).catch(e=>{const permDiv=document.getElementById('micPermission');if(permDiv)permDiv.textContent='❌ Accès refusé: '+e.message;});}function updateVoiceDetails37(voiceId){voice37.currentVoice=voiceId;localStorage.setItem('voiceChoice',voiceId);const v=voice37.voices[voiceId];document.getElementById('pitchDetail').textContent=v.pitchDesc;document.getElementById('rateDetail').textContent=v.rateDesc;document.getElementById('tonDetail').textContent=v.tonDesc;}function changeVoice37(voiceId){voice37.currentVoice=voiceId;localStorage.setItem('voiceChoice',voiceId);console.log('🎙️ Voix changée en:',voice37.voices[voiceId].name);}function previewVoice37(){const b=document.getElementById('pb');const voiceId=voice37.currentVoice;const defs=voiceDefaults[voiceId];b.textContent='⏳ Veuillez patienter...';b.disabled=true;setTimeout(()=>{const voiceName=voice37.voices[voiceId].name;const u=new SpeechSynthesisUtterance('Je suis '+voiceName+', votre compagnon de voix');u.lang='fr-FR';u.pitch=defs.pitch;u.rate=defs.rate;b.textContent='🔊 Son de la voix';u.onend=()=>{b.textContent='🔊 Écouter';b.disabled=false;};window.speechSynthesis.speak(u);},1500);}function openVoiceSettings37(){if(voice37.recognition){voice37.recognition.abort();voice37.recognition=null;}const logDiv=document.createElement('div');logDiv.style.cssText='position:fixed;top:20px;right:20px;background:rgba(0,0,0,0.8);color:#0f0;padding:12px;border-radius:8px;z-index:99999;font-size:12px;max-width:300px;word-wrap:break-word;';logDiv.textContent='✅ Defaults réinitialisés';document.body.appendChild(logDiv);setTimeout(()=>logDiv.remove(),3000);const m=document.createElement('div');m.id='voiceSettingsModal';m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:10001;display:flex;align-items:center;justify-content:center;padding:20px;';let voicesHTML='';Object.entries(voice37.voices).forEach(([id,v])=>{voicesHTML+=`<div style="border:1px solid #2d1b69;padding:18px;border-radius:12px;background:rgba(124,58,237,0.08);margin-bottom:16px;"><label style="display:flex;align-items:center;gap:14px;cursor:pointer;margin-bottom:14px;"><input type="radio" name="voice" value="${id}" ${voice37.currentVoice==id?'checked':''} onchange="changeVoice37('${id}');"><span style="font-weight:700;font-size:16px;">${v.name}</span></label><div style="margin-left:36px;"><div style="color:#7c3aed;font-weight:600;font-size:14px;">✓ Pitch: ${v.pitch}</div><div style="color:#7c3aed;font-weight:600;font-size:14px;">✓ Rate: ${v.rate}</div><div style="color:#7c3aed;font-weight:600;font-size:14px;">✓ Ton: ${v.tonDesc}</div></div></div>`;});m.innerHTML=`<div style="background:#1a0533;padding:24px;border-radius:14px;max-width:600px;width:100%;max-height:85vh;overflow-y:auto;color:#c084fc;"><h3 style="margin:0 0 20px 0;font-size:18px;">⚙️ Paramètres Voix</h3>${voicesHTML}<div style="display:flex;gap:12px;margin-top:28px;"><button id="pb" onclick="previewVoice37()" style="flex:1;padding:12px;background:linear-gradient(135deg,#7c3aed,#2563eb);color:white;border:none;border-radius:8px;cursor:pointer;font-weight:600;">🔊 Écouter</button><button onclick="document.getElementById('voiceSettingsModal').remove();initVoiceRec37();" style="flex:1;padding:12px;background:rgba(248,113,113,0.2);color:#f87171;border:none;border-radius:8px;cursor:pointer;font-weight:600;">Fermer</button></div></div>`;document.body.appendChild(m);loadVoicePrefs();}function saveVoicePrefs(){localStorage.setItem('voiceChoice',voice37.currentVoice);Object.entries(voice37.voices).forEach(([id,v])=>{localStorage.setItem('voice-pitch-'+id,v.pitch);localStorage.setItem('voice-rate-'+id,v.rate);});}function loadVoicePrefs(){Object.entries(voice37.voices).forEach(([id,v])=>{const pitch=parseFloat(localStorage.getItem('voice-pitch-'+id));const rate=parseFloat(localStorage.getItem('voice-rate-'+id));if(pitch)voice37.voices[id].pitch=pitch;if(rate)voice37.voices[id].rate=rate;});}
 
 function showResultModal(title,content,hasDownload,fileName){const m=document.createElement('div');m.id='resultModal';m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:10004;display:flex;align-items:center;justify-content:center;padding:20px;';const btnHTML=hasDownload?`<div style="margin-bottom:16px;"><button onclick="if(confirm('Télécharger ${fileName}?')){alert('✅ Fichier téléchargé!');document.getElementById('resultModal').remove();openVoiceMenu37();}" style="width:100%;padding:12px;background:#27ae60;color:white;border:none;border-radius:8px;cursor:pointer;font-weight:600;">📥 Télécharger</button></div>`:'';m.innerHTML=`<div style="background:#1a0533;padding:24px;border-radius:14px;max-width:600px;width:100%;max-height:80vh;overflow-y:auto;color:#c084fc;"><h3 style="margin:0 0 16px 0;">${title}</h3><div style="background:rgba(124,58,237,0.1);padding:16px;border-radius:10px;margin-bottom:16px;color:#e0e0e0;font-size:14px;line-height:1.6;word-break:break-word;white-space:pre-wrap;">${content}</div>${btnHTML}<button onclick="document.getElementById('resultModal').remove();openVoiceMenu37()" style="width:100%;padding:12px;background:rgba(248,113,113,0.2);color:#f87171;border:none;border-radius:8px;cursor:pointer;font-weight:600;">Fermer</button></div>`;document.body.appendChild(m);}function deleteConversation37(){document.getElementById('voiceMenuModal37').remove();showResultModal('📕 Exporter PDF','CONVERSION EN COURS\n\n✅ Génération du PDF\n✅ Formatage de la conversation\n⏳ Inclusion des timestamps\n\nFONCTIONNALITÉ EN DÉVELOPPEMENT',true,'conversation-guideon.pdf');}
 function downloadJSON37(){const box=document.getElementById('voiceChat37');const msgs=box?box.querySelectorAll('div'):[];const msgCount=msgs.length;document.getElementById('voiceMenuModal37').remove();showResultModal('📥 Export JSON','✅ Fichier généré\n\n📄 conversation-guideon.json\n📨 Messages: '+msgCount+'\n📦 Format: Structure JSON\n\nPrêt à télécharger',true,'conversation-guideon.json');}
@@ -3014,7 +2659,7 @@ function showStatistics37(){const box=document.getElementById('voiceChat37');con
 function showHistory37(){const box=document.getElementById('voiceChat37');const msgs=box?box.querySelectorAll('div'):[];if(msgs.length===0){document.getElementById('voiceMenuModal37').remove();showResultModal('⭐ Historique complet','Aucun message enregistré',false);return;}const list=Array.from(msgs).map((m,i)=>(i+1)+'. '+m.textContent.slice(0,55)+'...').join('\n');document.getElementById('voiceMenuModal37').remove();showResultModal('⭐ Historique complet','CONVERSATION COMPLÈTE\n\nTotal: '+msgs.length+' messages\n\n'+list.slice(0,600),false);}
 
 function openVoiceMenu37(){const m=document.createElement('div');m.id='voiceMenuModal37';m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:10003;display:flex;align-items:center;justify-content:center;padding:20px;';m.innerHTML=`<div style="background:#1a0533;padding:24px;border-radius:14px;max-width:600px;width:100%;max-height:85vh;overflow-y:auto;color:#c084fc;"><h3 style="margin:0 0 20px 0;">Menu ⋯</h3><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;"><button onclick="deleteConversation37()" style="padding:12px;background:#e74c3c;color:white;border:none;border-radius:8px;cursor:pointer;font-weight:600;">📕 PDF</button><button onclick="downloadJSON37()" style="padding:12px;background:#3498db;color:white;border:none;border-radius:8px;cursor:pointer;font-weight:600;">📥 JSON</button><button onclick="downloadTXT37()" style="padding:12px;background:#2980b9;color:white;border:none;border-radius:8px;cursor:pointer;font-weight:600;">📄 TXT</button><button onclick="restartSession37()" style="padding:12px;background:#f39c12;color:white;border:none;border-radius:8px;cursor:pointer;font-weight:600;">⭐ Favori</button><button onclick="copyTranscription37()" style="padding:12px;background:#16a085;color:white;border:none;border-radius:8px;cursor:pointer;font-weight:600;">📋 Copier</button><button onclick="summarizeConversation37()" style="padding:12px;background:#8e44ad;color:white;border:none;border-radius:8px;cursor:pointer;font-weight:600;">📝 Résumer</button><button onclick="showStatistics37()" style="padding:12px;background:#27ae60;color:white;border:none;border-radius:8px;cursor:pointer;font-weight:600;">📊 Stats</button><button onclick="toggleTimestamps37()" style="padding:12px;background:#34495e;color:white;border:none;border-radius:8px;cursor:pointer;font-weight:600;">⏰ Timestamps</button><button onclick="showHistory37()" style="padding:12px;background:#2c3e50;color:white;border:none;border-radius:8px;cursor:pointer;font-weight:600;">⭐ Historique</button></div><button onclick="document.getElementById('voiceMenuModal37').remove();document.getElementById('voiceChat37').innerHTML=''" style="width:100%;padding:10px;background:rgba(248,113,113,0.2);color:#f87171;border:none;border-radius:8px;cursor:pointer;font-weight:600;">Fermer</button></div>`;document.body.appendChild(m);}
-function exportCC37(){let text='=== TRANSCRIPTION GUIDÉON ===\n\n';const items=document.querySelectorAll('#ccHistory37 div[data-caption]');items.forEach(item=>{text+=item.getAttribute('data-caption')+'\n';});const blob=new Blob([text],{type:'text/plain'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='captions-guideon.txt';a.click();}
+
 
 
 
@@ -3264,18 +2909,7 @@ async function fetchNotifications() {
     console.error('Erreur notifications:', e.message);
   }
 }
-function updateInstructionsPlaceholder(){
-  let name=localStorage.getItem('gname');
-  if(!name){
-    const userSpan=document.getElementById('uname');
-    if(userSpan) name=userSpan.textContent.replace('👥 ','').trim();
-  }
-  name=name||'Utilisateur';
-  const inst=document.getElementById('inst');
-  if(inst) inst.placeholder=`Ex: Je préfère les réponses courtes et techniques. Mon nom est ${name}. J'aime Python et JavaScript.`;
-  console.log('Placeholder updated with name:', name);
-}
-window.addEventListener('storage', updateInstructionsPlaceholder);
+
 
 // Polling toutes les 30s
 setInterval(() => {
