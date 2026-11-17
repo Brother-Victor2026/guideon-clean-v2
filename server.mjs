@@ -1184,6 +1184,25 @@ try {
     factsContext += `\n\nFAIT FIABLE - taux de change EN DIRECT (source Frankfurter, référence Banque centrale européenne, date ${fx.date}) : ${rateLines}. Base-toi UNIQUEMENT sur ces taux exacts pour tout calcul de conversion demandé (multiplication/division simple), précise que ce sont les taux du ${fx.date}, et ne les arrondis jamais de façon trompeuse.`;
   }
 } catch (e) { console.error('Faits fiables - devises:', e.message); }
+try {
+  // Detection stricte : NOMBRE + mot(s) UNITE + (en|vers|->|to) + mot(s) UNITE, les unites devant
+  // suivre immediatement le nombre pour eviter les faux positifs sur des lettres isolees (ex: "m",
+  // "l") qui apparaissent frequemment hors contexte de conversion. Seule la PREMIERE conversion du
+  // message est calculee avec precision ; si le message en contient plusieurs, l'IA reste libre de
+  // calculer les autres elle-meme avec ses propres connaissances.
+  const convRe = /(\d+(?:[.,]\d+)?)\s*([a-zàâäéèêëîïôöùûüç°]+(?:\s+[a-zàâäéèêëîïôöùûüç°]+){0,3}?)\s+(?:en|vers|->|to)\s+([a-zàâäéèêëîïôöùûüç°]+(?:\s+[a-zàâäéèêëîïôöùûüç°]+){0,3}?)(?=[\s.,!?]|$)/i;
+  const m = String(message || '').match(convRe);
+  if (m) {
+    const amount = parseFloat(m[1].replace(',', '.'));
+    if (!isNaN(amount)) {
+      try {
+        const result = convertUnit(amount, m[2], m[3]);
+        const resultRounded = Math.round(result * 100000) / 100000;
+        factsContext += `\n\nFAIT FIABLE - conversion d'unité calculée avec précision (constante physique exacte, jamais approximée) : ${amount} ${m[2].trim()} = ${resultRounded} ${m[3].trim()}. Utilise EXACTEMENT ce résultat si c'est bien la conversion demandée par l'utilisateur, plutôt que de le recalculer toi-même.`;
+      } catch (convErr) { /* Unité non reconnue ou catégories incompatibles : l'IA répond avec ses propres connaissances, comportement inchangé. */ }
+    }
+  }
+} catch (e) { console.error('Faits fiables - unités:', e.message); }
 
 let langInstructions = '';
 if (lang && lang !== 'auto') langInstructions = lang === 'fr' ? '\n\nRéponds UNIQUEMENT EN FRANÇAIS.' : '\n\nRéponds UNIQUEMENT EN ANGLAIS.';
@@ -2866,6 +2885,72 @@ async function fetchRealWeatherUncached(lat, lon) {
     uv_index: uv !== null ? Math.round(uv) : null
   };
 }
+// Previsions meteo sur PLUSIEURS JOURS (fonction separee de fetchRealWeatherUncached ci-dessus, qui
+// ne garde que le jour courant : on ne touche pas a cette derniere pour ne rien casser de ce qui
+// fonctionne deja en production - voir /api/realtime/weather). Reutilise le meme fournisseur gratuit
+// (Open-Meteo) et le meme decodage de code meteo (wmoToFrench), seul le nombre de jours change.
+async function fetchWeatherForecastUncached(lat, lon, days) {
+  const c = new AbortController();
+  const t = setTimeout(() => c.abort(), 7000);
+  let r;
+  try {
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}`
+      + `&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,uv_index_max`
+      + `&timezone=auto&forecast_days=${days}`;
+    r = await fetch(url, { signal: c.signal });
+  } catch (e) {
+    clearTimeout(t);
+    const reason = e.name === 'AbortError' ? 'délai dépassé (connexion réseau trop lente ou instable)' : (e.message || 'erreur réseau');
+    throw new Error(`Connexion à Open-Meteo impossible : ${reason}`);
+  }
+  clearTimeout(t);
+  if (!r.ok) throw new Error(`Open-Meteo a répondu avec une erreur HTTP ${r.status}`);
+  const d = await r.json();
+  const daily = d && d.daily;
+  if (!daily || !Array.isArray(daily.time) || daily.time.length === 0) {
+    throw new Error('Réponse Open-Meteo incomplète (prévisions journalières manquantes)');
+  }
+  return daily.time.map((dateStr, i) => ({
+    date: dateStr,
+    condition: wmoToFrench(daily.weather_code[i]),
+    temp_max: typeof daily.temperature_2m_max[i] === 'number' ? Math.round(daily.temperature_2m_max[i]) + '°C' : null,
+    temp_min: typeof daily.temperature_2m_min[i] === 'number' ? Math.round(daily.temperature_2m_min[i]) + '°C' : null,
+    rain_chance: typeof daily.precipitation_probability_max[i] === 'number' ? Math.round(daily.precipitation_probability_max[i]) + '%' : null,
+    uv_index: typeof daily.uv_index_max[i] === 'number' ? Math.round(daily.uv_index_max[i]) : null
+  }));
+}
+async function fetchWeatherForecast(lat, lon, days) {
+  const cacheKey = 'forecast:' + lat.toFixed(2) + ',' + lon.toFixed(2) + ':' + days;
+  const cached = cacheGet(cacheKey);
+  if (cached) return cached;
+  const data = await fetchWeatherForecastUncached(lat, lon, days);
+  cacheSet(cacheKey, data, 60 * 60 * 1000); // 1h : une prevision multi-jours change peu en 1h, evite de surcharger Open-Meteo
+  return data;
+}
+app.get('/api/realtime/weather-forecast', async (req, res) => {
+  try {
+    let lat = null, lon = null, city = req.query.city || null;
+    const days = Math.min(Math.max(parseInt(req.query.days) || 7, 1), 16); // Open-Meteo autorise jusqu'a 16 jours
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    const user = token ? checkToken(token) : null;
+    if (user) {
+      const cb = await getUserCheckboxes(user.id);
+      if (typeof cb.userLat === 'number' && typeof cb.userLon === 'number') {
+        lat = cb.userLat; lon = cb.userLon; city = cb.userLocationLabel || city;
+      }
+    }
+    if (lat === null && city) {
+      const g = await geocodeCity(city);
+      if (g) { lat = g.lat; lon = g.lon; city = g.label; }
+    }
+    if (lat === null) { lat = 48.8566; lon = 2.3522; city = city || 'Paris'; }
+    let forecast;
+    try { forecast = await fetchWeatherForecast(lat, lon, days); }
+    catch (fErr) { console.error('fetchWeatherForecast:', fErr.message); return res.status(502).json({ error: fErr.message }); }
+    res.json({ city, forecast, timestamp: new Date().toISOString() });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // Convertisseur de devises EN DIRECT (API Frankfurter, gratuite, sans cle, taux officiels de
 // reference de la Banque centrale europeenne, mis a jour chaque jour ouvre vers 16h CET).
 // IMPORTANT : comme fetchRealWeather, cette fonction LANCE une erreur en cas d'echec au lieu de
@@ -2911,6 +2996,96 @@ app.get('/api/realtime/currency', async (req, res) => {
     catch (fxErr) { console.error('fetchExchangeRates:', fxErr.message); return res.status(502).json({ error: fxErr.message }); }
     res.json({ base: fx.base, date: fx.date, rates: fx.rates, timestamp: new Date().toISOString() });
   } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ---- Convertisseur d'unites (poids, longueur, volume, temperature) ----
+// Calcul PUR (aucune API externe, aucune donnee qui varie dans le temps, contrairement aux devises) :
+// un facteur de conversion physique est une constante universelle, jamais une approximation. Chaque
+// categorie a sa propre unite de base (gramme, metre, litre) ; la temperature est geree a part car la
+// relation n'est pas une simple multiplication (ex: Celsius -> Fahrenheit = x*9/5+32).
+const UNIT_ALIASES = {
+  // Poids (base : gramme)
+  g: ['g', 'gramme', 'grammes'],
+  kg: ['kg', 'kilo', 'kilos', 'kilogramme', 'kilogrammes'],
+  mg: ['mg', 'milligramme', 'milligrammes'],
+  tonne: ['tonne', 'tonnes'],
+  lb: ['lb', 'lbs', 'livre', 'livres'],
+  oz: ['oz', 'once', 'onces'],
+  // Longueur (base : metre)
+  mm: ['mm', 'millimetre', 'millimetres'],
+  cm: ['cm', 'centimetre', 'centimetres'],
+  m: ['m', 'metre', 'metres'],
+  km: ['km', 'kilometre', 'kilometres'],
+  mile: ['mile', 'miles'],
+  yard: ['yard', 'yards', 'yd', 'yds'],
+  pied: ['pied', 'pieds', 'feet', 'foot', 'ft'],
+  pouce: ['pouce', 'pouces', 'inch', 'inches', 'in'],
+  // Volume (base : litre)
+  ml: ['ml', 'millilitre', 'millilitres'],
+  l: ['l', 'litre', 'litres'],
+  gallon: ['gallon', 'gallons', 'gal'],
+  cup: ['cup', 'cups', 'tasse', 'tasses'],
+  tbsp: ['cuillere a soupe', 'cuilleres a soupe', 'tablespoon', 'tablespoons', 'tbsp'],
+  tsp: ['cuillere a cafe', 'cuilleres a cafe', 'teaspoon', 'teaspoons', 'tsp'],
+  // Temperature (traitee a part, pas de facteur unique)
+  celsius: ['celsius', 'degre celsius', 'degres celsius'],
+  fahrenheit: ['fahrenheit', 'degre fahrenheit', 'degres fahrenheit'],
+  kelvin: ['kelvin']
+};
+// Facteur de conversion vers l'unite de base de la categorie (null = non lineaire, voir temperature)
+const UNIT_FACTORS = {
+  g: { v: 1, cat: 'poids' }, kg: { v: 1000, cat: 'poids' }, mg: { v: 0.001, cat: 'poids' },
+  tonne: { v: 1000000, cat: 'poids' }, lb: { v: 453.592, cat: 'poids' }, oz: { v: 28.3495, cat: 'poids' },
+  mm: { v: 0.001, cat: 'longueur' }, cm: { v: 0.01, cat: 'longueur' }, m: { v: 1, cat: 'longueur' },
+  km: { v: 1000, cat: 'longueur' }, mile: { v: 1609.344, cat: 'longueur' }, yard: { v: 0.9144, cat: 'longueur' },
+  pied: { v: 0.3048, cat: 'longueur' }, pouce: { v: 0.0254, cat: 'longueur' },
+  ml: { v: 0.001, cat: 'volume' }, l: { v: 1, cat: 'volume' }, gallon: { v: 3.78541, cat: 'volume' },
+  cup: { v: 0.236588, cat: 'volume' }, tbsp: { v: 0.0147868, cat: 'volume' }, tsp: { v: 0.00492892, cat: 'volume' },
+  celsius: { v: null, cat: 'temperature' }, fahrenheit: { v: null, cat: 'temperature' }, kelvin: { v: null, cat: 'temperature' }
+};
+// Normalise un texte d'unite saisi librement (accents retires, minuscules, espaces multiples reduits)
+// et le resout vers une cle canonique de UNIT_FACTORS, ou null si inconnu.
+function resolveUnitAlias(raw) {
+  const norm = String(raw || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/°/g, '').replace(/\s+/g, ' ').trim();
+  if (!norm) return null;
+  for (const key of Object.keys(UNIT_ALIASES)) {
+    if (UNIT_ALIASES[key].includes(norm)) return key;
+  }
+  return null;
+}
+// Convertit une valeur numerique d'une unite vers une autre. Lance une erreur explicite si une unite
+// est inconnue ou si les deux unites n'appartiennent pas a la meme categorie (ex: kg -> metre refuse).
+function convertUnit(value, fromRaw, toRaw) {
+  const from = resolveUnitAlias(fromRaw);
+  const to = resolveUnitAlias(toRaw);
+  if (!from) throw new Error(`Unité de départ non reconnue : "${fromRaw}"`);
+  if (!to) throw new Error(`Unité d'arrivée non reconnue : "${toRaw}"`);
+  const fDef = UNIT_FACTORS[from], tDef = UNIT_FACTORS[to];
+  if (fDef.cat !== tDef.cat) throw new Error(`Conversion impossible entre catégories différentes (${fDef.cat} → ${tDef.cat})`);
+  if (fDef.cat === 'temperature') {
+    // Passage systematique par Celsius comme pivot
+    let celsius;
+    if (from === 'celsius') celsius = value;
+    else if (from === 'fahrenheit') celsius = (value - 32) * 5 / 9;
+    else celsius = value - 273.15; // kelvin
+    let result;
+    if (to === 'celsius') result = celsius;
+    else if (to === 'fahrenheit') result = celsius * 9 / 5 + 32;
+    else result = celsius + 273.15; // kelvin
+    return result;
+  }
+  const valueInBase = value * fDef.v;
+  return valueInBase / tDef.v;
+}
+app.get('/api/convert-unit', (req, res) => {
+  try {
+    const value = parseFloat(req.query.value);
+    const from = req.query.from, to = req.query.to;
+    if (isNaN(value)) return res.status(400).json({ error: 'Paramètre "value" manquant ou invalide' });
+    if (!from || !to) return res.status(400).json({ error: 'Paramètres "from" et "to" requis' });
+    const result = convertUnit(value, from, to);
+    res.json({ value, from, to, result });
+  } catch (e) { res.status(400).json({ error: e.message }); }
 });
 
 app.get('/api/realtime/weather', async (req, res) => {
@@ -4381,10 +4556,15 @@ app.post('/api/push/test', async (req, res) => {
 // ===== RAPPELS / ALARMES =====
 // Fonction partagee : utilisee par la route REST /api/reminders ET par la creation de rappel
 // directement depuis une conversation (balise [CREATE_REMINDER] interceptee dans /api/chat).
-async function createReminderRow(userId, message, remindAtDate, sessionId) {
+// Valeurs de recurrence acceptees : null (une seule fois, comportement d'origine inchange), 'daily',
+// 'weekly', 'monthly'. Toute autre valeur est ignoree (traitee comme aucune recurrence).
+const REMINDER_RECURRENCES = ['daily', 'weekly', 'monthly'];
+async function createReminderRow(userId, message, remindAtDate, sessionId, category, recurrence) {
   const { data, error } = await sbAdmin.from('reminders').insert({
     user_id: String(userId), message, remind_at: remindAtDate.toISOString(),
-    session_id: Number.isFinite(Number(sessionId)) ? Number(sessionId) : null
+    session_id: Number.isFinite(Number(sessionId)) ? Number(sessionId) : null,
+    category: (typeof category === 'string' && category.trim()) ? category.trim().slice(0, 40) : null,
+    recurrence: REMINDER_RECURRENCES.includes(recurrence) ? recurrence : null
   }).select().single();
   if (error) throw error;
   let pushEnabled = false;
@@ -4406,7 +4586,9 @@ app.post('/api/reminders', async (req, res) => {
     if (!message) return res.status(400).json({ error: 'Message de rappel requis' });
     if (!remindAt || isNaN(remindAt.getTime())) return res.status(400).json({ error: 'Date/heure invalide' });
     if (remindAt.getTime() <= Date.now()) return res.status(400).json({ error: 'La date doit être dans le futur' });
-    const { reminder, pushEnabled } = await createReminderRow(user.id, message, remindAt, req.body?.session_id);
+    const category = typeof req.body?.category === 'string' ? req.body.category : null;
+    const recurrence = typeof req.body?.recurrence === 'string' ? req.body.recurrence : null;
+    const { reminder, pushEnabled } = await createReminderRow(user.id, message, remindAt, req.body?.session_id, category, recurrence);
     res.json({ ok: true, reminder, pushEnabled });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -4417,7 +4599,7 @@ app.get('/api/reminders', async (req, res) => {
     const user = checkToken(token);
     if (!user) return res.status(401).json({ error: 'Non autorise' });
     const { data, error } = await sbAdmin.from('reminders')
-      .select('id,message,remind_at,sent,created_at,category')
+      .select('id,message,remind_at,sent,created_at,category,recurrence')
       .eq('user_id', String(user.id)).eq('sent', false)
       .order('remind_at', { ascending: true }).limit(50);
     if (error) throw error;
@@ -4443,6 +4625,11 @@ app.put('/api/reminders/:id', async (req, res) => {
     } else if (req.body?.category === null) {
       update.category = null;
     }
+    if (typeof req.body?.recurrence === 'string') {
+      update.recurrence = REMINDER_RECURRENCES.includes(req.body.recurrence) ? req.body.recurrence : null;
+    } else if (req.body?.recurrence === null) {
+      update.recurrence = null;
+    }
     if (Object.keys(update).length === 0) return res.status(400).json({ error: 'Aucune modification fournie' });
     const { data, error } = await sbAdmin.from('reminders')
       .update(update).eq('id', id).eq('user_id', String(user.id)).select().single();
@@ -4465,6 +4652,25 @@ app.delete('/api/reminders/:id', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// Calcule la prochaine occurrence d'un rappel recurrent a partir de sa date actuelle. Le mois est
+// traite avec precaution (ex: 31 janvier + 1 mois ne doit jamais "deborder" sur le 3 mars : on cale
+// d'abord sur le 1er du mois suivant puis on reapplique le jour d'origine, plafonne au dernier jour
+// du mois d'arrivee si celui-ci est plus court, ex: 31 janvier -> 28 ou 29 fevrier).
+function computeNextRecurrence(currentIso, recurrence) {
+  const d = new Date(currentIso);
+  if (isNaN(d.getTime())) return null;
+  if (recurrence === 'daily') { d.setUTCDate(d.getUTCDate() + 1); return d; }
+  if (recurrence === 'weekly') { d.setUTCDate(d.getUTCDate() + 7); return d; }
+  if (recurrence === 'monthly') {
+    const day = d.getUTCDate();
+    d.setUTCDate(1);
+    d.setUTCMonth(d.getUTCMonth() + 1);
+    const daysInTargetMonth = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)).getUTCDate();
+    d.setUTCDate(Math.min(day, daysInTargetMonth));
+    return d;
+  }
+  return null;
+}
 async function checkDueReminders() {
   try {
     const nowIso = new Date().toISOString();
@@ -4475,12 +4681,22 @@ async function checkDueReminders() {
     const { data, error } = await sbAdmin.from('reminders')
       .update({ sent: true })
       .eq('sent', false).lte('remind_at', nowIso)
-      .select('id,user_id,message');
+      .select('id,user_id,message,remind_at,category,recurrence,session_id');
     if (error) throw error;
     for (const r of (data || [])) {
       try {
         await sendPush(r.user_id, 'general', { title: '⏰ Rappel Guidéon', body: r.message, url: '/' }, { sameOriginOnly: true });
       } catch (e) { console.error('reminder push:', e.message); }
+      // Rappel recurrent : on cree une NOUVELLE ligne pour la prochaine occurrence plutot que de
+      // reutiliser celle-ci (qui reste marquee envoyee, comme historique de cet envoi precis).
+      if (r.recurrence && REMINDER_RECURRENCES.includes(r.recurrence)) {
+        try {
+          const next = computeNextRecurrence(r.remind_at, r.recurrence);
+          if (next) {
+            await createReminderRow(r.user_id, r.message, next, r.session_id, r.category, r.recurrence);
+          }
+        } catch (e) { console.error('reminder recurrence - création occurrence suivante:', e.message); }
+      }
     }
   } catch (e) { console.error('checkDueReminders:', e.message); }
 }
