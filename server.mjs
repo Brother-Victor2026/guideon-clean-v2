@@ -3476,6 +3476,109 @@ app.post('/api/invoice-pdf', async (req, res) => {
   }
 });
 
+// Generateur de CV / lettre de motivation PDF (gratuit, aucune donnee stockee - genere a la volee et
+// renvoye directement au client, rien n'est ecrit en base ni sur Supabase Storage).
+app.post('/api/cv-pdf', async (req, res) => {
+  try {
+    const body = req.body || {};
+    const docType = body.docType === 'lettre' ? 'lettre' : 'cv';
+    const doc = new PDFDocument({ margin: 50 });
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename=${docType === 'lettre' ? 'lettre-motivation' : 'cv'}.pdf`);
+    doc.pipe(res);
+
+    if (docType === 'cv') {
+      const fullName = String(body.fullName || '').trim();
+      const title = String(body.title || '').trim();
+      const contact = body.contact || {};
+      const profile = String(body.profile || '').trim();
+      const experiences = Array.isArray(body.experiences) ? body.experiences : [];
+      const education = Array.isArray(body.education) ? body.education : [];
+      const skills = Array.isArray(body.skills) ? body.skills : [];
+      const languages = Array.isArray(body.languages) ? body.languages : [];
+      if (!fullName) return res.status(400).json({ error: 'Nom complet requis' });
+
+      doc.fontSize(22).fillColor('#1e3a8a').text(fullName, { align: 'left' });
+      if (title) doc.fontSize(13).fillColor('#374151').text(title);
+      doc.moveDown(0.3);
+      const contactLine = [contact.phone, contact.email, contact.address].filter(Boolean).join('  •  ');
+      if (contactLine) doc.fontSize(9).fillColor('#6b7280').text(contactLine);
+      doc.moveDown(0.8);
+      doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor('#1e3a8a').stroke();
+      doc.moveDown(0.6);
+      doc.fillColor('#000');
+
+      if (profile) {
+        doc.fontSize(12).fillColor('#1e3a8a').text('PROFIL');
+        doc.fontSize(10).fillColor('#000').text(profile, { width: 495 });
+        doc.moveDown(0.8);
+      }
+      if (experiences.length) {
+        doc.fontSize(12).fillColor('#1e3a8a').text('EXPÉRIENCE PROFESSIONNELLE');
+        doc.moveDown(0.2);
+        for (const exp of experiences) {
+          if (!exp || !exp.role) continue;
+          doc.fontSize(10.5).fillColor('#000').text(String(exp.role) + (exp.company ? ' — ' + exp.company : ''), { continued: false });
+          if (exp.period) doc.fontSize(9).fillColor('#6b7280').text(String(exp.period));
+          if (exp.description) doc.fontSize(9.5).fillColor('#374151').text(String(exp.description), { width: 495 });
+          doc.moveDown(0.5);
+        }
+      }
+      if (education.length) {
+        doc.fontSize(12).fillColor('#1e3a8a').text('FORMATION');
+        doc.moveDown(0.2);
+        for (const ed of education) {
+          if (!ed || !ed.degree) continue;
+          doc.fontSize(10.5).fillColor('#000').text(String(ed.degree) + (ed.school ? ' — ' + ed.school : ''));
+          if (ed.period) doc.fontSize(9).fillColor('#6b7280').text(String(ed.period));
+          doc.moveDown(0.4);
+        }
+      }
+      if (skills.length) {
+        doc.fontSize(12).fillColor('#1e3a8a').text('COMPÉTENCES');
+        doc.fontSize(10).fillColor('#000').text(skills.filter(Boolean).join('  •  '), { width: 495 });
+        doc.moveDown(0.6);
+      }
+      if (languages.length) {
+        doc.fontSize(12).fillColor('#1e3a8a').text('LANGUES');
+        doc.fontSize(10).fillColor('#000').text(languages.filter(Boolean).join('  •  '), { width: 495 });
+      }
+    } else {
+      const senderName = String(body.senderName || '').trim();
+      const senderAddress = String(body.senderAddress || '').trim();
+      const senderPhone = String(body.senderPhone || '').trim();
+      const senderEmail = String(body.senderEmail || '').trim();
+      const recipientName = String(body.recipientName || '').trim();
+      const recipientAddress = String(body.recipientAddress || '').trim();
+      const dateStr = String(body.date || '').trim() || new Date().toLocaleDateString('fr-FR');
+      const subject = String(body.subject || '').trim();
+      const letterBody = String(body.body || '').trim();
+      if (!senderName) return res.status(400).json({ error: 'Nom de l\'expéditeur requis' });
+      if (!letterBody) return res.status(400).json({ error: 'Le corps de la lettre est requis' });
+
+      doc.fontSize(11).text(senderName);
+      if (senderAddress) doc.text(senderAddress);
+      if (senderPhone) doc.text('Tél : ' + senderPhone);
+      if (senderEmail) doc.text('Email : ' + senderEmail);
+      doc.moveDown(1.5);
+      doc.text(dateStr, { align: 'right' });
+      doc.moveDown(1);
+      if (recipientName) doc.text(recipientName);
+      if (recipientAddress) doc.text(recipientAddress);
+      doc.moveDown(1);
+      if (subject) { doc.font('Helvetica-Bold').text('Objet : ' + subject); doc.font('Helvetica'); doc.moveDown(1); }
+      doc.fontSize(11).text(letterBody, { width: 495, align: 'justify' });
+      doc.moveDown(2);
+      doc.text(senderName, { align: 'right' });
+    }
+
+    doc.end();
+  } catch (e) {
+    console.error('ERREUR /api/cv-pdf:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // Endpoint analyse PDF avec GROQ - Session 21
 app.post('/api/analyze-pdf', multer({storage: multer.memoryStorage(), limits: {fileSize: 50*1024*1024}}).single('pdf'), async (req, res) => {
   try {
