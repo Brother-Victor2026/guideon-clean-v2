@@ -3248,19 +3248,21 @@ app.post('/api/user/location-clear', async (req, res) => {
 // la recherche du chat (voir /api/search __GENERAL_NEWS__). Remplace l'ancienne version factice qui
 // renvoyait toujours "Actualité <categorie>" / "Description" / "News".
 app.get('/api/realtime/news', async (req, res) => {
-  // Actualites generales = identiques pour tout le monde (pas lie a un utilisateur) : un seul cache
-  // global suffit, et reduit fortement le nombre d'appels aux 18 flux RSS sous-jacents.
-  const cached = cacheGet('news:general');
+  // region=benin force la priorite sur les flux beninois (Banouto, Benin Intelligent, 24h au Benin,
+  // Benin Site, L'Economiste du Benin, L'Evenement Precis, France Info Benin - voir getGeneralNewsSummary).
+  const isBenin = String(req.query.region || '').toLowerCase() === 'benin';
+  const cacheKey = isBenin ? 'news:benin' : 'news:general';
+  const cached = cacheGet(cacheKey);
   if (cached) return res.json(cached);
   try {
-    const d = await getGeneralNewsSummary('__GENERAL_NEWS__');
+    const d = await getGeneralNewsSummary(isBenin ? '__GENERAL_NEWS__ benin' : '__GENERAL_NEWS__');
     if (!d || !d.success || !d.result) return res.status(502).json({ error: `Actualités indisponibles : ${(d && d.error) || 'aucun flux RSS n\'a répondu'}` });
     const titles = String(d.result).replace('[Actualités générales du jour] ', '').split(' | ').filter(Boolean);
     const sources = Array.isArray(d.sources) ? d.sources : [];
     const articles = titles.slice(0, 8).map((title, i) => ({ title, source: (sources[i] && sources[i].name) || 'Actualités' }));
     if (articles.length === 0) return res.status(502).json({ error: 'Actualités indisponibles : aucun article trouvé' });
     const payload = { articles, timestamp: new Date().toISOString() };
-    cacheSet('news:general', payload);
+    cacheSet(cacheKey, payload);
     res.json(payload);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -3367,6 +3369,109 @@ app.get('/api/privacy-report', async (req, res) => {
     doc.fontSize(10).text('Généré le: ' + new Date().toLocaleString('fr-FR'));
     doc.end();
   } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Generateur de facture / devis PDF (gratuit, aucune donnee stockee - genere a la volee et renvoye
+// directement au client, rien n'est ecrit en base ni sur Supabase Storage).
+app.post('/api/invoice-pdf', async (req, res) => {
+  try {
+    const body = req.body || {};
+    const docType = body.type === 'devis' ? 'devis' : 'facture';
+    const number = String(body.number || '').trim();
+    const dateStr = String(body.date || '').trim() || new Date().toLocaleDateString('fr-FR');
+    const issuer = body.issuer || {};
+    const client = body.client || {};
+    const items = Array.isArray(body.items) ? body.items : [];
+    const taxRate = Math.max(0, Math.min(100, parseFloat(body.taxRate) || 0));
+    const notes = String(body.notes || '').trim();
+    const currency = String(body.currency || 'FCFA').trim().slice(0, 10) || 'FCFA';
+
+    if (!client.name) return res.status(400).json({ error: 'Nom du client requis' });
+    if (items.length === 0) return res.status(400).json({ error: 'Au moins une ligne (article/service) est requise' });
+    const cleanItems = [];
+    for (const it of items) {
+      const description = String(it.description || '').trim();
+      const qty = parseFloat(it.qty);
+      const unitPrice = parseFloat(it.unitPrice);
+      if (!description) return res.status(400).json({ error: 'Chaque ligne doit avoir une description' });
+      if (isNaN(qty) || qty <= 0) return res.status(400).json({ error: `Quantite invalide pour "${description}"` });
+      if (isNaN(unitPrice) || unitPrice < 0) return res.status(400).json({ error: `Prix unitaire invalide pour "${description}"` });
+      cleanItems.push({ description, qty, unitPrice, lineTotal: qty * unitPrice });
+    }
+
+    const subtotal = cleanItems.reduce((s, it) => s + it.lineTotal, 0);
+    const taxAmount = subtotal * (taxRate / 100);
+    const total = subtotal + taxAmount;
+    const fmt = (n) => n.toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + ' ' + currency;
+
+    const doc = new PDFDocument({ margin: 50 });
+    const safeNumber = number ? number.replace(/[^a-zA-Z0-9_-]/g, '') : String(Date.now());
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename=${docType}_${safeNumber}.pdf`);
+    doc.pipe(res);
+
+    doc.fontSize(20).text(docType === 'devis' ? 'DEVIS' : 'FACTURE', { align: 'right' });
+    if (number) doc.fontSize(11).text(`N° ${number}`, { align: 'right' });
+    doc.fontSize(11).text(`Date : ${dateStr}`, { align: 'right' });
+    doc.moveDown(1);
+
+    doc.fontSize(13).text(issuer.name || 'Emetteur', 50, doc.y);
+    doc.fontSize(10);
+    if (issuer.address) doc.text(issuer.address);
+    if (issuer.phone) doc.text('Tel : ' + issuer.phone);
+    if (issuer.email) doc.text('Email : ' + issuer.email);
+    doc.moveDown(0.8);
+
+    doc.fontSize(11).text('Client :', { underline: true });
+    doc.fontSize(10).text(client.name);
+    if (client.address) doc.text(client.address);
+    if (client.phone) doc.text('Tel : ' + client.phone);
+    if (client.email) doc.text('Email : ' + client.email);
+    doc.moveDown(1);
+
+    const tableTop = doc.y;
+    const colX = { desc: 50, qty: 300, pu: 370, total: 460 };
+    doc.fontSize(10).font('Helvetica-Bold');
+    doc.text('Description', colX.desc, tableTop);
+    doc.text('Qte', colX.qty, tableTop);
+    doc.text('P.U.', colX.pu, tableTop);
+    doc.text('Total', colX.total, tableTop);
+    doc.moveTo(50, tableTop + 15).lineTo(545, tableTop + 15).stroke();
+    doc.font('Helvetica');
+
+    let y = tableTop + 22;
+    for (const it of cleanItems) {
+      if (y > 700) { doc.addPage(); y = 50; }
+      doc.fontSize(10).text(it.description, colX.desc, y, { width: 240 });
+      doc.text(String(it.qty), colX.qty, y);
+      doc.text(fmt(it.unitPrice), colX.pu, y);
+      doc.text(fmt(it.lineTotal), colX.total, y);
+      y += 20;
+    }
+    doc.moveTo(50, y + 2).lineTo(545, y + 2).stroke();
+    y += 12;
+
+    doc.fontSize(10).text(`Sous-total : ${fmt(subtotal)}`, colX.pu, y, { align: 'left' });
+    y += 16;
+    if (taxRate > 0) {
+      doc.text(`TVA (${taxRate}%) : ${fmt(taxAmount)}`, colX.pu, y);
+      y += 16;
+    }
+    doc.fontSize(12).font('Helvetica-Bold').text(`TOTAL : ${fmt(total)}`, colX.pu, y);
+    doc.font('Helvetica');
+    y += 30;
+
+    if (notes) {
+      doc.fontSize(10).text('Notes :', 50, y, { underline: true });
+      doc.text(notes, 50, y + 14, { width: 495 });
+    }
+
+    doc.fontSize(8).text('Genere via Guideon', 50, 770, { align: 'center', width: 495 });
+    doc.end();
+  } catch (e) {
+    console.error('ERREUR /api/invoice-pdf:', e.message);
     res.status(500).json({ error: e.message });
   }
 });
@@ -4701,6 +4806,65 @@ async function checkDueReminders() {
   } catch (e) { console.error('checkDueReminders:', e.message); }
 }
 setInterval(checkDueReminders, 60 * 1000);
+
+// ===== SUIVI DE BUDGET PERSONNEL (entrées / dépenses) =====
+const BUDGET_TYPES = ['income', 'expense'];
+
+app.post('/api/budget', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    const user = checkToken(token);
+    if (!user) return res.status(401).json({ error: 'Non autorisé' });
+    const type = req.body?.type;
+    if (!BUDGET_TYPES.includes(type)) return res.status(400).json({ error: 'Type requis : "income" ou "expense"' });
+    const amount = parseFloat(req.body?.amount);
+    if (!isFinite(amount) || amount <= 0) return res.status(400).json({ error: 'Montant invalide' });
+    const category = typeof req.body?.category === 'string' ? req.body.category.trim().slice(0, 40) || null : null;
+    const note = typeof req.body?.note === 'string' ? req.body.note.trim().slice(0, 200) || null : null;
+    let entryDate = req.body?.entry_date ? String(req.body.entry_date).slice(0, 10) : null;
+    if (entryDate && !/^\d{4}-\d{2}-\d{2}$/.test(entryDate)) entryDate = null;
+    const row = { user_id: String(user.id), type, amount, category, note };
+    if (entryDate) row.entry_date = entryDate;
+    const { data, error } = await sbAdmin.from('budget_entries').insert(row).select().single();
+    if (error) throw error;
+    res.json({ ok: true, entry: data });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/api/budget', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    const user = checkToken(token);
+    if (!user) return res.status(401).json({ error: 'Non autorisé' });
+    const month = /^\d{4}-\d{2}$/.test(req.query.month || '') ? req.query.month : null;
+    let q = sbAdmin.from('budget_entries').select('id,type,amount,category,note,entry_date,created_at').eq('user_id', String(user.id));
+    if (month) {
+      const start = `${month}-01`;
+      const [y, m] = month.split('-').map(Number);
+      const nextMonth = m === 12 ? `${y + 1}-01-01` : `${y}-${String(m + 1).padStart(2, '0')}-01`;
+      q = q.gte('entry_date', start).lt('entry_date', nextMonth);
+    }
+    const { data, error } = await q.order('entry_date', { ascending: false }).limit(500);
+    if (error) throw error;
+    const entries = data || [];
+    const income = entries.filter(e => e.type === 'income').reduce((s, e) => s + Number(e.amount), 0);
+    const expense = entries.filter(e => e.type === 'expense').reduce((s, e) => s + Number(e.amount), 0);
+    res.json({ ok: true, entries, summary: { income, expense, balance: income - expense } });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.delete('/api/budget/:id', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    const user = checkToken(token);
+    if (!user) return res.status(401).json({ error: 'Non autorisé' });
+    const id = Number(req.params.id);
+    if (!Number.isFinite(id)) return res.status(400).json({ error: 'Identifiant invalide' });
+    const { error } = await sbAdmin.from('budget_entries').delete().eq('id', id).eq('user_id', String(user.id));
+    if (error) throw error;
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
 
 // ===== SYSTÈME DE MÉMOIRE AMÉLIORÉ =====
 
