@@ -1833,7 +1833,14 @@ app.post('/api/image', async (req, res) => {
 // localhost:PORT/api/search, fragile juste apres un redemarrage/deploiement (rien ne garantit que le
 // listener HTTP du processus accepte deja des connexions au moment exact ou la fonction est appelee -
 // cause probable du briefing du 09/11/2026 sans meteo ni actualites, voir le commentaire plus bas).
-async function getGeneralNewsSummary(query) {
+const BENIN_FEED_IDX = [7, 8, 13, 14, 15, 16, 17];
+function decodeHtmlEntities(s) {
+  return String(s || '')
+    .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"').replace(/&#0?39;/g, "'").replace(/&apos;/g, "'")
+    .replace(/&nbsp;/g, ' ');
+}
+async function getGeneralNewsSummary(query, opts = {}) {
   try {
     const UA2 = { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36' };
         async function genFeed(url, label) {
@@ -1848,9 +1855,12 @@ async function getGeneralNewsSummary(query) {
             return items.slice(0, 6).map(it => {
               const tM = it.match(/<title>([\s\S]*?)<\/title>/);
               const lM = it.match(/<link>([\s\S]*?)<\/link>/);
-              const title = tM ? tM[1].replace(/<!\[CDATA\[|\]\]>/g, '').trim() : null;
+              const dM = it.match(/<description>([\s\S]*?)<\/description>/);
+              const title = tM ? decodeHtmlEntities(tM[1].replace(/<!\[CDATA\[|\]\]>/g, '').trim()) : null;
               const link = lM ? lM[1].replace(/<!\[CDATA\[|\]\]>/g, '').trim() : null;
-              return title && link ? { title, link, label } : null;
+              let description = dM ? dM[1].replace(/<!\[CDATA\[|\]\]>/g, '').trim() : '';
+              description = decodeHtmlEntities(description.replace(/<[^>]+>/g, ' ')).replace(/\s+/g, ' ').trim().slice(0, 400);
+              return title && link ? { title, link, label, description } : null;
             }).filter(Boolean);
           } catch (e) { console.error('❌ genFeed error (' + label + '):', e.message); return []; }
         }
@@ -1877,7 +1887,7 @@ async function getGeneralNewsSummary(query) {
         const [gn, fi] = feedsList;
         const mNorm2 = query.replace('__GENERAL_NEWS__', '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
         let priorityIdx = null;
-        if (/\bbenin\b/.test(mNorm2)) priorityIdx = [7, 8, 13, 14, 15, 16, 17];
+        if (/\bbenin\b/.test(mNorm2)) priorityIdx = BENIN_FEED_IDX;
         else if (/\bafrique\b/.test(mNorm2)) priorityIdx = [2];
         else if (/\bsport\b|football|\bfoot\b/.test(mNorm2)) priorityIdx = [12];
         let all;
@@ -1891,7 +1901,9 @@ async function getGeneralNewsSummary(query) {
             all = rest.slice(0, 25);
           }
         } else {
-          all = feedsList.flat().slice(0, 25);
+          let indices = feedsList.map((_, idx) => idx);
+          if (opts.excludeBenin) indices = indices.filter(idx => !BENIN_FEED_IDX.includes(idx));
+          all = indices.flatMap(idx => feedsList[idx] || []).slice(0, 25);
         }
         if (all.length === 0) return { result: 'Aucun résultat trouvé', sources: [], success: false };
         const text = '[Actualités générales du jour] ' + all.map(a => a.title).join(' | ');
@@ -1903,8 +1915,9 @@ async function getGeneralNewsSummary(query) {
             sources.push({ name: item.label, url: item.link });
           }
         }
+        const articlesFull = all.slice(0, 8).map(a => ({ title: a.title, link: a.link, source: a.label, description: a.description || '' }));
         console.log('✅ Search result length:', text.length, '| sources: actualites generales');
-        return { result: text.substring(0, 2500), sources, success: true };
+        return { result: text.substring(0, 2500), sources, success: true, articlesFull };
   } catch (e) {
     console.error('❌ General news error:', e.message);
     return { result: null, sources: [], error: e.message, success: false };
@@ -3250,18 +3263,17 @@ app.post('/api/user/location-clear', async (req, res) => {
 app.get('/api/realtime/news', async (req, res) => {
   // region=benin force la priorite sur les flux beninois (Banouto, Benin Intelligent, 24h au Benin,
   // Benin Site, L'Economiste du Benin, L'Evenement Precis, France Info Benin - voir getGeneralNewsSummary).
-  const isBenin = String(req.query.region || '').toLowerCase() === 'benin';
-  const cacheKey = isBenin ? 'news:benin' : 'news:general';
+  // region=world exclut explicitement ces memes flux beninois pour ne garder que l'actualite internationale.
+  const region = String(req.query.region || '').toLowerCase();
+  const isBenin = region === 'benin';
+  const isWorld = region === 'world';
+  const cacheKey = isBenin ? 'news:benin' : (isWorld ? 'news:world' : 'news:general');
   const cached = cacheGet(cacheKey);
   if (cached) return res.json(cached);
   try {
-    const d = await getGeneralNewsSummary(isBenin ? '__GENERAL_NEWS__ benin' : '__GENERAL_NEWS__');
-    if (!d || !d.success || !d.result) return res.status(502).json({ error: `Actualités indisponibles : ${(d && d.error) || 'aucun flux RSS n\'a répondu'}` });
-    const titles = String(d.result).replace('[Actualités générales du jour] ', '').split(' | ').filter(Boolean);
-    const sources = Array.isArray(d.sources) ? d.sources : [];
-    const articles = titles.slice(0, 8).map((title, i) => ({ title, source: (sources[i] && sources[i].name) || 'Actualités' }));
-    if (articles.length === 0) return res.status(502).json({ error: 'Actualités indisponibles : aucun article trouvé' });
-    const payload = { articles, timestamp: new Date().toISOString() };
+    const d = await getGeneralNewsSummary(isBenin ? '__GENERAL_NEWS__ benin' : '__GENERAL_NEWS__', { excludeBenin: isWorld });
+    if (!d || !d.success || !Array.isArray(d.articlesFull) || d.articlesFull.length === 0) return res.status(502).json({ error: `Actualités indisponibles : ${(d && d.error) || 'aucun flux RSS n\'a répondu'}` });
+    const payload = { articles: d.articlesFull, timestamp: new Date().toISOString() };
     cacheSet(cacheKey, payload);
     res.json(payload);
   } catch (e) { res.status(500).json({ error: e.message }); }
