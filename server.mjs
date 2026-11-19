@@ -5037,6 +5037,56 @@ app.delete('/api/budget/:id', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+app.post('/api/weight', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    const user = checkToken(token);
+    if (!user) return res.status(401).json({ error: 'Non autorisé' });
+    const weight = parseFloat(req.body?.weight);
+    if (!isFinite(weight) || weight <= 0 || weight > 500) return res.status(400).json({ error: 'Poids invalide (kg)' });
+    const note = typeof req.body?.note === 'string' ? req.body.note.trim().slice(0, 200) || null : null;
+    let entryDate = req.body?.entry_date ? String(req.body.entry_date).slice(0, 10) : null;
+    if (entryDate && !/^\d{4}-\d{2}-\d{2}$/.test(entryDate)) entryDate = null;
+    const row = { user_id: String(user.id), weight, note };
+    if (entryDate) row.entry_date = entryDate;
+    const { data, error } = await sbAdmin.from('weight_entries').insert(row).select().single();
+    if (error) throw error;
+    res.json({ ok: true, entry: data });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/api/weight', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    const user = checkToken(token);
+    if (!user) return res.status(401).json({ error: 'Non autorisé' });
+    const { data, error } = await sbAdmin.from('weight_entries').select('id,weight,note,entry_date,created_at')
+      .eq('user_id', String(user.id)).order('entry_date', { ascending: true }).limit(500);
+    if (error) throw error;
+    const entries = data || [];
+    let trend = null;
+    if (entries.length >= 2) {
+      const first = entries[0];
+      const last = entries[entries.length - 1];
+      trend = { first: Number(first.weight), last: Number(last.weight), delta: Number(last.weight) - Number(first.weight) };
+    }
+    res.json({ ok: true, entries, trend });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.delete('/api/weight/:id', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    const user = checkToken(token);
+    if (!user) return res.status(401).json({ error: 'Non autorisé' });
+    const id = Number(req.params.id);
+    if (!Number.isFinite(id)) return res.status(400).json({ error: 'Identifiant invalide' });
+    const { error } = await sbAdmin.from('weight_entries').delete().eq('id', id).eq('user_id', String(user.id));
+    if (error) throw error;
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // ===== SYSTÈME DE MÉMOIRE AMÉLIORÉ =====
 
 app.get('/api/memories', async (req, res) => {
