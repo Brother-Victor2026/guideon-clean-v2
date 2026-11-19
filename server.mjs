@@ -3521,6 +3521,31 @@ app.get('/api/translate', async (req, res) => {
   }
 });
 
+app.get('/api/shorten', async (req, res) => {
+  try {
+    const longUrl = String(req.query.url || '').trim();
+    if (!longUrl) return res.status(400).json({ error: 'URL requise' });
+    if (longUrl.length > 2000) return res.status(400).json({ error: 'URL trop longue' });
+    let parsed;
+    try { parsed = new URL(longUrl); } catch (e) { return res.status(400).json({ error: 'URL invalide (incluez http:// ou https://)' }); }
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+      return res.status(400).json({ error: 'Seuls les liens http:// ou https:// sont acceptés' });
+    }
+    const c = new AbortController();
+    const t = setTimeout(() => c.abort(), 8000);
+    const apiUrl = 'https://is.gd/create.php?format=json&url=' + encodeURIComponent(longUrl);
+    const r = await fetch(apiUrl, { signal: c.signal });
+    clearTimeout(t);
+    if (!r.ok) return res.status(502).json({ error: 'Service de raccourcissement indisponible pour le moment' });
+    const data = await r.json();
+    if (data && data.shorturl) return res.json({ short: data.shorturl });
+    return res.status(502).json({ error: String((data && data.errormessage) || 'Impossible de raccourcir ce lien') });
+  } catch (e) {
+    console.error('ERREUR /api/shorten:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 app.post('/api/cv-pdf', async (req, res) => {
   try {
     const body = req.body || {};
