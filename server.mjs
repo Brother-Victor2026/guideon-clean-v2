@@ -3490,6 +3490,37 @@ app.post('/api/invoice-pdf', async (req, res) => {
 
 // Generateur de CV / lettre de motivation PDF (gratuit, aucune donnee stockee - genere a la volee et
 // renvoye directement au client, rien n'est ecrit en base ni sur Supabase Storage).
+// Traducteur de texte independant du chat (MyMemory, API gratuite publique sans cle, limite
+// quotidienne raisonnable par IP - geree ci-dessous via le code 403/responseStatus renvoye par l'API).
+app.get('/api/translate', async (req, res) => {
+  try {
+    const text = String(req.query.text || '').trim();
+    const target = String(req.query.target || 'en').trim().slice(0, 10);
+    const sourceRaw = String(req.query.source || 'auto').trim().slice(0, 10);
+    if (!text) return res.status(400).json({ error: 'Texte requis' });
+    if (text.length > 500) return res.status(400).json({ error: 'Texte trop long (500 caractères maximum par traduction)' });
+    const source = sourceRaw === 'auto' ? 'autodetect' : sourceRaw;
+    const langpair = source + '|' + target;
+    const c = new AbortController();
+    const t = setTimeout(() => c.abort(), 8000);
+    const url = 'https://api.mymemory.translated.net/get?q=' + encodeURIComponent(text) + '&langpair=' + encodeURIComponent(langpair);
+    const r = await fetch(url, { signal: c.signal });
+    clearTimeout(t);
+    if (!r.ok) return res.status(502).json({ error: 'Service de traduction indisponible pour le moment' });
+    const data = await r.json();
+    if (!data || !data.responseData || typeof data.responseData.translatedText !== 'string') {
+      return res.status(502).json({ error: 'Traduction indisponible pour le moment' });
+    }
+    if (data.responseStatus && Number(data.responseStatus) >= 400) {
+      return res.status(502).json({ error: String(data.responseDetails || 'Limite quotidienne de traduction atteinte, réessayez plus tard') });
+    }
+    res.json({ translated: data.responseData.translatedText });
+  } catch (e) {
+    console.error('ERREUR /api/translate:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 app.post('/api/cv-pdf', async (req, res) => {
   try {
     const body = req.body || {};
