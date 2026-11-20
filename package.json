@@ -1,6 +1,6 @@
 {
   "name": "guideon",
-  "version": "1.0.369",
+  "version": "1.0.370",
   "type": "module",
   "dependencies": {
     "@anthropic-ai/sdk": "^0.116.0",
