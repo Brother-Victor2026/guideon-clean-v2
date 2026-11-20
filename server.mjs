@@ -3546,6 +3546,79 @@ app.get('/api/shorten', async (req, res) => {
   }
 });
 
+app.post('/api/summarize', async (req, res) => {
+  try {
+    const text = String(req.body?.text || '').trim();
+    if (!text) return res.status(400).json({ error: 'Texte requis' });
+    if (text.length > 3000) return res.status(400).json({ error: 'Texte trop long (3000 caractères max)' });
+    const length = ['court', 'moyen', 'detaille'].includes(req.body?.length) ? req.body.length : 'moyen';
+    const lengthInstruction = length === 'court' ? 'en 2 à 3 phrases maximum'
+      : length === 'detaille' ? 'de façon détaillée, sous forme de liste à puces des points clés'
+      : 'en un seul paragraphe concis';
+    const prompt = `Résume le texte suivant en français, ${lengthInstruction}. Ne réponds qu'avec le résumé, sans aucune phrase d'introduction du type "voici le résumé".\n\nTexte à résumer :\n"""${text}"""`;
+    const messages = [{ role: 'user', content: prompt }];
+    let summary = null;
+    try {
+      const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST', headers: { 'Authorization': `Bearer ${API_KEY}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model: 'openai/gpt-oss-120b', messages, temperature: 0.4, max_tokens: 600 })
+      });
+      if (r.ok) { const d = await r.json(); summary = d.choices?.[0]?.message?.content?.trim() || null; }
+    } catch (e) { console.error('summarize groq:', e.message); }
+    if (!summary && GEMINI_API_KEY) {
+      try {
+        const r = await fetch('https://generativelanguage.googleapis.com/v1beta/openai/chat/completions', {
+          method: 'POST', headers: { 'Authorization': `Bearer ${GEMINI_API_KEY}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ model: 'gemini-2.0-flash', messages, temperature: 0.4 })
+        });
+        if (r.ok) { const d = await r.json(); summary = d.choices?.[0]?.message?.content?.trim() || null; }
+      } catch (e) { console.error('summarize gemini fallback:', e.message); }
+    }
+    if (!summary) return res.status(502).json({ error: 'Service de résumé indisponible pour le moment, réessayez.' });
+    res.json({ summary });
+  } catch (e) {
+    console.error('ERREUR /api/summarize:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/api/photos-to-pdf', async (req, res) => {
+  try {
+    const images = Array.isArray(req.body?.images) ? req.body.images : [];
+    if (images.length === 0) return res.status(400).json({ error: 'Au moins une photo est requise' });
+    if (images.length > 20) return res.status(400).json({ error: '20 photos maximum par PDF' });
+    const buffers = [];
+    for (const img of images) {
+      const m = /^data:image\/(png|jpe?g);base64,(.+)$/.exec(String(img || ''));
+      if (!m) return res.status(400).json({ error: 'Format d\'image invalide (PNG ou JPEG attendu)' });
+      const buf = Buffer.from(m[2], 'base64');
+      if (buf.length > 8 * 1024 * 1024) return res.status(400).json({ error: 'Une des photos dépasse 8 Mo' });
+      buffers.push(buf);
+    }
+    const doc = new PDFDocument({ autoFirstPage: false });
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', 'attachment; filename=document_scanne.pdf');
+    doc.pipe(res);
+    for (const buf of buffers) {
+      let img;
+      try { img = doc.openImage(buf); } catch (e) { continue; }
+      const pageMargin = 20;
+      const maxW = 595.28 - pageMargin * 2; // A4 portrait points
+      const maxH = 841.89 - pageMargin * 2;
+      let w = img.width, h = img.height;
+      const scale = Math.min(maxW / w, maxH / h, 1);
+      w *= scale; h *= scale;
+      doc.addPage({ size: 'A4', margin: pageMargin });
+      doc.image(img, (595.28 - w) / 2, (841.89 - h) / 2, { width: w, height: h });
+    }
+    if (doc.bufferedPageRange().count === 0) { doc.addPage(); doc.fontSize(12).text('Aucune image valide.'); }
+    doc.end();
+  } catch (e) {
+    console.error('ERREUR /api/photos-to-pdf:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 app.post('/api/cv-pdf', async (req, res) => {
   try {
     const body = req.body || {};
@@ -4977,6 +5050,71 @@ async function checkDueReminders() {
   } catch (e) { console.error('checkDueReminders:', e.message); }
 }
 setInterval(checkDueReminders, 60 * 1000);
+
+// ===== MÉTÉO DU JOUR EN NOTIFICATION MATINALE =====
+// L'heure souhaitee est saisie par l'utilisateur dans SON fuseau horaire local (detecte cote client
+// via Intl.DateTimeFormat().resolvedOptions().timeZone), stockee telle quelle (timezone + hour), puis
+// reconvertie ici a chaque verification. On ne declenche qu'une seule fois par jour calendaire LOCAL
+// (colonne last_sent_date, comparee dans CE fuseau, pas en UTC) grace a Intl - fonctionne pour
+// n'importe quel pays, pas seulement le Benin.
+app.get('/api/weather-digest', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    const user = checkToken(token);
+    if (!user) return res.status(401).json({ error: 'Non autorisé' });
+    const { data, error } = await sbAdmin.from('weather_digest_subs').select('enabled,hour,timezone').eq('user_id', String(user.id)).maybeSingle();
+    if (error) throw error;
+    res.json({ ok: true, sub: data || { enabled: false, hour: 7, timezone: 'Africa/Porto-Novo' } });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/weather-digest', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    const user = checkToken(token);
+    if (!user) return res.status(401).json({ error: 'Non autorisé' });
+    const enabled = !!req.body?.enabled;
+    const hour = Number.isInteger(req.body?.hour) ? req.body.hour : 7;
+    if (hour < 0 || hour > 23) return res.status(400).json({ error: 'Heure invalide' });
+    let timezone = typeof req.body?.timezone === 'string' ? req.body.timezone.slice(0, 60) : 'Africa/Porto-Novo';
+    try { new Intl.DateTimeFormat('en-US', { timeZone: timezone }); } catch (e) { timezone = 'Africa/Porto-Novo'; }
+    const { error } = await sbAdmin.from('weather_digest_subs').upsert({ user_id: String(user.id), enabled, hour, timezone, updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
+    if (error) throw error;
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+function localDateStringInTz(date, timeZone) {
+  try { return new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(date); }
+  catch (e) { return date.toISOString().slice(0, 10); }
+}
+function localHourInTz(date, timeZone) {
+  try { return parseInt(new Intl.DateTimeFormat('en-US', { timeZone, hour: '2-digit', hour12: false }).format(date), 10) % 24; }
+  catch (e) { return date.getUTCHours(); }
+}
+async function checkWeatherDigests() {
+  try {
+    const { data, error } = await sbAdmin.from('weather_digest_subs').select('user_id,hour,timezone,last_sent_date').eq('enabled', true);
+    if (error) throw error;
+    const now = new Date();
+    for (const sub of (data || [])) {
+      try {
+        const localHour = localHourInTz(now, sub.timezone);
+        if (localHour !== sub.hour) continue;
+        const today = localDateStringInTz(now, sub.timezone);
+        if (sub.last_sent_date === today) continue;
+        const cb = await getUserCheckboxes(sub.user_id);
+        let lat = 48.8566, lon = 2.3522, city = 'Paris';
+        if (typeof cb.userLat === 'number' && typeof cb.userLon === 'number') { lat = cb.userLat; lon = cb.userLon; city = cb.userLocationLabel || city; }
+        const forecast = await fetchWeatherForecast(lat, lon, 1);
+        const todayF = forecast && forecast[0];
+        if (!todayF) continue;
+        const body = `${city} : ${todayF.condition}, ${todayF.temp_min} / ${todayF.temp_max}` + (todayF.rain_chance ? `, pluie ${todayF.rain_chance}` : '');
+        await sendPush(sub.user_id, 'general', { title: '🌤️ Météo du jour', body, url: '/' }, {});
+        await sbAdmin.from('weather_digest_subs').update({ last_sent_date: today }).eq('user_id', sub.user_id);
+      } catch (e) { console.error('checkWeatherDigests (user ' + sub.user_id + '):', e.message); }
+    }
+  } catch (e) { console.error('checkWeatherDigests:', e.message); }
+}
+setInterval(checkWeatherDigests, 10 * 60 * 1000);
 
 // ===== SUIVI DE BUDGET PERSONNEL (entrées / dépenses) =====
 const BUDGET_TYPES = ['income', 'expense'];
