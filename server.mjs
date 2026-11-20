@@ -3619,6 +3619,92 @@ app.post('/api/photos-to-pdf', async (req, res) => {
   }
 });
 
+// Generateur de contrat simple (bail ou prestation de service) en PDF - modele generique uniquement,
+// aucune donnee stockee (genere a la volee). Ne remplace pas un contrat redige par un professionnel.
+app.post('/api/contract-pdf', async (req, res) => {
+  try {
+    const body = req.body || {};
+    const type = body.type === 'prestation' ? 'prestation' : 'bail';
+    const ville = String(body.ville || '').trim();
+    const dateStr = String(body.date || '').trim() || new Date().toLocaleDateString('fr-FR');
+    const partyA = body.partyA || {};
+    const partyB = body.partyB || {};
+    const nameA = String(partyA.name || '').trim();
+    const nameB = String(partyB.name || '').trim();
+    if (!nameA || !nameB) return res.status(400).json({ error: 'Le nom des deux parties est requis' });
+
+    const doc = new PDFDocument({ margin: 50 });
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename=contrat_${type}.pdf`);
+    doc.pipe(res);
+
+    doc.fontSize(18).fillColor('#1e3a8a').text(type === 'bail' ? 'CONTRAT DE BAIL (modele simple)' : 'CONTRAT DE PRESTATION DE SERVICE (modele simple)', { align: 'center' });
+    doc.moveDown(1);
+    doc.fontSize(10).fillColor('#000');
+    doc.text(`Fait a ${ville || '______________'}, le ${dateStr}`);
+    doc.moveDown(1);
+
+    if (type === 'bail') {
+      const bien = String(body.bienAdresse || '').trim();
+      const loyer = String(body.loyerMensuel || '').trim();
+      const depot = String(body.depotGarantie || '').trim();
+      const duree = String(body.duree || '').trim();
+      const dateDebut = String(body.dateDebut || '').trim();
+      doc.fontSize(11).text('Entre les soussignes :', { underline: true });
+      doc.moveDown(0.3);
+      doc.fontSize(10).text(`Le Bailleur : ${nameA}` + (partyA.address ? `, demeurant a ${partyA.address}` : ''));
+      doc.text(`Le Locataire : ${nameB}` + (partyB.address ? `, demeurant a ${partyB.address}` : ''));
+      doc.moveDown(0.8);
+      doc.fontSize(11).text('Il a ete convenu ce qui suit :', { underline: true });
+      doc.moveDown(0.3);
+      doc.fontSize(10);
+      doc.text(`1. Objet : location du bien situe a : ${bien || '______________'}`);
+      doc.moveDown(0.3);
+      doc.text(`2. Loyer mensuel : ${loyer || '______________'}` + (depot ? ` — Depot de garantie : ${depot}` : ''));
+      doc.moveDown(0.3);
+      doc.text(`3. Duree : ${duree || '______________'}` + (dateDebut ? `, a compter du ${dateDebut}` : ''));
+      doc.moveDown(0.3);
+      doc.text('4. Le locataire s\'engage a entretenir le bien loue en bon pere de famille et a le restituer en bon etat a la fin du bail, hors usure normale.');
+    } else {
+      const objet = String(body.objet || '').trim();
+      const montant = String(body.montant || '').trim();
+      const duree = String(body.duree || '').trim();
+      const dateDebut = String(body.dateDebut || '').trim();
+      const paiement = String(body.modalitesPaiement || '').trim();
+      doc.fontSize(11).text('Entre les soussignes :', { underline: true });
+      doc.moveDown(0.3);
+      doc.fontSize(10).text(`Le Prestataire : ${nameA}` + (partyA.address ? `, demeurant a ${partyA.address}` : ''));
+      doc.text(`Le Client : ${nameB}` + (partyB.address ? `, demeurant a ${partyB.address}` : ''));
+      doc.moveDown(0.8);
+      doc.fontSize(11).text('Il a ete convenu ce qui suit :', { underline: true });
+      doc.moveDown(0.3);
+      doc.fontSize(10);
+      doc.text(`1. Objet de la prestation : ${objet || '______________'}`);
+      doc.moveDown(0.3);
+      doc.text(`2. Montant convenu : ${montant || '______________'}` + (paiement ? ` — Modalites de paiement : ${paiement}` : ''));
+      doc.moveDown(0.3);
+      doc.text(`3. Duree / delai d'execution : ${duree || '______________'}` + (dateDebut ? `, a compter du ${dateDebut}` : ''));
+      doc.moveDown(0.3);
+      doc.text('4. Le prestataire s\'engage a executer la prestation avec diligence et selon les regles de l\'art.');
+    }
+
+    doc.moveDown(1.5);
+    const sigY = doc.y;
+    doc.fontSize(10).text('Signature Partie A', 70, sigY);
+    doc.text('Signature Partie B', 350, sigY);
+    doc.moveDown(2);
+
+    doc.fontSize(8).fillColor('#6b7280').text(
+      'Document genere automatiquement par Guideon a partir d\'un modele simple. Il ne constitue pas un conseil juridique et ne remplace pas un contrat redige ou verifie par un professionnel du droit (notaire, avocat). A adapter selon la legislation applicable dans votre pays.',
+      50, 740, { width: 495, align: 'center' }
+    );
+    doc.end();
+  } catch (e) {
+    console.error('ERREUR /api/contract-pdf:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 app.post('/api/cv-pdf', async (req, res) => {
   try {
     const body = req.body || {};
