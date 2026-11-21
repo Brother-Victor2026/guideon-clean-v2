@@ -1291,6 +1291,7 @@ const sysContent = (userRealName ? `Prenom reel de l'utilisateur (donnee fiable 
     const geminiBody = JSON.stringify(geminiBodyObj);
     let response;
     let usedFallbackModel = false;
+    let groqQuotaInfo = null;
     res.write(`data: ${JSON.stringify({ reasoning: "Redaction de la reponse...\n" })}\n\n`);
     for (let attempt = 0; attempt < 2; attempt++) {
       if (attempt > 0) await new Promise(r => setTimeout(r, 2000));
@@ -1305,6 +1306,16 @@ const sysContent = (userRealName ? `Prenom reel de l'utilisateur (donnee fiable 
 
     console.log('🔍 Groq response status:', response.status);
     console.log('🔍 Groq response ok:', response.ok);
+    // Quota reel renvoye par Groq dans ses en-tetes de reponse (documente sur
+    // console.groq.com/docs/rate-limits) - jamais invente, affiche tel quel au frontend pour une
+    // transparence honnete sur le quota restant (demande de Victor, 21/11/2026).
+    try {
+      const remReq = response.headers.get('x-ratelimit-remaining-requests');
+      const limReq = response.headers.get('x-ratelimit-limit-requests');
+      if (remReq !== null && limReq !== null) {
+        groqQuotaInfo = { remaining: parseInt(remReq, 10), limit: parseInt(limReq, 10) };
+      }
+    } catch (eQuota) {}
     if (!response.ok) {
       const errData = await response.json();
       console.error("GEMINI ERROR:", JSON.stringify(errData));
@@ -1643,7 +1654,7 @@ console.log('🔖 searchSources au moment de l affichage:', JSON.stringify(searc
         }
       } catch (e) { console.error('task extraction error:', e.message); }
     }
-    res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
+    res.write(`data: ${JSON.stringify({ done: true, quota: groqQuotaInfo })}\n\n`);
     res.end();
     if (reply && user && user.id && typeof adaptNext !== 'undefined' && adaptNext) {
       (async () => {
@@ -2091,6 +2102,56 @@ app.get('/api/sessions', async (req, res) => {
     const formatted = Array.isArray(data) ? data.filter(s => lastMap[s.id]).map(s => ({ id: s.id, title: s.title || 'Sans titre', sharedBy: userName, sharedAt: s.created_at, created_at: s.created_at, pinned: s.pinned === true, lastActivity: lastMap[s.id] || null })) : [];
     res.json(formatted);
   } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// Recherche plein texte dans tout l'historique des conversations de l'utilisateur (pas seulement
+// les titres des sessions). Retourne les messages correspondants avec un court extrait de contexte.
+app.get('/api/search-history', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    const user = checkToken(token);
+    if (!user) return res.status(401).json({ error: 'Non autorise' });
+    const q = String(req.query.q || '').trim();
+    if (q.length < 2) return res.json([]);
+    const likePattern = `*${q}*`;
+    const r = await fetch(`${DB}/conversations?user_id=eq.${String(user.id)}&content=ilike.${encodeURIComponent(likePattern)}&order=created_at.desc&limit=40`, { headers: SB });
+    const data = await r.json();
+    if (!Array.isArray(data) || data.length === 0) return res.json([]);
+
+    const sessionIds = [...new Set(data.map(m => m.session_id).filter(Boolean))];
+    let titleMap = {};
+    if (sessionIds.length) {
+      const idsFilter = sessionIds.join(',');
+      const sr = await fetch(`${DB}/sessions?id=in.(${idsFilter})&select=id,title`, { headers: SB });
+      const sessionsData = await sr.json();
+      if (Array.isArray(sessionsData)) sessionsData.forEach(s => { titleMap[s.id] = s.title || 'Sans titre'; });
+    }
+
+    const qLower = q.toLowerCase();
+    const results = data.map(m => {
+      const content = String(m.content || '');
+      const idxFound = content.toLowerCase().indexOf(qLower);
+      let snippet;
+      if (idxFound >= 0) {
+        const start = Math.max(0, idxFound - 40);
+        const end = Math.min(content.length, idxFound + q.length + 60);
+        snippet = (start > 0 ? '…' : '') + content.slice(start, end) + (end < content.length ? '…' : '');
+      } else {
+        snippet = content.slice(0, 120) + (content.length > 120 ? '…' : '');
+      }
+      return {
+        session_id: m.session_id,
+        title: titleMap[m.session_id] || 'Sans titre',
+        role: m.role,
+        snippet,
+        created_at: m.created_at
+      };
+    });
+    res.json(results);
+  } catch (e) {
+    console.error('ERREUR /api/search-history:', e.message);
+    res.status(500).json({ error: e.message });
+  }
 });
 
 app.post('/api/sessions', async (req, res) => {
