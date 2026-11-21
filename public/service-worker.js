@@ -1,5 +1,25 @@
-self.addEventListener('install', event => { self.skipWaiting(); });
-self.addEventListener('activate', event => { event.waitUntil(self.clients.claim()); });
+// Cache de l'app shell pour permettre d'ouvrir Guideon meme sans connexion (21/11/2026).
+// Important : ne touche JAMAIS aux requetes POST ni aux appels /api/* (chat, rappels, etc.),
+// seulement a la page principale et a quelques fichiers statiques, pour ne rien casser du
+// fonctionnement en ligne existant (toujours reseau d'abord quand il est disponible).
+const GGSHELL_CACHE = 'guideon-shell-v1';
+const GGSHELL_URLS = ['/', '/icon-192.png', '/badge-96.png', '/manifest.json'];
+
+self.addEventListener('install', event => {
+  self.skipWaiting();
+  event.waitUntil(
+    caches.open(GGSHELL_CACHE).then(cache => cache.addAll(GGSHELL_URLS).catch(() => {}))
+  );
+});
+self.addEventListener('activate', event => {
+  event.waitUntil((async () => {
+    try {
+      const names = await caches.keys();
+      await Promise.all(names.filter(n => n !== GGSHELL_CACHE).map(n => caches.delete(n)));
+    } catch (e) {}
+    await self.clients.claim();
+  })());
+});
 
 self.addEventListener('push', event => {
   let d = {};
@@ -57,4 +77,29 @@ self.addEventListener('message', event => {
     self.registration.showNotification('Guidéon', { body: event.data.message || '', icon: '/icon-192.png', badge: '/badge-96.png', tag: 'guideon-local' });
   }
 });
-self.addEventListener('fetch', function(){});
+self.addEventListener('fetch', event => {
+  const req = event.request;
+  // Ne touche jamais aux requetes non-GET (chat, rappels, connexion...) ni aux appels /api/* :
+  // elles doivent toujours passer normalement par le reseau, jamais via le cache.
+  if (req.method !== 'GET') return;
+  const url = new URL(req.url);
+  if (url.pathname.startsWith('/api/')) return;
+  const isNavigation = req.mode === 'navigate';
+  const isShellAsset = GGSHELL_URLS.includes(url.pathname);
+  if (!isNavigation && !isShellAsset) return; // tout le reste suit le comportement normal du navigateur
+
+  event.respondWith((async () => {
+    try {
+      const res = await fetch(req);
+      if (res && res.ok) {
+        const cache = await caches.open(GGSHELL_CACHE);
+        cache.put(isNavigation ? '/' : req, res.clone()).catch(() => {});
+      }
+      return res;
+    } catch (e) {
+      const cache = await caches.open(GGSHELL_CACHE);
+      const cached = await cache.match(isNavigation ? '/' : req);
+      return cached || cache.match('/') || Response.error();
+    }
+  })());
+});
