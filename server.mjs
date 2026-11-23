@@ -2570,15 +2570,30 @@ app.get('/api/stats', async (req, res) => {
     const user = checkToken(tok);
     if (!user) return res.status(401).json({ error: 'Token invalide' });
     const userId = String(user.id);
-    const [convRes, msgRes, memRes] = await Promise.all([
+    const [convRes, msgRes, memRes, userRes, toolRes] = await Promise.all([
       fetch(`${DB}/sessions?user_id=eq.${userId}&select=id`, { headers: SB }),
       fetch(`${DB}/conversations?user_id=eq.${userId}&select=id`, { headers: SB }),
-      fetch(`${DB}/memories?user_id=eq.${userId}&select=id`, { headers: SB })
+      fetch(`${DB}/memories?user_id=eq.${userId}&select=id`, { headers: SB }),
+      fetch(`${DB}/users?id=eq.${userId}&select=created_at`, { headers: SB }),
+      fetch(`${DB}/analytics?user_id=eq.${userId}&event_type=eq.tool_open&select=interaction_data&limit=2000`, { headers: SB })
     ]);
     const convs = await convRes.json();
     const msgs = await msgRes.json();
     const mems = await memRes.json();
-    const convCount = Array.isArray(convs) ? convs.length : 0;const size = Math.round(convCount * 2.5) + ' KB';res.json({ conversations: convCount, messages: Array.isArray(msgs) ? msgs.length : 0, memories: Array.isArray(mems) ? mems.length : 0, size });
+    const userRows = await userRes.json();
+    const toolEvents = await toolRes.json();
+    const convCount = Array.isArray(convs) ? convs.length : 0;const size = Math.round(convCount * 2.5) + ' KB';
+    // Mes statistiques d'usage (22/11/2026, demande de Victor) : date d'ancienneté du compte +
+    // outils les plus utilisés (table "analytics", deja dans le schema mais jusque-la jamais
+    // alimentee - journalisee cote client a chaque ouverture d'un outil, voir /api/analytics-event).
+    const toolCounts = {};
+    for (const e of (Array.isArray(toolEvents) ? toolEvents : [])) {
+      const k = e && e.interaction_data && e.interaction_data.tool;
+      if (k) toolCounts[k] = (toolCounts[k] || 0) + 1;
+    }
+    const topTools = Object.entries(toolCounts).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([tool, count]) => ({ tool, count }));
+    const memberSince = (Array.isArray(userRows) && userRows[0] && userRows[0].created_at) || null;
+    res.json({ conversations: convCount, messages: Array.isArray(msgs) ? msgs.length : 0, memories: Array.isArray(mems) ? mems.length : 0, size, member_since: memberSince, top_tools: topTools });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -5312,6 +5327,159 @@ async function checkWeatherDigests() {
 }
 setInterval(checkWeatherDigests, 10 * 60 * 1000);
 
+// ===== SUIVI D'UN SUJET D'ACTUALITÉ (22/11/2026, demande de Victor) =====
+// L'utilisateur demande a etre prevenu des qu'une info sur un sujet (sortie d'un jeu, resultat d'un
+// evenement, etc.) devient disponible. Reutilise le meme /api/search deja utilise par le chat
+// (DuckDuckGo + Wikipedia + Google News + Bing News) via un appel interne, verifie periodiquement
+// chaque suivi actif, et envoie une notification des qu'un resultat pertinent (sources.length > 0,
+// exactement le critere "success" deja utilise par /api/search) apparait.
+app.post('/api/topic-watch', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    const user = checkToken(token);
+    if (!user) return res.status(401).json({ error: 'Non autorisé' });
+    const topic = String(req.body?.topic || '').trim().slice(0, 200);
+    if (!topic) return res.status(400).json({ error: 'Sujet vide' });
+    const session_id = req.body?.session_id || null;
+    const { data, error } = await sbAdmin.from('topic_watches').insert({ user_id: user.id, session_id, topic }).select('id').single();
+    if (error) throw error;
+    res.json({ ok: true, id: data.id });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.get('/api/topic-watch', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    const user = checkToken(token);
+    if (!user) return res.status(401).json({ error: 'Non autorisé' });
+    const { data, error } = await sbAdmin.from('topic_watches').select('id,topic,found,found_summary,created_at').eq('user_id', user.id).order('id', { ascending: false });
+    if (error) throw error;
+    res.json({ ok: true, watches: data || [] });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.delete('/api/topic-watch/:id', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    const user = checkToken(token);
+    if (!user) return res.status(401).json({ error: 'Non autorisé' });
+    const id = parseInt(req.params.id, 10);
+    if (!id) return res.status(400).json({ error: 'id invalide' });
+    const { error } = await sbAdmin.from('topic_watches').delete().eq('id', id).eq('user_id', user.id);
+    if (error) throw error;
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+async function checkTopicWatches() {
+  try {
+    const { data, error } = await sbAdmin.from('topic_watches').select('id,user_id,topic').eq('found', false).limit(20);
+    if (error) throw error;
+    for (const w of (data || [])) {
+      try {
+        const r = await fetch(`http://localhost:${process.env.PORT || 9000}/api/search`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query: w.topic }) });
+        const sd = await r.json();
+        await sbAdmin.from('topic_watches').update({ last_checked_at: new Date().toISOString() }).eq('id', w.id);
+        if (sd && sd.success && sd.result) {
+          await sbAdmin.from('topic_watches').update({ found: true, found_summary: String(sd.result).substring(0, 800) }).eq('id', w.id);
+          await sendPush(w.user_id, 'general', { title: '🔔 Nouvelle info : ' + w.topic, body: String(sd.result).substring(0, 150), url: '/' }, {});
+        }
+      } catch (e) { console.error('checkTopicWatches (id ' + w.id + '):', e.message); }
+    }
+  } catch (e) { console.error('checkTopicWatches:', e.message); }
+}
+// Toutes les 30 minutes : l'actualite ne change pas a la minute, pas la peine de verifier plus souvent
+// (et ca evite de multiplier les appels aux sources de recherche externes gratuites).
+setInterval(checkTopicWatches, 30 * 60 * 1000);
+
+// ===== ALERTE DE SEUIL SUR UNE DEVISE (22/11/2026, demande de Victor) =====
+// Reutilise fetchExchangeRates (deja utilise par /api/realtime/currency, API Frankfurter). L'EUR est
+// volontairement EXCLU des devises cibles proposees : le XOF est ancre a taux FIXE sur l'EUR
+// (655,957 FCFA, immuable), donc un seuil sur l'EUR ne se declencherait jamais (ou serait trivial) -
+// deja note dans le convertisseur de devises existant.
+const CURRENCY_ALERT_TARGETS = ['USD', 'GBP', 'NGN', 'CNY'];
+app.post('/api/currency-alert', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    const user = checkToken(token);
+    if (!user) return res.status(401).json({ error: 'Non autorisé' });
+    // UX naturelle pour Victor/ses utilisateurs : le seuil s'exprime en "combien de FCFA pour 1 unite
+    // de la devise choisie" (ex: "le dollar depasse 700 FCFA"), et non l'inverse (qui donnerait des
+    // decimales illisibles comme 0,0016). On stocke donc base_currency = la devise choisie (USD...) et
+    // target_currency = XOF (fixe), et checkCurrencyAlerts() lit fx.rates['XOF'] = FCFA par unite de base.
+    const base = String(req.body?.target_currency || req.body?.base_currency || '').toUpperCase();
+    if (!CURRENCY_ALERT_TARGETS.includes(base)) return res.status(400).json({ error: 'Devise non supportée pour une alerte (USD, GBP, NGN ou CNY)' });
+    const direction = req.body?.direction === 'below' ? 'below' : 'above';
+    const threshold = Number(req.body?.threshold);
+    if (!Number.isFinite(threshold) || threshold <= 0) return res.status(400).json({ error: 'Seuil invalide' });
+    const target = 'XOF';
+    const { data, error } = await sbAdmin.from('currency_alerts').insert({ user_id: user.id, base_currency: base, target_currency: target, direction, threshold }).select('id').single();
+    if (error) throw error;
+    res.json({ ok: true, id: data.id });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.get('/api/currency-alert', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    const user = checkToken(token);
+    if (!user) return res.status(401).json({ error: 'Non autorisé' });
+    const { data, error } = await sbAdmin.from('currency_alerts').select('id,base_currency,target_currency,direction,threshold,enabled,last_triggered_at,created_at').eq('user_id', user.id).order('id', { ascending: false });
+    if (error) throw error;
+    res.json({ ok: true, alerts: data || [] });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.delete('/api/currency-alert/:id', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    const user = checkToken(token);
+    if (!user) return res.status(401).json({ error: 'Non autorisé' });
+    const id = parseInt(req.params.id, 10);
+    if (!id) return res.status(400).json({ error: 'id invalide' });
+    const { error } = await sbAdmin.from('currency_alerts').delete().eq('id', id).eq('user_id', user.id);
+    if (error) throw error;
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+async function checkCurrencyAlerts() {
+  try {
+    const { data, error } = await sbAdmin.from('currency_alerts').select('id,user_id,base_currency,target_currency,direction,threshold').eq('enabled', true);
+    if (error) throw error;
+    const byBase = {};
+    for (const a of (data || [])) { (byBase[a.base_currency] = byBase[a.base_currency] || []).push(a); }
+    for (const base of Object.keys(byBase)) {
+      try {
+        const targets = [...new Set(byBase[base].map(a => a.target_currency))];
+        const fx = await fetchExchangeRates(base, targets);
+        for (const a of byBase[base]) {
+          try {
+            const rate = fx.rates[a.target_currency];
+            if (typeof rate !== 'number') continue;
+            const hit = a.direction === 'above' ? rate >= a.threshold : rate <= a.threshold;
+            if (!hit) continue;
+            await sendPush(a.user_id, 'general', { title: '💱 Alerte devise', body: `1 ${base} = ${rate} ${a.target_currency} (seuil ${a.direction === 'above' ? '≥' : '≤'} ${a.threshold} franchi)`, url: '/' }, {});
+            // Desactivee apres declenchement (pas de spam repete) : l'utilisateur peut en recreer une.
+            await sbAdmin.from('currency_alerts').update({ enabled: false, last_triggered_at: new Date().toISOString() }).eq('id', a.id);
+          } catch (e) { console.error('checkCurrencyAlerts (id ' + a.id + '):', e.message); }
+        }
+      } catch (e) { console.error('checkCurrencyAlerts (base ' + base + '):', e.message); }
+    }
+  } catch (e) { console.error('checkCurrencyAlerts:', e.message); }
+}
+setInterval(checkCurrencyAlerts, 60 * 60 * 1000); // horaire : les taux Frankfurter eux-memes ne sont mis a jour qu'une fois par jour ouvre
+
+// ===== MES STATISTIQUES D'USAGE (22/11/2026, demande de Victor) =====
+// Reutilise la table "analytics" deja presente dans le schema (prevue pour cet usage, 0 ligne avant
+// cet ajout) plutot que d'en creer une nouvelle. Journalisation best-effort (ne doit jamais bloquer
+// ni degrader l'experience utilisateur si elle echoue).
+app.post('/api/analytics-event', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    const user = checkToken(token);
+    if (!user) return res.status(401).json({ error: 'Non autorisé' });
+    const event_type = String(req.body?.event_type || '').slice(0, 60);
+    if (!event_type) return res.status(400).json({ error: 'event_type manquant' });
+    const interaction_data = (req.body?.interaction_data && typeof req.body.interaction_data === 'object') ? req.body.interaction_data : {};
+    await sbAdmin.from('analytics').insert({ user_id: String(user.id), event_type, interaction_data });
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
 // ===== SUIVI DE BUDGET PERSONNEL (entrées / dépenses) =====
 const BUDGET_TYPES = ['income', 'expense'];
 
