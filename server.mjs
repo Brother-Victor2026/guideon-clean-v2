@@ -5017,9 +5017,48 @@ async function mergeUserCheckboxes(uid, patch) {
   if (error) throw error;
   return data;
 }
+// ===== MODE "NE PAS DERANGER" PROGRAMME (26/11/2026, demande de Victor) =====
+// Fenetre horaire (dans le fuseau horaire choisi par l'utilisateur) pendant laquelle AUCUNE
+// notification push n'est envoyee (rappels, alertes, resume hebdo, reponses, etc.) - verifiee au tout
+// debut de sendPush(), donc valable pour tous les "topic" sans exception. La fenetre peut traverser
+// minuit (ex: 22 -> 6).
+function isInDndWindow(nowDate, cb) {
+  if (!cb || cb.dndEnabled !== true) return false;
+  const tz = typeof cb.dndTimezone === 'string' ? cb.dndTimezone : 'Africa/Porto-Novo';
+  const start = Number.isInteger(cb.dndStart) ? cb.dndStart : 22;
+  const end = Number.isInteger(cb.dndEnd) ? cb.dndEnd : 6;
+  if (start === end) return false;
+  const h = localHourInTz(nowDate, tz);
+  return start < end ? (h >= start && h < end) : (h >= start || h < end);
+}
+app.get('/api/dnd', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    const user = checkToken(token);
+    if (!user) return res.status(401).json({ error: 'Non autorisé' });
+    const cb = await getUserCheckboxes(user.id);
+    res.json({ ok: true, enabled: cb.dndEnabled === true, start: Number.isInteger(cb.dndStart) ? cb.dndStart : 22, end: Number.isInteger(cb.dndEnd) ? cb.dndEnd : 6, timezone: cb.dndTimezone || 'Africa/Porto-Novo' });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/dnd', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    const user = checkToken(token);
+    if (!user) return res.status(401).json({ error: 'Non autorisé' });
+    const enabled = !!req.body?.enabled;
+    const start = Number.isInteger(req.body?.start) ? req.body.start : 22;
+    const end = Number.isInteger(req.body?.end) ? req.body.end : 6;
+    if (start < 0 || start > 23 || end < 0 || end > 23) return res.status(400).json({ error: 'Heure invalide' });
+    let timezone = typeof req.body?.timezone === 'string' ? req.body.timezone.slice(0, 60) : 'Africa/Porto-Novo';
+    try { new Intl.DateTimeFormat('en-US', { timeZone: timezone }); } catch (e) { timezone = 'Africa/Porto-Novo'; }
+    await mergeUserCheckboxes(user.id, { dndEnabled: enabled, dndStart: start, dndEnd: end, dndTimezone: timezone });
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
 async function sendPush(uid, topic, payload, opts) {
   if (!VAPID_OK) return;
   const cb = await getUserCheckboxes(uid);
+  if (isInDndWindow(new Date(), cb)) { console.log('📲 Push', topic, '-> silencieux (Ne pas deranger actif)'); return; }
   let subs = Array.isArray(cb.pushSubs) ? cb.pushSubs : [];
   if (topic === 'general' && cb.notifCheck !== true) return;
   // Pour un rappel precis (opts.sameOriginOnly), on ne livre QUE sur le navigateur/environnement
@@ -5464,6 +5503,109 @@ async function checkCurrencyAlerts() {
 }
 setInterval(checkCurrencyAlerts, 60 * 60 * 1000); // horaire : les taux Frankfurter eux-memes ne sont mis a jour qu'une fois par jour ouvre
 
+// ===== RESUME HEBDOMADAIRE PERSONNALISE (26/11/2026, demande de Victor) =====
+// Meme principe que la meteo matinale (weather_digest_subs) mais une fois par SEMAINE, au jour et a
+// l'heure choisis par l'utilisateur, dans SON fuseau horaire. Contenu : nombre de messages envoyes,
+// nombre de nouvelles conversations, et l'outil le plus utilise, sur les 7 derniers jours (reutilise
+// les memes tables/compteurs que /api/stats, sans dupliquer sa logique de "depuis toujours").
+function localDayOfWeekInTz(date, timeZone) {
+  try {
+    const wd = new Intl.DateTimeFormat('en-US', { timeZone, weekday: 'short' }).format(date);
+    const map = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+    return (wd in map) ? map[wd] : date.getUTCDay();
+  } catch (e) { return date.getUTCDay(); }
+}
+app.get('/api/weekly-digest', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    const user = checkToken(token);
+    if (!user) return res.status(401).json({ error: 'Non autorisé' });
+    const { data, error } = await sbAdmin.from('weekly_digest_subs').select('enabled,day_of_week,hour,timezone').eq('user_id', String(user.id)).maybeSingle();
+    if (error) throw error;
+    res.json({ ok: true, sub: data || { enabled: false, day_of_week: 0, hour: 9, timezone: 'Africa/Porto-Novo' } });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/weekly-digest', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    const user = checkToken(token);
+    if (!user) return res.status(401).json({ error: 'Non autorisé' });
+    const enabled = !!req.body?.enabled;
+    const day_of_week = Number.isInteger(req.body?.day_of_week) ? req.body.day_of_week : 0;
+    if (day_of_week < 0 || day_of_week > 6) return res.status(400).json({ error: 'Jour invalide' });
+    const hour = Number.isInteger(req.body?.hour) ? req.body.hour : 9;
+    if (hour < 0 || hour > 23) return res.status(400).json({ error: 'Heure invalide' });
+    let timezone = typeof req.body?.timezone === 'string' ? req.body.timezone.slice(0, 60) : 'Africa/Porto-Novo';
+    try { new Intl.DateTimeFormat('en-US', { timeZone: timezone }); } catch (e) { timezone = 'Africa/Porto-Novo'; }
+    const { error } = await sbAdmin.from('weekly_digest_subs').upsert({ user_id: String(user.id), enabled, day_of_week, hour, timezone, updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
+    if (error) throw error;
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+async function checkWeeklyDigests() {
+  try {
+    const { data, error } = await sbAdmin.from('weekly_digest_subs').select('user_id,day_of_week,hour,timezone,last_sent_date').eq('enabled', true);
+    if (error) throw error;
+    const now = new Date();
+    const sevenDaysAgoIso = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    for (const sub of (data || [])) {
+      try {
+        if (localHourInTz(now, sub.timezone) !== sub.hour) continue;
+        if (localDayOfWeekInTz(now, sub.timezone) !== sub.day_of_week) continue;
+        const today = localDateStringInTz(now, sub.timezone);
+        if (sub.last_sent_date === today) continue;
+        const uid = String(sub.user_id);
+        const [msgRes, sessRes, toolRes] = await Promise.all([
+          sbAdmin.from('conversations').select('id', { count: 'exact', head: true }).eq('user_id', uid).eq('role', 'user').gte('created_at', sevenDaysAgoIso),
+          sbAdmin.from('sessions').select('id', { count: 'exact', head: true }).eq('user_id', uid).gte('created_at', sevenDaysAgoIso),
+          sbAdmin.from('analytics').select('interaction_data').eq('user_id', uid).eq('event_type', 'tool_open').gte('created_at', sevenDaysAgoIso).limit(2000),
+        ]);
+        const msgCount = msgRes.count || 0;
+        const sessCount = sessRes.count || 0;
+        const toolCounts = {};
+        for (const e of (toolRes.data || [])) { const k = e && e.interaction_data && e.interaction_data.tool; if (k) toolCounts[k] = (toolCounts[k] || 0) + 1; }
+        const topTool = Object.entries(toolCounts).sort((a, b) => b[1] - a[1])[0];
+        if (msgCount === 0 && sessCount === 0) {
+          // Rien a resumer cette semaine : on marque quand meme comme envoye pour ne pas reessayer
+          // chaque jour avant le prochain cycle hebdomadaire, mais on n'envoie pas de notification vide.
+          await sbAdmin.from('weekly_digest_subs').update({ last_sent_date: today }).eq('user_id', uid);
+          continue;
+        }
+        let body = `${msgCount} message(s) envoyé(s), ${sessCount} nouvelle(s) conversation(s)`;
+        if (topTool) body += `, outil le plus utilisé : ${topTool[0]} (${topTool[1]}x)`;
+        await sendPush(uid, 'general', { title: '📅 Votre résumé de la semaine', body, url: '/' }, {});
+        await sbAdmin.from('weekly_digest_subs').update({ last_sent_date: today }).eq('user_id', uid);
+      } catch (e) { console.error('checkWeeklyDigests (user ' + sub.user_id + '):', e.message); }
+    }
+  } catch (e) { console.error('checkWeeklyDigests:', e.message); }
+}
+setInterval(checkWeeklyDigests, 30 * 60 * 1000);
+
+// ===== VERIFICATEUR DE NUMERO SUSPECT (26/11/2026, demande de Victor) =====
+// Reutilise /api/search (meme mecanisme interne que checkTopicWatches, appel localhost) : aucune base
+// de donnees officielle d'arnaques n'est consultee (aucune n'est librement accessible/fiable), on fait
+// une recherche web ciblee sur le numero et on restitue prudemment ce qui est trouve, jamais un verdict
+// definitif ("arnaque confirmee"/"numero sur") qui serait trompeur.
+app.post('/api/scam-check', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    const user = checkToken(token);
+    if (!user) return res.status(401).json({ error: 'Non autorisé' });
+    const raw = String(req.body?.number || '').trim();
+    const digits = raw.replace(/\D/g, '');
+    if (digits.length < 6 || digits.length > 15) return res.status(400).json({ error: 'Numéro invalide (6 à 15 chiffres attendus)' });
+    const cleaned = raw.replace(/[^\d+]/g, '');
+    const query = `"${cleaned}" arnaque OR spam OR fraude OR scam avis signalement`;
+    const r = await fetch(`http://localhost:${process.env.PORT || 9000}/api/search`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query }) });
+    const sd = await r.json();
+    if (sd && sd.success && sd.result) {
+      res.json({ ok: true, found: true, summary: String(sd.result).substring(0, 800), sources: Array.isArray(sd.sources) ? sd.sources : [] });
+    } else {
+      res.json({ ok: true, found: false });
+    }
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // ===== MES STATISTIQUES D'USAGE (22/11/2026, demande de Victor) =====
 // Reutilise la table "analytics" deja presente dans le schema (prevue pour cet usage, 0 ligne avant
 // cet ajout) plutot que d'en creer une nouvelle. Journalisation best-effort (ne doit jamais bloquer
@@ -5584,6 +5726,79 @@ app.delete('/api/weight/:id', async (req, res) => {
     const id = Number(req.params.id);
     if (!Number.isFinite(id)) return res.status(400).json({ error: 'Identifiant invalide' });
     const { error } = await sbAdmin.from('weight_entries').delete().eq('id', id).eq('user_id', String(user.id));
+    if (error) throw error;
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ===== SUIVI TENSION ARTERIELLE / GLYCEMIE (26/11/2026, demande de Victor) =====
+// Modelé sur le suivi de poids existant (weight_entries) : meme principe (table dediee, CRUD, tendance
+// entre le premier et le dernier releve), mais deux types de mesure dans une seule table (systolique
+// +diastolique pour la tension, glucose+unite pour la glycemie) pour rester simple cote client (un seul
+// outil, un choix de type en haut). AVERTISSEMENT MEDICAL : Guidéon n'est pas un dispositif medical, ce
+// suivi est un simple carnet personnel, aucune interpretation clinique n'est fournie.
+app.post('/api/vitals', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    const user = checkToken(token);
+    if (!user) return res.status(401).json({ error: 'Non autorisé' });
+    const type = req.body?.type === 'glycemie' ? 'glycemie' : (req.body?.type === 'tension' ? 'tension' : null);
+    if (!type) return res.status(400).json({ error: 'Type invalide (tension ou glycemie)' });
+    const note = typeof req.body?.note === 'string' ? req.body.note.trim().slice(0, 200) || null : null;
+    let entryDate = req.body?.entry_date ? String(req.body.entry_date).slice(0, 10) : null;
+    if (entryDate && !/^\d{4}-\d{2}-\d{2}$/.test(entryDate)) entryDate = null;
+    const row = { user_id: String(user.id), type, note };
+    if (entryDate) row.entry_date = entryDate;
+    if (type === 'tension') {
+      const systolic = parseInt(req.body?.systolic, 10);
+      const diastolic = parseInt(req.body?.diastolic, 10);
+      if (!Number.isFinite(systolic) || systolic < 50 || systolic > 260) return res.status(400).json({ error: 'Systolique invalide (mmHg)' });
+      if (!Number.isFinite(diastolic) || diastolic < 30 || diastolic > 180) return res.status(400).json({ error: 'Diastolique invalide (mmHg)' });
+      row.systolic = systolic; row.diastolic = diastolic;
+    } else {
+      const glucose = parseFloat(req.body?.glucose);
+      if (!isFinite(glucose) || glucose <= 0 || glucose > 1000) return res.status(400).json({ error: 'Glycémie invalide' });
+      row.glucose = glucose;
+      row.glucose_unit = req.body?.glucose_unit === 'mmol/L' ? 'mmol/L' : 'mg/dL';
+    }
+    const { data, error } = await sbAdmin.from('vitals_entries').insert(row).select().single();
+    if (error) throw error;
+    res.json({ ok: true, entry: data });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.get('/api/vitals', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    const user = checkToken(token);
+    if (!user) return res.status(401).json({ error: 'Non autorisé' });
+    const { data, error } = await sbAdmin.from('vitals_entries').select('id,type,systolic,diastolic,glucose,glucose_unit,note,entry_date,created_at')
+      .eq('user_id', String(user.id)).order('entry_date', { ascending: true }).limit(500);
+    if (error) throw error;
+    const entries = data || [];
+    function trendFor(list, pick) {
+      if (list.length < 2) return null;
+      const first = pick(list[0]); const last = pick(list[list.length - 1]);
+      if (first == null || last == null) return null;
+      return { first, last, delta: Number((last - first).toFixed(2)) };
+    }
+    const tensionEntries = entries.filter(e => e.type === 'tension');
+    const glycemieEntries = entries.filter(e => e.type === 'glycemie');
+    const trend = {
+      tension_systolic: trendFor(tensionEntries, e => Number(e.systolic)),
+      tension_diastolic: trendFor(tensionEntries, e => Number(e.diastolic)),
+      glycemie: trendFor(glycemieEntries, e => Number(e.glucose)),
+    };
+    res.json({ ok: true, entries, trend });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.delete('/api/vitals/:id', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    const user = checkToken(token);
+    if (!user) return res.status(401).json({ error: 'Non autorisé' });
+    const id = Number(req.params.id);
+    if (!Number.isFinite(id)) return res.status(400).json({ error: 'Identifiant invalide' });
+    const { error } = await sbAdmin.from('vitals_entries').delete().eq('id', id).eq('user_id', String(user.id));
     if (error) throw error;
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
