@@ -1012,7 +1012,7 @@ window.addEventListener('load', function() {
 <script>
 const PW="guideon2024";
   const userId=localStorage.getItem("gid")||crypto.randomUUID();localStorage.setItem("gid",userId);
-let chatHistory=[],ve=false,rec=null,il=false,gVoiceOrigin=false,gVoiceCancelled=false,gVoiceStopRequested=false,gVoiceFinalText='',gVoiceRestartAttempts=0;
+let chatHistory=[],ve=false,rec=null,il=false,gVoiceOrigin=false,gVoiceCancelled=false,gVoiceStopRequested=false,gVoiceFinalText='',gVoiceRestartAttempts=0,gVoiceConsumedCount=0,gVoiceLastFinalChunk='';
 // Restaurer chatHistory au démarrage
 if(localStorage.getItem('gclearedChat') === 'true') {
   chatHistory = [];
@@ -1082,18 +1082,33 @@ function tm(){
   gVoiceStopRequested=false;
   gVoiceFinalText='';
   gVoiceRestartAttempts=0;
+  gVoiceConsumedCount=0;
+  gVoiceLastFinalChunk='';
   rec=new(window.SpeechRecognition||window.webkitSpeechRecognition)();
   rec.lang='fr-FR';
   rec.continuous=true;
   rec.interimResults=true;
-  rec.onstart=()=>{il=true;gVoiceRestartAttempts=0;const mb=document.getElementById('mb');mb.classList.add('on');mb.textContent='■';gVoiceShowBar(true);gVoiceUpdateLabel(gVoiceFinalText);};
+  rec.onstart=()=>{il=true;gVoiceRestartAttempts=0;gVoiceConsumedCount=0;const mb=document.getElementById('mb');mb.classList.add('on');mb.textContent='■';gVoiceShowBar(true);gVoiceUpdateLabel(gVoiceFinalText);};
   rec.onresult=(e)=>{
     if(gVoiceCancelled)return;
     let interim='';
-    for(let i=e.resultIndex;i<e.results.length;i++){
+    // On ignore e.resultIndex et on relit la liste depuis le debut a chaque evenement : certains
+    // telephones (observe sur Android) redelivrent parfois un resultat "final" deja traite (surtout
+    // juste apres un redemarrage automatique), ce qui dupliquait le texte. gVoiceConsumedCount suit
+    // le nombre de resultats de la session EN COURS deja ajoutes, et ignore tout index deja vu.
+    for(let i=0;i<e.results.length;i++){
       const r=e.results[i];
-      if(r.isFinal){const t=r[0].transcript.trim();if(t)gVoiceFinalText=(gVoiceFinalText?gVoiceFinalText+' ':'')+t;}
-      else{interim+=r[0].transcript;}
+      if(r.isFinal){
+        if(i>=gVoiceConsumedCount){
+          const t=r[0].transcript.trim();
+          const norm=t.toLowerCase().replace(/[.,!?…\s]+/g,' ').trim();
+          if(t&&norm!==gVoiceLastFinalChunk){
+            gVoiceFinalText=(gVoiceFinalText?gVoiceFinalText+' ':'')+t;
+            gVoiceLastFinalChunk=norm;
+          }
+          gVoiceConsumedCount=i+1;
+        }
+      } else { interim+=r[0].transcript; }
     }
     gVoiceUpdateLabel((gVoiceFinalText+' '+interim).trim());
   };
